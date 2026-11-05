@@ -23,6 +23,8 @@ import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/
 import type { LiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import { fireAndForget } from "octagonal-wheels/promises";
 import { withLock } from "octagonal-wheels/concurrency/lock";
+import { withCancellation } from "octagonal-wheels/concurrency/cancellation";
+import { withScope } from "octagonal-wheels/resource/scope";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
 import { displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { EVENT_CONFLICT_CANCELLED, EVENT_ON_UNRESOLVED_ERROR } from "@/common/events.ts";
@@ -38,6 +40,7 @@ import {
 
 export interface InteractiveConflictResolutionOperationsDependencies {
     readonly events: Pick<LiveSyncEventHub, "emitEvent">;
+    readonly signal: AbortSignal;
     readonly databaseFileAccess: Pick<DatabaseFileAccess, "getConflictedRevs" | "storeContent">;
     readonly localDatabase: () => Pick<LiveSyncLocalDB, "getDBEntry" | "findAllDocs">;
     readonly confirm: Pick<Confirm, "askSelectString" | "askInPopup">;
@@ -52,7 +55,6 @@ export interface InteractiveConflictResolutionOperationsDependencies {
 }
 
 export interface InteractiveConflictResolutionOperations {
-    readonly dispose: () => void;
     readonly invalidateWaitingResolution: (filename: FilePathWithPrefix) => void;
     readonly getActiveConflictMessages: () => Promise<string[]>;
     readonly refreshConflictState: (filename: FilePathWithPrefix) => Promise<void>;
@@ -77,9 +79,18 @@ export function createInteractiveConflictResolutionOperations(
     const latestRequestByFilename = new Map<FilePathWithPrefix, number>();
     let nextRequestId = 0;
     let activeDialogue: { filename: FilePathWithPrefix; dialogue: ConflictResolveDialogue } | undefined;
-    let disposed = false;
+    const clearPendingState = (): void => {
+        latestRequestByFilename.clear();
+        postponedConflictEpisodes.clear();
+    };
+    if (dependencies.signal.aborted) {
+        clearPendingState();
+    } else {
+        dependencies.signal.addEventListener("abort", clearPendingState, { once: true });
+    }
 
     const invalidateWaitingResolution = (filename: FilePathWithPrefix): void => {
+        if (dependencies.signal.aborted) return;
         // An active dialogue consumes this event itself. Removing its request
         // here would also remove a same-path replacement which emitted the
         // event to close that active dialogue. A non-active request is stale
@@ -88,23 +99,11 @@ export function createInteractiveConflictResolutionOperations(
         latestRequestByFilename.delete(filename);
     };
 
-    const dispose = (): void => {
-        if (disposed) return;
-        disposed = true;
-        latestRequestByFilename.clear();
-        postponedConflictEpisodes.clear();
-        const activeFilename = activeDialogue?.filename;
-        if (activeFilename !== undefined) {
-            dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, activeFilename);
-            activeDialogue = undefined;
-        }
-    };
-
     const getConflictVersionCount = async (filename: FilePathWithPrefix): Promise<number | undefined> => {
-        if (disposed) return undefined;
+        if (dependencies.signal.aborted) return undefined;
         try {
             const conflictCount = (await dependencies.databaseFileAccess.getConflictedRevs(filename)).length;
-            if (disposed) return undefined;
+            if (dependencies.signal.aborted) return undefined;
             return conflictCount === 0 ? 0 : conflictCount + 1;
         } catch (error) {
             dependencies.log(`Could not inspect the conflict state of ${filename}`, LOG_LEVEL_VERBOSE);
@@ -114,11 +113,11 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const getActiveConflictMessages = async (): Promise<string[]> => {
-        if (disposed) return [];
+        if (dependencies.signal.aborted) return [];
         const filename = dependencies.vault.getActiveFilePath();
         if (!filename) return [];
         const versionCount = await getConflictVersionCount(filename);
-        if (disposed) return [];
+        if (dependencies.signal.aborted) return [];
         if (versionCount === 0) {
             postponedConflictEpisodes.delete(filename);
             return [];
@@ -137,9 +136,9 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const refreshConflictState = async (filename: FilePathWithPrefix): Promise<void> => {
-        if (disposed) return;
+        if (dependencies.signal.aborted) return;
         const versionCount = await getConflictVersionCount(filename);
-        if (disposed) return;
+        if (dependencies.signal.aborted) return;
         if (versionCount === 0) {
             postponedConflictEpisodes.delete(filename);
         }
@@ -147,9 +146,11 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     const requestConflictResolution = async (filename: FilePathWithPrefix): Promise<boolean> => {
+        if (dependencies.signal.aborted) return false;
         postponedConflictEpisodes.delete(filename);
         dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
         await dependencies.conflict.queueCheckFor(filename);
+        if (dependencies.signal.aborted) return false;
         return await dependencies.conflict.ensureAllProcessed();
     };
 
@@ -157,22 +158,28 @@ export function createInteractiveConflictResolutionOperations(
         filename: FilePathWithPrefix,
         conflictCheckResult: diff_result
     ): Promise<boolean> => {
-        if (disposed) return false;
-        const requestId = ++nextRequestId;
-        if (activeDialogue?.filename === filename) {
-            dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
-            activeDialogue = undefined;
-        }
-        latestRequestByFilename.set(filename, requestId);
-
-        // UI for resolving different files should proceed one-by-one. A newer
-        // request for the active file replaces its dialogue instead of waiting
-        // behind a comparison which is already stale.
-        return await withLock(dialogueSerialisationKey, async () => {
-            if (disposed || latestRequestByFilename.get(filename) !== requestId) {
-                return false;
+        if (dependencies.signal.aborted) return false;
+        return await withScope(undefined, async (request) => {
+            if (dependencies.signal.aborted) return false;
+            const requestId = ++nextRequestId;
+            if (activeDialogue?.filename === filename) {
+                dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+                activeDialogue = undefined;
             }
-            try {
+            latestRequestByFilename.set(filename, requestId);
+            request.defer(() => {
+                if (latestRequestByFilename.get(filename) === requestId) {
+                    latestRequestByFilename.delete(filename);
+                }
+            });
+
+            // UI for resolving different files should proceed one-by-one. A newer
+            // request for the active file replaces its dialogue instead of waiting
+            // behind a comparison which is already stale.
+            return await withLock(dialogueSerialisationKey, async () => {
+                if (dependencies.signal.aborted || latestRequestByFilename.get(filename) !== requestId) {
+                    return false;
+                }
                 if (postponedConflictEpisodes.has(filename)) {
                     dependencies.log(`Merge: Postponed ${filename}`, LOG_LEVEL_VERBOSE);
                     dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
@@ -183,14 +190,24 @@ export function createInteractiveConflictResolutionOperations(
                 activeDialogue = { filename, dialogue };
                 let selected: MergeDialogResult;
                 try {
-                    dialogue.open();
-                    selected = await dialogue.waitForResult();
+                    selected = await withCancellation(dialogue, { signal: dependencies.signal }, async (waiting) => {
+                        const cancelDialogue = (): void => {
+                            if (activeDialogue?.dialogue === dialogue) {
+                                dependencies.events.emitEvent(EVENT_CONFLICT_CANCELLED, filename);
+                            }
+                        };
+                        waiting.signal.addEventListener("abort", cancelDialogue, { once: true });
+                        waiting.defer(() => waiting.signal.removeEventListener("abort", cancelDialogue));
+                        dialogue.open();
+                        if (waiting.isCancelled()) cancelDialogue();
+                        return await dialogue.waitForResult();
+                    });
                 } finally {
                     if (activeDialogue?.dialogue === dialogue) {
                         activeDialogue = undefined;
                     }
                 }
-                if (disposed) return false;
+                if (dependencies.signal.aborted) return false;
                 if (selected === POSTPONED) {
                     postponedConflictEpisodes.add(filename);
                     dependencies.events.emitEvent(EVENT_ON_UNRESOLVED_ERROR);
@@ -212,7 +229,7 @@ export function createInteractiveConflictResolutionOperations(
                 if (!testDoc._conflicts || testDoc._conflicts.length === 0) {
                     dependencies.log(`Merge: Nothing to do ${filename}`, LOG_LEVEL_VERBOSE);
                     await refreshConflictState(filename);
-                    if (disposed) return false;
+                    if (dependencies.signal.aborted) return false;
                     return false;
                 }
                 if (
@@ -224,7 +241,7 @@ export function createInteractiveConflictResolutionOperations(
                         LOG_LEVEL_INFO
                     );
                     await refreshConflictState(filename);
-                    if (disposed) return false;
+                    if (dependencies.signal.aborted) return false;
                     await dependencies.conflict.queueCheckFor(filename);
                     return false;
                 }
@@ -286,17 +303,15 @@ export function createInteractiveConflictResolutionOperations(
                 // And, check it again.
                 await dependencies.conflict.queueCheckFor(filename);
                 return false;
-            } finally {
-                if (latestRequestByFilename.get(filename) === requestId) {
-                    latestRequestByFilename.delete(filename);
-                }
-            }
+            });
         });
     };
 
     const pickFileForResolve = async (notifyIfEmpty = true): Promise<boolean> => {
+        if (dependencies.signal.aborted) return false;
         const notes: { id: DocumentID; path: FilePathWithPrefix; dispPath: string; mtime: number }[] = [];
         for await (const doc of dependencies.localDatabase().findAllDocs({ conflicts: true })) {
+            if (dependencies.signal.aborted) return false;
             if (!("_conflicts" in doc)) continue;
             notes.push({
                 id: doc._id,
@@ -305,6 +320,7 @@ export function createInteractiveConflictResolutionOperations(
                 mtime: doc.mtime,
             });
         }
+        if (dependencies.signal.aborted) return false;
         notes.sort((a, b) => b.mtime - a.mtime);
         const notesList = notes.map((e) => e.dispPath);
         if (notesList.length == 0) {
@@ -314,6 +330,7 @@ export function createInteractiveConflictResolutionOperations(
             return false;
         }
         const target = await dependencies.confirm.askSelectString("File to resolve conflict", notesList);
+        if (dependencies.signal.aborted) return false;
         if (target) {
             const targetItem = notes.find((e) => e.dispPath == target)!;
             await requestConflictResolution(targetItem.path);
@@ -324,19 +341,22 @@ export function createInteractiveConflictResolutionOperations(
 
     const allConflictCheck = async (): Promise<void> => {
         let notifyIfEmpty = true;
-        while (await pickFileForResolve(notifyIfEmpty)) {
+        while (!dependencies.signal.aborted && (await pickFileForResolve(notifyIfEmpty))) {
             notifyIfEmpty = false;
         }
     };
 
     const scanStartupIssues = async (): Promise<boolean> => {
+        if (dependencies.signal.aborted) return false;
         const notes: { path: string; mtime: number }[] = [];
         dependencies.log(`Checking conflicted files`, LOG_LEVEL_VERBOSE);
         try {
             for await (const doc of dependencies.localDatabase().findAllDocs({ conflicts: true })) {
+                if (dependencies.signal.aborted) return false;
                 if (!("_conflicts" in doc)) continue;
                 notes.push({ path: dependencies.path.getPath(doc), mtime: doc.mtime });
             }
+            if (dependencies.signal.aborted) return false;
             if (notes.length > 0) {
                 dependencies.confirm.askInPopup(
                     `conflicting-detected-on-safety`,
@@ -367,7 +387,6 @@ export function createInteractiveConflictResolutionOperations(
     };
 
     return {
-        dispose,
         invalidateWaitingResolution,
         getActiveConflictMessages,
         refreshConflictState,

@@ -17,6 +17,7 @@ export interface ConflictCheckingDependencies {
         IConflictService,
         "getOptionalConflictCheckMethod" | "queueCheckFor" | "resolve" | "resolveByNewest"
     >;
+    readonly signal: AbortSignal;
     readonly conflictProcessQueueCount: ReactiveSource<number>;
     readonly cancelActiveResolution: (filename: FilePathWithPrefix) => void;
     readonly currentSettings: () => ConflictCheckingSettings;
@@ -25,8 +26,6 @@ export interface ConflictCheckingDependencies {
 }
 
 export interface ConflictCheckingHandlers {
-    /** Stop admission and dispatch while allowing started checks to settle. */
-    readonly dispose: () => void;
     readonly queueCheckForIfOpen: (file: FilePathWithPrefix) => Promise<void>;
     readonly queueCheckFor: (file: FilePathWithPrefix) => Promise<void>;
     /** Wait for active checks; false means the queue was cancelled during shutdown. */
@@ -35,7 +34,6 @@ export interface ConflictCheckingHandlers {
 
 /** Create conflict-checking handlers while retaining scheduling state privately. */
 export function createConflictCheckingHandlers(dependencies: ConflictCheckingDependencies): ConflictCheckingHandlers {
-    let disposed = false;
     const conflictQueue = createConflictCheckQueue({
         async process(filename) {
             try {
@@ -55,7 +53,7 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
     });
 
     const queueCheckForIfOpen = async (file: FilePathWithPrefix): Promise<void> => {
-        if (disposed) return;
+        if (dependencies.signal.aborted) return;
         const path = file;
         if (dependencies.currentSettings().checkConflictOnlyOnOpen) {
             const activeFile: FilePath | undefined = dependencies.vault.getActiveFilePath();
@@ -68,9 +66,9 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
     };
 
     const queueCheckFor = async (file: FilePathWithPrefix): Promise<void> => {
-        if (disposed) return;
+        if (dependencies.signal.aborted) return;
         const optionalConflictResult = await dependencies.conflict.getOptionalConflictCheckMethod(file);
-        if (disposed) return;
+        if (dependencies.signal.aborted) return;
         if (optionalConflictResult == true) {
             // The conflict has been resolved by another process.
             return;
@@ -87,16 +85,18 @@ export function createConflictCheckingHandlers(dependencies: ConflictCheckingDep
     };
 
     const ensureAllProcessed = (): Promise<boolean> => conflictQueue.waitForIdle();
-    const dispose = (): void => {
-        if (disposed) return;
-        disposed = true;
+    const abortQueue = (): void => {
         // Shutdown keeps its existing database-close order. Observe cleanup
         // without making the lifecycle wait for an active resolver.
         void conflictQueue.abort().catch((error) => dependencies.log(error, LOG_LEVEL_VERBOSE));
     };
+    if (dependencies.signal.aborted) {
+        abortQueue();
+    } else {
+        dependencies.signal.addEventListener("abort", abortQueue, { once: true });
+    }
 
     return {
-        dispose,
         queueCheckForIfOpen,
         queueCheckFor,
         ensureAllProcessed,

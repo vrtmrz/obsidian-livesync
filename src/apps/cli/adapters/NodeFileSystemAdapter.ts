@@ -251,9 +251,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             const entries = await this.storage.list(relativePath, false);
 
             for (const entryPath of entries.files) {
-                const filePath = parseFilePath(entryPath);
-                const stat = await this.storage.stat(filePath, false);
+                const stat = await this.storage.stat(entryPath, false);
                 if (stat?.type !== "file") continue;
+                const filePath = parseFilePath(entryPath);
                 const file: NodeFile = {
                     path: filePath,
                     stat,

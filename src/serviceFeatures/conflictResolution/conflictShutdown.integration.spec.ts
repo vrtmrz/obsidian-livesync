@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import PouchDB from "pouchdb-core";
 import MemoryAdapter from "pouchdb-adapter-memory";
@@ -23,11 +22,12 @@ describe("conflict-check shutdown with a real PouchDB handle", () => {
     it.each([false, true])(
         "reports cancellation and preserves the database outcome when closed before completion: %s",
         async (closeDuringShutdown) => {
-            const name = `conflict-shutdown-${randomUUID()}`;
+            const name = `conflict-shutdown-${crypto.randomUUID()}`;
             const db = new PouchDB<Probe>(name, { adapter: "memory" });
             const started = deferred();
             const release = deferred();
             const conflict = new InjectableConflictService(createServiceContext());
+            const lifetime = new AbortController();
             const log = vi.fn();
             const resolver = vi.fn(async () => {
                 started.resolve();
@@ -38,6 +38,7 @@ describe("conflict-check shutdown with a real PouchDB handle", () => {
             conflict.resolve.setHandler(resolver);
             const checking = createConflictCheckingHandlers({
                 conflict,
+                signal: lifetime.signal,
                 conflictProcessQueueCount: conflict.conflictProcessQueueCount,
                 cancelActiveResolution: vi.fn(),
                 currentSettings: () => ({ checkConflictOnlyOnOpen: false }),
@@ -53,8 +54,8 @@ describe("conflict-check shutdown with a real PouchDB handle", () => {
                 await checking.queueCheckFor("active.md" as FilePathWithPrefix);
                 await started.promise;
                 completion = checking.ensureAllProcessed();
-                checking.dispose();
-                checking.dispose();
+                lifetime.abort();
+                lifetime.abort();
                 await checking.queueCheckFor("late.md" as FilePathWithPrefix);
                 if (closeDuringShutdown) {
                     await db.close();
