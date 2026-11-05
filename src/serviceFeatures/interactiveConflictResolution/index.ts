@@ -17,8 +17,10 @@ export function useInteractiveConflictResolutionFeature(
     createDialogue: ConflictResolveDialogueFactory
 ): void {
     const services = host.services;
+    const lifetime = new AbortController();
     const operations = createInteractiveConflictResolutionOperations({
         events: services.context.events,
+        signal: lifetime.signal,
         databaseFileAccess: host.serviceModules.databaseFileAccess,
         localDatabase: () => services.database.localDatabase,
         confirm: services.UI.confirm,
@@ -61,24 +63,18 @@ export function useInteractiveConflictResolutionFeature(
     });
     services.appLifecycle.getUnresolvedMessages.addHandler(operations.getActiveConflictMessages);
     services.conflict.resolveByUserInteraction.addHandler(operations.resolveByUserInteraction);
-    const eventSubscriptions = new AbortController();
-    const dispose = () => {
-        // Stop the refresh listener before cancellation so that unloading does
-        // not start a database read which can race with database disposal.
-        eventSubscriptions.abort();
-        operations.dispose();
-    };
     services.context.events.onEvent(
         EVENT_CONFLICT_CANCELLED,
         (filename) => {
             operations.invalidateWaitingResolution(filename);
             fireAndForget(() => operations.refreshConflictState(filename));
         },
-        { signal: eventSubscriptions.signal }
+        { signal: lifetime.signal }
     );
-    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, dispose, { signal: eventSubscriptions.signal });
+    const stop = (): void => lifetime.abort();
+    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, stop, { signal: lifetime.signal });
     services.appLifecycle.onUnload.addHandler(() => {
-        dispose();
+        stop();
         return Promise.resolve(true);
     });
 }

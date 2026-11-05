@@ -37,6 +37,7 @@ function createOperations(
     overrides: Partial<InteractiveConflictResolutionOperationsDependencies> = {}
 ) {
     const context = createServiceContext();
+    const lifetime = new AbortController();
     let dialogueResult: unknown = POSTPONED;
     const constructed = { value: 0 };
     const getDBEntry = vi.fn(async (): Promise<false | { _rev: string; _conflicts?: string[] }> => false);
@@ -55,6 +56,7 @@ function createOperations(
     const log = vi.fn();
     const operations = createInteractiveConflictResolutionOperations({
         events: context.events,
+        signal: overrides.signal ?? lifetime.signal,
         databaseFileAccess: {
             getConflictedRevs,
             storeContent,
@@ -83,6 +85,7 @@ function createOperations(
         ...overrides,
     } as unknown as InteractiveConflictResolutionOperationsDependencies);
     return {
+        abort: () => lifetime.abort(),
         askSelectString,
         askInPopup,
         constructed,
@@ -154,11 +157,13 @@ function createControlledDialogueFactory(
 
 function createDialogueConcurrencyHarness() {
     const context = createServiceContext();
+    const lifetime = new AbortController();
     const emitEvent = vi.spyOn(context.events, "emitEvent");
     const dialogues: ControlledDialogue[] = [];
     const createDialogue = createControlledDialogueFactory(context, dialogues);
     const operations = createInteractiveConflictResolutionOperations({
         events: context.events,
+        signal: lifetime.signal,
         databaseFileAccess: {
             getConflictedRevs: vi.fn(async () => ["2-right"]),
             storeContent: vi.fn(async () => true),
@@ -183,7 +188,7 @@ function createDialogueConcurrencyHarness() {
         createDialogue: createDialogue as ConflictResolveDialogueFactory,
         log: vi.fn(),
     } as unknown as InteractiveConflictResolutionOperationsDependencies);
-    return { context, createDialogue, dialogues, emitEvent, operations };
+    return { abort: () => lifetime.abort(), context, createDialogue, dialogues, emitEvent, operations };
 }
 
 describe("interactive conflict resolution operations", () => {
@@ -218,7 +223,7 @@ describe("interactive conflict resolution operations", () => {
         const settled = Promise.allSettled([active, waiting]);
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         unregisterLog();
         finish(result);
 
@@ -256,7 +261,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.getDBEntry).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishRead(false);
 
         await expect(resolving).resolves.toBe(false);
@@ -288,7 +293,7 @@ describe("interactive conflict resolution operations", () => {
         const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
         await vi.waitFor(() => expect(fixture.getDBEntry).toHaveBeenCalledOnce());
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishRead({ _rev: "2-left", _conflicts: ["2-right"] });
 
         await expect(resolving).resolves.toBe(false);
@@ -316,7 +321,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.storeContent).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishStore(false);
 
         await expect(resolving).resolves.toBe(false);
@@ -351,7 +356,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.storeContent).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishStore(true);
 
         await expect(resolving).resolves.toBe(false);
@@ -383,7 +388,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.resolveByDeletingRevision).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishDeletion(MISSING_OR_ERROR);
 
         await expect(resolving).resolves.toBe(false);
@@ -417,7 +422,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.resolveByDeletingRevision).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishDeletion(AUTO_MERGED);
 
         await expect(resolving).resolves.toBe(false);
@@ -447,7 +452,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.getConflictedRevs).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         rejectInspection(new Error("database unavailable"));
 
         await expect(refreshing).resolves.toBeUndefined();
@@ -483,7 +488,7 @@ describe("interactive conflict resolution operations", () => {
         await vi.waitFor(() => expect(fixture.getConflictedRevs).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
 
-        fixture.operations.dispose();
+        fixture.abort();
         finishInspection(["2-right"]);
 
         await expect(refreshing).resolves.toBeUndefined();
@@ -503,7 +508,7 @@ describe("interactive conflict resolution operations", () => {
 
         const messages = fixture.operations.getActiveConflictMessages();
         await vi.waitFor(() => expect(fixture.getConflictedRevs).toHaveBeenCalledOnce());
-        fixture.operations.dispose();
+        fixture.abort();
         finishInspection(["2-right"]);
 
         await expect(messages).resolves.toEqual([]);
@@ -512,7 +517,7 @@ describe("interactive conflict resolution operations", () => {
     it("does not inspect or publish conflict state when called after disposal", async () => {
         const fixture = createOperations();
         const emit = vi.spyOn(fixture.context.events, "emitEvent");
-        fixture.operations.dispose();
+        fixture.abort();
         emit.mockClear();
 
         await expect(fixture.operations.getActiveConflictMessages()).resolves.toEqual([]);
@@ -543,7 +548,7 @@ describe("interactive conflict resolution operations", () => {
         const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
         await vi.waitFor(() => expect(fixture.getConflictedRevs).toHaveBeenCalledOnce());
         const logsBeforeDisposal = sink.mock.calls.length;
-        fixture.operations.dispose();
+        fixture.abort();
         emit.mockClear();
         finishInspection(["2-right"]);
 
@@ -577,7 +582,7 @@ describe("interactive conflict resolution operations", () => {
             await vi.waitFor(() => expect(fixture.resolveByDeletingRevision).toHaveBeenCalledOnce());
             expect(fixture.storeContent).toHaveBeenCalledOnce();
             const logsBeforeDisposal = sink.mock.calls.length;
-            fixture.operations.dispose();
+            fixture.abort();
             finishDeletion(result);
 
             await expect(resolving).resolves.toBe(false);
@@ -615,7 +620,7 @@ describe("interactive conflict resolution operations", () => {
 
         const resolving = fixture.operations.resolveByUserInteraction(path, conflict);
         await vi.waitFor(() => expect(fixture.replicateUnattendedByEvent).toHaveBeenCalledOnce());
-        fixture.operations.dispose();
+        fixture.abort();
         finishReplication({ status: "completed" });
 
         await expect(resolving).resolves.toBe(false);
@@ -695,8 +700,8 @@ describe("interactive conflict resolution operations", () => {
         );
         await Promise.resolve();
 
-        oldInstance.operations.dispose();
-        oldInstance.operations.dispose();
+        oldInstance.abort();
+        oldInstance.abort();
 
         await expect(Promise.all([oldActive, oldWaiting])).resolves.toEqual([false, false]);
         expect(oldInstance.dialogues).toHaveLength(1);
@@ -1247,6 +1252,7 @@ describe("interactive conflict resolution feature composition", () => {
 
         expect(completedOnUnload).toBe(true);
         expect(dialogues).toHaveLength(1);
+        expect(fixture.getConflictedRevs).not.toHaveBeenCalled();
         await fixture.handlers.onUnload?.();
     });
 

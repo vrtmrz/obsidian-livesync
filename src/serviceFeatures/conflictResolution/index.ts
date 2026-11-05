@@ -19,6 +19,7 @@ export type ConflictResolutionHost = NecessaryServices<
 /** Compose the host-neutral conflict handlers with the host's borrowed logger. */
 export const useConflictResolutionFeature = createServiceFeature((host: ConflictResolutionHost): void => {
     const { services, serviceModules, log } = host;
+    const lifetime = new AbortController();
     const operations = createConflictResolutionOperations({
         events: services.context.events,
         databaseFileAccess: serviceModules.databaseFileAccess,
@@ -39,6 +40,7 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
         currentSettings: () => services.setting.currentSettings(),
         vault: services.vault,
         log,
+        signal: lifetime.signal,
     });
 
     services.conflict.queueCheckForIfOpen.setHandler(checking.queueCheckForIfOpen);
@@ -49,14 +51,10 @@ export const useConflictResolutionFeature = createServiceFeature((host: Conflict
     services.conflict.resolveByNewest.setHandler(operations.resolveByNewest);
     services.conflict.resolveAllConflictedFilesByNewerOnes.setHandler(operations.resolveAllConflictedFilesByNewerOnes);
 
-    const eventSubscriptions = new AbortController();
-    const dispose = (): void => {
-        checking.dispose();
-        eventSubscriptions.abort();
-    };
-    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, dispose, { signal: eventSubscriptions.signal });
+    const stop = (): void => lifetime.abort();
+    services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, stop, { signal: lifetime.signal });
     services.appLifecycle.onUnload.addHandler(() => {
-        dispose();
+        stop();
         return Promise.resolve(true);
     });
 });
