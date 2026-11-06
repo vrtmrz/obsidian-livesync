@@ -9,6 +9,12 @@
  * the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Diagnostic log": "Diagnostic log",
+    "Open log": "Open log",
+    "Detailed P2P diagnostics and Log Pane output are enabled":
+        "Detailed P2P diagnostics and Log Pane output are enabled",
+    "Enable detailed P2P diagnostics and Log Pane output":
+        "Enable detailed P2P diagnostics and Log Pane output",
     "Enable SyncGuard": "Enable SyncGuard",
     "Enable device-local SyncGuard protection during synchronisation.":
         "Enable device-local SyncGuard protection during synchronisation.",

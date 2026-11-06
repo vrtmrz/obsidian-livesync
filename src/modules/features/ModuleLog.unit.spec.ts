@@ -22,7 +22,10 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector"
     P2PLogCollector: class {},
 }));
 
+vi.mock("@vrtmrz/livesync-commonlib/p2p", () => ({ EVENT_P2P_DIAGNOSTIC: "p2p-diagnostic" }));
+
 async function createHarness() {
+    const { createLiveSyncEventHub } = await import("@vrtmrz/livesync-commonlib/context");
     const { ModuleLog } = await import("./ModuleLog.ts");
     const { bindableFunction, allFunction } =
         await import("@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils");
@@ -34,7 +37,7 @@ async function createHarness() {
             addRibbonIcon: vi.fn(),
             registerProtocolHandler: vi.fn(),
         },
-        context: { events: {}, notices: { hide: vi.fn() } },
+        context: { events: createLiveSyncEventHub(), notices: { hide: vi.fn() } },
         appLifecycle: {
             onInitialise: allFunction<() => Promise<boolean>>(),
             onSettingLoaded: allFunction<() => Promise<boolean>>(),
@@ -59,6 +62,57 @@ describe("ModuleLog service connection", () => {
     });
     afterEach(() => {
         vi.unstubAllGlobals();
+    });
+
+    it("routes accepted P2P diagnostics only through their owning context and disposes the subscription", async () => {
+        const first = await createHarness();
+        const second = await createHarness();
+        await first.services.appLifecycle.onSettingLoaded();
+        await second.services.appLifecycle.onSettingLoaded();
+        first.sink.mockClear();
+        second.sink.mockClear();
+        first.services.context.events.emitEvent("p2p-diagnostic", {
+            category: "peer",
+            code: "auth-timeout",
+            timestamp: 123,
+        });
+        expect(first.sink).toHaveBeenCalledWith(
+            expect.stringContaining("[P2P Diag] Peer: Authentication timed out"),
+            expect.any(Number),
+            "p2p-diagnostic"
+        );
+        expect(second.sink).not.toHaveBeenCalled();
+        await first.module.logResource.dispose();
+        first.sink.mockClear();
+        const consoleLog = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        first.services.context.events.emitEvent("p2p-diagnostic", {
+            category: "peer",
+            code: "peer-left",
+            timestamp: 124,
+        });
+        expect(first.sink).not.toHaveBeenCalled();
+        expect(consoleLog).not.toHaveBeenCalled();
+        consoleLog.mockRestore();
+    });
+
+    it("does not repeat unchanged diagnostic state but retains repeated failure observations", async () => {
+        const { services, sink } = await createHarness();
+        await services.appLifecycle.onSettingLoaded();
+        sink.mockClear();
+        services.context.events.emitEvent("p2p-diagnostic", {
+            category: "sync",
+            code: "watch-enabled",
+            timestamp: 100,
+        });
+        services.context.events.emitEvent("p2p-diagnostic", {
+            category: "sync",
+            code: "watch-enabled",
+            timestamp: 200,
+        });
+        expect(sink).toHaveBeenCalledTimes(1);
+        services.context.events.emitEvent("p2p-diagnostic", { category: "peer", code: "auth-timeout", timestamp: 300 });
+        services.context.events.emitEvent("p2p-diagnostic", { category: "peer", code: "auth-timeout", timestamp: 400 });
+        expect(sink).toHaveBeenCalledTimes(3);
     });
 
     it("buffers startup logs and preserves global and service call order", async () => {

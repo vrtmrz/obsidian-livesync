@@ -17,7 +17,7 @@
     };
     let { close }: Props = $props();
     // export let close: () => void;
-    function updateLog(logs: ReactiveInstance<string[]>) {
+    function updateLog(logs: Pick<ReactiveInstance<string[]>, "value">) {
         const e = logs.value;
         if (!suspended) {
             messages = [...e];
@@ -28,6 +28,7 @@
     }
     onMount(async () => {
         const _logMessages = reactive(() => logMessages.value);
+        updateLog(_logMessages);
         _logMessages.onChanged(updateLog);
         Logger(msg("logPane.logWindowOpened", {}, lang));
         unsubscribe = () => _logMessages.offChanged(updateLog);

@@ -38,6 +38,8 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { withLock } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
+import { EVENT_P2P_DIAGNOSTIC, type P2PDiagnosticEvent } from "@vrtmrz/livesync-commonlib/p2p";
+import { formatP2PDiagnosticLog, P2P_DIAGNOSTIC_LOG_KEY } from "./P2PDiagnosticDisplay.ts";
 import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS, getTrackedRequestCount } from "./RemoteActivityStatus.ts";
 import {
@@ -597,6 +599,10 @@ ${stringifyYaml(info)}
             this.writeLogToTheFile(now, vaultName, newMessage);
         }
         addLog(newMessage);
+        if (key === P2P_DIAGNOSTIC_LOG_KEY) {
+            if (this.settings?.P2P_useDiagRTC) addDisplayLog(newMessage);
+            return;
+        }
         if (memoOnly) {
             return;
         }
@@ -638,6 +644,21 @@ ${stringifyYaml(info)}
         let logTarget: LogFunction = bufferedLog;
         const log: LogFunction = (message, level, key) => logTarget(message, level, key);
         services.API.addLog.setHandler(log);
+        const lastDiagnosticState = new Map<P2PDiagnosticEvent["category"], P2PDiagnosticEvent>();
+        const unsubscribeDiagnostics = services.context.events.onEvent(EVENT_P2P_DIAGNOSTIC, (event) => {
+            try {
+                const previous = lastDiagnosticState.get(event.category);
+                const repeated =
+                    previous?.code === event.code &&
+                    previous.peerId === event.peerId &&
+                    previous.reason === event.reason;
+                lastDiagnosticState.set(event.category, event);
+                if (repeated && !/(failed|error|timeout|refused|cancelled)$/.test(event.code)) return;
+                services.API.addLog(formatP2PDiagnosticLog(event), LOG_LEVEL_VERBOSE, P2P_DIAGNOSTIC_LOG_KEY);
+            } catch {
+                // Diagnostic output must not interrupt a transport operation.
+            }
+        });
         const collectGlobalLogs = () => {
             const entries = recentGlobalLogEntries.value;
             if (entries.length === 0) return;
@@ -645,6 +666,8 @@ ${stringifyYaml(info)}
             this.recentLogEntries.value = [...this.recentLogEntries.value, ...entries];
         };
         this.logResource = createOwnedResource(log, () => {
+            unsubscribeDiagnostics();
+            lastDiagnosticState.clear();
             logTarget = logToConsole;
             recentGlobalLogEntries.offChanged(collectGlobalLogs);
             this.recentLogEntries.offChanged(this.displayLogEntries);

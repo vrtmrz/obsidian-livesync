@@ -16,6 +16,17 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### P2P synchronisation
 
+- P2P status shows Stats with diagnostic details collapsed by default. Expand
+  'Diagnostic log' to see the latest relay, peer, and synchronisation observations.
+  With Diag enabled, their events also appear in the Log Pane without updating
+  the editor status or producing notifications.
+    - Unobserved information is labelled explicitly. Relay rejection messages are
+      unavailable through the current transport API; an open room does not confirm
+      that a relay accepted its announcements.
+
+- Larger peer controls wrap onto additional lines in narrow panes, keeping action labels
+  readable alongside long device names.
+
 - P2P progress shows sent (↑) and received (↓) document revision counts, including
   Metadata and Chunks. Directional ⏩ labels show comparison progress even when no
   transfer is needed, and disappear three seconds after their last count change.

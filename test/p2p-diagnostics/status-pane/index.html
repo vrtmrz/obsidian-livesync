@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>P2P status pane layout fixture</title>
+<style>
+:root { --font-ui-small: 12px; --text-muted: #666; --text-normal: #222; --divider-color: #bbb; --size-4-1: 4px; --size-4-2: 8px; --background-secondary: #f4f4f4; --background-tertiary: #ddd; --interactive-normal: #eee; --interactive-hover: #ddd; --background-modifier-success: #bdb; --background-modifier-border: #ddd; --background-modifier-error: #ecc; }
+@media (prefers-color-scheme: dark) { :root { color-scheme: dark; --text-muted: #aaa; --text-normal: #ddd; --divider-color: #555; --background-secondary: #262626; --background-tertiary: #444; --interactive-normal: #333; --interactive-hover: #444; --background-modifier-success: #253f25; --background-modifier-border: #444; --background-modifier-error: #522; } }
+body { margin: 8px; font: 16px sans-serif; color: var(--text-normal); }
+#app { margin: 16px; }
+button, select { font: inherit; color: var(--text-normal); background: var(--interactive-normal); }
+button { padding: 4px 12px; white-space: nowrap; }
+</style></head>
+<body><div id="app"></div><output id="action"></output><script type="module" src="./main.ts"></script></body></html>
