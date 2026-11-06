@@ -12,6 +12,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Improved
+
+#### P2P synchronisation
+
+- P2P connections include upstream improvements to peer discovery after relay
+  reconnection, recovery from missed signalling messages, and stale connections
+  after rejoining or waiting. Connection offers are created on demand to reduce
+  idle resource use.
+    - Update every device in the P2P group, including CLI and WebPeer clients,
+      before resuming P2P synchronisation. The updated transport uses Trystero
+      0.26.0 and cannot exchange data with the previous transport.
+
 ## 1.0.45
 
 5th November, 2026

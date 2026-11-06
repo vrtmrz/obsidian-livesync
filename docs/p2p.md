@@ -4,6 +4,14 @@ Peer-to-peer (P2P) synchronisation transfers Vault data between LiveSync devices
 
 For the procedure for the first and additional devices, see [Set up peer-to-peer synchronisation](setup_p2p.md). For connection problems, see [Peer-to-Peer Synchronisation Tips](tips/p2p-sync-tips.md).
 
+## Updating a P2P group
+
+The unreleased transport update uses Trystero 0.26.0, whose data format is
+incompatible with the previous transport. Update every device in the P2P
+group, including CLI and WebPeer clients, before resuming P2P synchronisation.
+Keeping the same Group ID, passphrase, and relay settings does not make mixed
+transport versions compatible.
+
 ## Connection model
 
 ```mermaid
