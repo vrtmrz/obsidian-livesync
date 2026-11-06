@@ -14,7 +14,7 @@ A document's original date and reviewed-version fields describe its baseline. Re
 | Find hosting services proposed by the community | [Third-party hosting listings](../README.md#hosting-services-proposed-by-the-community) |
 | Set up S3-compatible storage | [Object Storage Setup](setup_object_storage.md) and [transfers and service costs](setup_object_storage_costs.md) |
 | Set up peer-to-peer synchronisation | [P2P communication model](p2p.md), then [Peer-to-Peer Setup](setup_p2p.md) |
-| Diagnose P2P connectivity | [Browser-assisted check](../src/apps/webpeer/README.md#p2p-connection-check), [network tips](tips/p2p-sync-tips.md), and [self-hosted TURN](../docker/coturn/README.md) |
+| Diagnose P2P connectivity or transfer activity | [Diagnostic summary and logs](tips/p2p-diagnostics.md), [browser-assisted check](../src/apps/webpeer/README.md#p2p-connection-check), [network tips](tips/p2p-sync-tips.md), and [self-hosted TURN](../docker/coturn/README.md) |
 | Understand a setting or command | [Settings reference](settings.md) |
 | Read or customise synchronisation status | [Status indicators and CSS snippets](tips/status-display.md) |
 | Investigate or recover from a problem | [Troubleshooting](troubleshooting.md), then the relevant [recovery procedure](recovery.md) |

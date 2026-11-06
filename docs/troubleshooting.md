@@ -270,7 +270,7 @@ Use Safari on a Mac and follow Apple's [Inspecting iOS and iPadOS](https://devel
 
 ## P2P does not connect or transfer changes
 
-Use [Peer-to-Peer Synchronisation Tips](tips/p2p-sync-tips.md). Check signalling discovery separately from the WebRTC data path, and confirm which devices announce and follow changes. P2P is not a repair step for another transport.
+Start with [P2P diagnostic observations, logs, and transfer progress](tips/p2p-diagnostics.md). Use [Peer-to-Peer Synchronisation Tips](tips/p2p-sync-tips.md) for network and configuration checks. Check signalling discovery separately from the WebRTC data path, and confirm which devices announce and follow changes. P2P is not a repair step for another transport.
 
 ## Obsidian or LiveSync remains suspended
 

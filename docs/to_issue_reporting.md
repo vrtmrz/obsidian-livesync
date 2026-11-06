@@ -11,6 +11,7 @@ If a maintainer requests additional evidence, follow the relevant procedure belo
 | Database integrity, current conflicts, or differences between sources | [Integrity report](#integrity-report) |
 | Local revision and Chunk usage                                        | [Usage report](#usage-report)         |
 | More information about a path pseudonym in an existing report         | [File follow-up](#file-follow-up)     |
+| P2P discovery, authentication, or transfer activity | [P2P summary and logs](tips/p2p-diagnostics.md#collect-a-report) |
 
 Maintainers can link directly to each procedure and adapt the [example requests](#requesting-diagnostics).
 
