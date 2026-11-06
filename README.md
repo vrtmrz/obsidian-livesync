@@ -50,7 +50,7 @@ Choose **CouchDB** or **Object Storage** for central storage, or use **WebRTC Pe
 | **CouchDB (Self-hosted)**<br>*(Own VPS, NAS, Docker, or Raspberry Pi)* | ✅ Full | ✅ Yes | ⚠️ Requires HTTPS (public or private endpoint)[^private-https] | High (manage OS, Docker, and backups) | Free (on existing hardware) | Users with home servers or private infrastructure |
 | **CouchDB (Fly.io)**<br>*(Cloud container PaaS)* | ✅ Full | ✅ Yes | ✅ Out of the box (HTTPS included) | Low (scripted setup via notebook) | ~USD 2.34 / mo in Ashburn[^fly-pricing]<br>*(see [cost details](docs/setup_flyio.md#costs-before-deployment))* | Users wanting real-time sync without managing hardware |
 | **Object Storage (S3 / R2)**<br>*(Cloudflare R2, AWS S3, or MinIO)* | ❌ Periodic or on-save only | ✅ Yes | Managed services: HTTPS included<br>Self-hosted: configure HTTPS | Managed services: bucket configuration<br>Self-hosted: manage the server and backups | USD 0.00 within R2 free allowances[^r2-pricing]<br>*(see [cost guide](docs/setup_object_storage_costs.md))* | Users who prefer Object Storage without server maintenance |
-| **WebRTC Peer-to-Peer**<br>*(Direct device-to-device)* | ✅ Full *(while connected)* | ❌ Both devices must be online | ⚠️ Limited by OS background tasks | None (free public signalling relay) | Completely Free | Users who prefer no central storage server |
+| **WebRTC Peer-to-Peer**<br>*(Direct device-to-device)* | ✅ Full *(while connected)* | ❌ Both devices must be online | ⚠️ Limited by OS background tasks | None (free public signalling relay) | Free (no server required) | Users who prefer no central storage server |
 
 > [!NOTE]
 > **How Object Storage request counts affect costs**:

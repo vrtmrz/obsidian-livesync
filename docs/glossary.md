@@ -102,6 +102,12 @@ recovery guidance, or diagnostics intended for users.
   CouchDB or Object Storage remote, with the current device first. Records
   describe participation, not current online activity. **Forget device** removes
   an obsolete device record; it does not delete Vault files or revoke credentials.
+- **Journal / Journal Sync:** The synchronisation mechanism used with
+  S3-compatible Object Storage and non-database remotes. Rather than
+  transferring individual files directly, Self-hosted LiveSync groups database
+  changes (Metadata documents and content Chunks) into compressed, time-stamped
+  journal packages. Devices track their synchronisation sequence using markers
+  and exchange only missing packages.
 - **JWT Authentication:** An experimental CouchDB authentication option which
   uses a JSON Web Token instead of standard credentials. It requires a private
   key or secret, algorithm, expiry duration, subject, and key ID.
