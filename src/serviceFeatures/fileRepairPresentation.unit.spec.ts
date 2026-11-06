@@ -87,6 +87,7 @@ describe("file repair presentation", () => {
             retryRevision: false,
             discardRevision: false,
             discardBranch: true,
+            repairSize: false,
         });
     });
 
@@ -101,6 +102,58 @@ describe("file repair presentation", () => {
             markAsVaultRevision: true,
             storeVaultOnBranch: false,
             discardBranch: true,
+        });
+    });
+
+    it("offers size correction for a readable, matching, conflict-free winner", () => {
+        const { inspection, revision } = createInspection({
+            role: "winner",
+            metadata: {
+                ...createInspection().revision.metadata,
+                current: true,
+                recordedSize: 9,
+            },
+            contentMatchesStorage: true,
+        });
+        inspection.information.database.conflictCount = 0;
+        inspection.information.database.conflictRevisions = [];
+        inspection.information.database.currentRevision = revision.metadata.revision;
+        inspection.information.storage.size = 7;
+
+        expect(getFileRepairRevisionActions(inspection, revision)).toMatchObject({
+            repairSize: true,
+        });
+    });
+
+    it("does not offer size correction for unsafe or already-correct revisions", () => {
+        const conflict = createInspection({ contentMatchesStorage: true });
+        expect(getFileRepairRevisionActions(conflict.inspection, conflict.revision)).toMatchObject({
+            repairSize: false,
+        });
+
+        const unreadable = createInspection({
+            role: "winner",
+            contentReadable: false,
+            contentMatchesStorage: true,
+        });
+        unreadable.inspection.information.database.conflictCount = 0;
+        unreadable.inspection.information.database.conflictRevisions = [];
+        unreadable.inspection.information.storage.size = 7;
+        unreadable.revision.metadata.current = true;
+        unreadable.inspection.information.database.currentRevision = unreadable.revision.metadata.revision;
+        expect(getFileRepairRevisionActions(unreadable.inspection, unreadable.revision)).toMatchObject({
+            repairSize: false,
+        });
+
+        const unchanged = createInspection({
+            role: "winner",
+            contentMatchesStorage: true,
+        });
+        unchanged.inspection.information.database.conflictCount = 0;
+        unchanged.inspection.information.database.conflictRevisions = [];
+        unchanged.inspection.information.database.currentRevision = unchanged.revision.metadata.revision;
+        expect(getFileRepairRevisionActions(unchanged.inspection, unchanged.revision)).toMatchObject({
+            repairSize: false,
         });
     });
 
@@ -189,6 +242,16 @@ describe("file repair presentation", () => {
             applyLogicalDeletionToVault: false,
             storeVaultOnBranch: false,
         });
+    });
+
+    it("does not offer size correction for legacy inline content", () => {
+        const { inspection, revision } = createInspection({ role: "winner", contentMatchesStorage: true });
+        revision.metadata.current = true;
+        revision.metadata.storageLayout = "legacy-inline";
+        inspection.information.database.currentRevision = revision.metadata.revision;
+        inspection.information.database.conflictCount = 0;
+        inspection.information.database.conflictRevisions = [];
+        expect(getFileRepairRevisionActions(inspection, revision).repairSize).toBe(false);
     });
 
     it("reports recorded, decoded, Vault-size, and timestamp differences", () => {

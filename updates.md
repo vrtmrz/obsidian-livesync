@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+#### Recovery
+
+- Verify reports a file whose recorded size differs from its readable content, and offers a guarded correction when that exact content matches the Vault and has no conflict. (#1324)
+
 ### Improved
 
 #### P2P synchronisation

@@ -89,6 +89,8 @@ Each reported current leaf revision has a compact wrench menu. The available act
 
 Every mutating action rechecks that the selected revision is still a current leaf. If another operation resolved or replaced it, the action fails and the card is refreshed instead of extending an obsolete branch.
 
+The inspection also offers **Correct recorded file size** when the conflict-free current winner is readable, its decoded bytes match the Vault exactly, and its recorded size differs from the decoded byte length. This creates a child Metadata revision which changes only the recorded size while retaining the content references and file timestamps. The operation rechecks the current revision before writing and records the resulting byte match as Vault provenance. Size and timestamps diagnose this condition; exact bytes establish that the Vault and database contain the same file.
+
 The card uses compact, mobile-friendly diagnostic rows with an emoji and a text label. `🧩 Missing chunks: N` identifies an unreadable revision. In the database row, `Δsize` is decoded size minus recorded size; in the Vault row, `Δsize vs DB` is Vault size minus decoded database size. `Δtime` is Vault modification time minus database modification time. The ordinary two-second comparison window still labels which side is newer. These values help diagnose a mismatch; path, size, and modification time do not prove revision identity or decide which content should win.
 
 A shared ancestor is informational. An ancestor which is no longer a current leaf cannot be discarded independently through this workflow. If its body is unavailable, conservative three-way merge remains disabled, although readable current leaf revisions can still be selected manually.
