@@ -168,7 +168,7 @@ export class ModuleLog extends AbstractObsidianModule {
 
     observeForLogs() {
         const registerDisplay = <T extends { dispose(): void }>(display: T): T => {
-            this.plugin.register(() => display.dispose());
+            this.services.API.registerCleanup(() => display.dispose());
             return display;
         };
         const labelReplication = registerDisplay(
@@ -211,12 +211,12 @@ export class ModuleLog extends AbstractObsidianModule {
         );
         const p2pProgress = registerDisplay(createP2PProgressDisplay(this.p2pLogCollector.p2pReplicationStats));
         const p2pIsPrimary = reactiveSource(this.settings.remoteType === REMOTE_P2P);
-        this.plugin.register(
+        this.services.API.registerCleanup(
             this.services.context.events.onEvent(EVENT_SETTING_SAVED, (settings) => {
                 p2pIsPrimary.value = settings.remoteType === REMOTE_P2P;
             })
         );
-        this.plugin.register(() => this.p2pLogCollector.dispose());
+        this.services.API.registerCleanup(() => this.p2pLogCollector.dispose());
         const replicationStatLabel = computed(() =>
             projectReplicationStatusLabel(
                 this.services.replicator.replicationStatics.value,
@@ -530,12 +530,12 @@ ${stringifyYaml(info)}
         if (this.statusLine) {
             const renderer = createStatusBarRenderer(this.statusLine);
             this.statusLineRenderer = renderer;
-            this.plugin.register(() => renderer.dispose());
+            this.services.API.registerCleanup(() => renderer.dispose());
         }
         if (this.statusBar) {
             const renderer = createStatusBarRenderer(this.statusBar);
             this.statusBarRenderer = renderer;
-            this.plugin.register(() => renderer.dispose());
+            this.services.API.registerCleanup(() => renderer.dispose());
         }
         this.adjustStatusDivPosition();
         this._log("Log module loaded", LOG_LEVEL_INFO);

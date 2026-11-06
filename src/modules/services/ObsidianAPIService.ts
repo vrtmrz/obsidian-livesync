@@ -135,6 +135,11 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
         return this.context.plugin.registerObsidianProtocolHandler(action, handler);
     }
 
+    override registerCleanup(callback: () => void): void {
+        // Keep disposal owned by the native component, preserving its unload timing.
+        this.context.plugin.register(callback);
+    }
+
     /**
      * In Obsidian, we will use the native `requestUrl` function as the default fetch handler,
      * to address unavoidable CORS issues.

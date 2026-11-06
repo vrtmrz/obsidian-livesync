@@ -8,6 +8,9 @@ vi.mock("@/deps.ts", () => ({
     stringifyYaml: vi.fn(),
 }));
 vi.mock("./Log/LogPaneView.ts", () => ({ LogPaneView: class {}, VIEW_TYPE_LOG: "log" }));
+vi.mock("./StatusBarRenderer.ts", () => ({
+    createStatusBarRenderer: vi.fn(() => ({ dispose: vi.fn() })),
+}));
 vi.mock("@/common/reportTool.ts", () => ({ generateReport: vi.fn() }));
 vi.mock("@/common/utils.ts", () => ({ isValidPath: () => true }));
 vi.mock("@/common/translation", () => ({ $msg: (key: string) => key }));
@@ -36,6 +39,7 @@ async function createHarness() {
             registerWindow: vi.fn(),
             addRibbonIcon: vi.fn(),
             registerProtocolHandler: vi.fn(),
+            registerCleanup: vi.fn<(callback: () => void) => void>(),
         },
         context: { events: createLiveSyncEventHub(), notices: { hide: vi.fn() } },
         appLifecycle: {
@@ -62,6 +66,22 @@ describe("ModuleLog service connection", () => {
     });
     afterEach(() => {
         vi.unstubAllGlobals();
+    });
+
+    it("registers status renderer cleanup through the API without native plug-in registration", async () => {
+        const { services, module } = await createHarness();
+        const { createStatusBarRenderer } = await import("./StatusBarRenderer.ts");
+        const factory = vi.mocked(createStatusBarRenderer);
+        factory.mockClear();
+        Object.assign(module, { statusLine: {}, statusBar: {} });
+        await services.appLifecycle.onSettingLoaded();
+        expect(factory).toHaveBeenCalledTimes(2);
+        expect(services.API.registerCleanup).toHaveBeenCalledTimes(2);
+        const renderers = factory.mock.results.map((result) => result.value);
+        for (const renderer of renderers) expect(renderer.dispose).not.toHaveBeenCalled();
+        for (const [cleanup] of services.API.registerCleanup.mock.calls) cleanup();
+        for (const renderer of renderers) expect(renderer.dispose).toHaveBeenCalledOnce();
+        await module.logResource.dispose();
     });
 
     it("routes accepted P2P diagnostics only through their owning context and disposes the subscription", async () => {
