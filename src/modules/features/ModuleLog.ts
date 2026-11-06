@@ -10,6 +10,7 @@ import {
     LOG_LEVEL_INFO,
     LOG_LEVEL_VERBOSE,
     PREFIXMD_LOGFILE,
+    REMOTE_P2P,
     type LOG_LEVEL,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { scheduleTask } from "octagonal-wheels/concurrency/task";
@@ -37,6 +38,7 @@ import { LogPaneView, VIEW_TYPE_LOG } from "./Log/LogPaneView.ts";
 import { withLock } from "octagonal-wheels/concurrency/lock";
 import { $msg } from "@/common/translation";
 import { P2PLogCollector } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/P2PLogCollector";
+import { EVENT_SETTING_SAVED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { REMOTE_REQUEST_ACTIVITY_MINIMUM_VISIBLE_MS, getTrackedRequestCount } from "./RemoteActivityStatus.ts";
 import {
     createChunkFetchCounterLabel,
@@ -44,6 +46,7 @@ import {
     createPaddedCounterLabel,
 } from "./StatusBarDisplay.ts";
 import { createFastForwardCheckedChangesDisplay, projectReplicationStatusLabel } from "./ReplicationStatusLabel.ts";
+import { createP2PProgressDisplay, selectReplicationStatus } from "./P2PStatusLabel.ts";
 import { createStatusBarRenderer, type StatusBarPart, type StatusBarRenderer } from "./StatusBarRenderer.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
@@ -204,6 +207,14 @@ export class ModuleLog extends AbstractObsidianModule {
         const fastForwardCount = registerDisplay(
             createFastForwardCheckedChangesDisplay(this.services.replicator.replicationStatics)
         );
+        const p2pProgress = registerDisplay(createP2PProgressDisplay(this.p2pLogCollector.p2pReplicationStats));
+        const p2pIsPrimary = reactiveSource(this.settings.remoteType === REMOTE_P2P);
+        this.plugin.register(
+            this.services.context.events.onEvent(EVENT_SETTING_SAVED, (settings) => {
+                p2pIsPrimary.value = settings.remoteType === REMOTE_P2P;
+            })
+        );
+        this.plugin.register(() => this.p2pLogCollector.dispose());
         const replicationStatLabel = computed(() =>
             projectReplicationStatusLabel(
                 this.services.replicator.replicationStatics.value,
@@ -220,10 +231,13 @@ export class ModuleLog extends AbstractObsidianModule {
         const counterPart = (key: string, mark: string, value: number | undefined): StatusBarPart[] =>
             value === undefined ? [] : [{ key, text: " " + mark, value }];
         const statusLineLabel = computed(() => {
-            const replication = replicationStatLabel();
+            const { primary: replication, auxiliary: p2p } = selectReplicationStatus(
+                replicationStatLabel(),
+                p2pProgress.value,
+                p2pIsPrimary.value
+            );
             const queued = queueCountLabel();
             const waiting = waitingLabel();
-            const p2p = this.p2pLogCollector.p2pReplicationLine.value;
             const firstLineParts = [
                 ...replication.parts,
                 ...counterPart("file-processing", "⏳", labelProc.count.value),
@@ -239,10 +253,11 @@ export class ModuleLog extends AbstractObsidianModule {
                 ...counterPart("queue-conflicts", "🔩", labelConflictProcessCount.count.value),
             ];
             return {
-                message: replication.message + waiting + queued + (p2p === "" ? "" : "\n" + p2p),
-                parts: p2p === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" + p2p }],
+                message: replication.message + waiting + queued + (p2p.message === "" ? "" : "\n" + p2p.message),
+                parts:
+                    p2p.message === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" }, ...p2p.parts],
                 statusBarParts: firstLineParts,
-                hasP2P: p2p !== "",
+                hasP2P: p2p.message !== "",
             };
         });
 

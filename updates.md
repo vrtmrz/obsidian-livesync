@@ -16,6 +16,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### P2P synchronisation
 
+- P2P progress shows sent (↑) and received (↓) document revision counts, including
+  Metadata and Chunks. Directional ⏩ labels show comparison progress even when no
+  transfer is needed, and disappear three seconds after their last count change.
+    - Counts appear in the P2P panes and editor status. Only P2P also uses them in
+      the main status bar. Older peers retain a sequence display labelled `seq`.
+
 - P2P connections include upstream improvements to peer discovery after relay
   reconnection, recovery from missed signalling messages, and stale connections
   after rejoining or waiting. Connection offers are created on demand to reduce

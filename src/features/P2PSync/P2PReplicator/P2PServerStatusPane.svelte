@@ -25,6 +25,7 @@
     import { SetupManager } from "@/modules/features/SetupManager";
     import { Menu } from "@/deps";
     import { $msg as translateMessage } from "@/common/translation";
+    import { observeP2PDiagnosticsProgress, type P2PStatusProjection } from "@/modules/features/P2PStatusLabel";
     import {
         hasExactP2PPeer,
         togglePersistedP2PPeer,
@@ -42,6 +43,7 @@
     let decidingPeerId = $state<string | null>(null);
     let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
+    let peerProgress = $state<P2PStatusProjection["peers"]>(new Map());
     const COMMUNICATION_HOLD_MS = 2500;
     // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
     const readCurrentSettings = () => core.services.setting.currentSettings();
@@ -125,6 +127,9 @@
     }
 
     onMount(() => {
+        const unsubscribeProgress = observeP2PDiagnosticsProgress(p2p.diagnostics, (snapshot) => {
+            peerProgress = snapshot.peers;
+        });
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
         });
@@ -159,6 +164,7 @@
         });
 
         return () => {
+            unsubscribeProgress();
             unsubscribe();
             unsubscribeReplicatorStatus();
             unsubscribeReplicatorProgress();
@@ -477,6 +483,14 @@
                             <div class="peer-meta">
                                 <span class="badge">{peer.platform}</span>
                             </div>
+                            {#if peerProgress.has(peer.peerId)}
+                                <div
+                                    class="peer-progress"
+                                    title="↑↓: transferred document revisions (seq for older peers); ⏩: compared changes-feed entries"
+                                >
+                                    {peerProgress.get(peer.peerId)?.message}
+                                </div>
+                            {/if}
                         </div>
                         <div class="peer-actions">
                             {#if isAccepted(peer)}
@@ -605,6 +619,12 @@
 </div>
 
 <style>
+    .peer-progress {
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
     .p2p-container {
         display: flex;
         flex-direction: column;
