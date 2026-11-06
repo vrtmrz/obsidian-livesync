@@ -3,16 +3,32 @@
 
 This is how to configure fly.io and CouchDB on it for Self-hosted LiveSync.
 
-The CouchDB instance is yours to manage. You can configure it yourself or set up another instance and switch to it, following the preservation and recovery guidance below.
+The CouchDB instance is yours to manage, including its updates, credentials, and backups.
+
+This guide prepares hosted CouchDB, then leads to [first-device setup](quick_setup.md#configure-couchdb-manually-on-the-first-device), [a Setup URI from that working device](quick_setup.md#create-a-setup-uri-for-another-device), and [additional-device setup with a two-way check](quick_setup.md#add-another-device). Review the costs below before deploying an application.
+
+## Costs before deployment
+
+Fly.io provides cloud infrastructure on which you run your own CouchDB container. A valid credit or debit card is required upon registration. A time-limited trial or sign-up credit does not provide ongoing free hosting.
+
+For an example calculation, assume one Machine and a 1 GB persistent volume in Ashburn (`iad`), running continuously for 30 days. Applying the rates below gives a subtotal of approximately **USD 2.34**, with outbound data transfer and optional resources charged separately:[^fly-pricing]
+
+| Resource | Basis of calculation | Monthly cost in this example |
+| --- | --- | --- |
+| One `shared-cpu-1x` Machine (256 MB RAM) | Running continuously for 30 days (720 hours) | ~USD 2.19 |
+| One 1 GB persistent volume | Provisioned storage (~USD 0.15/GB-month) | ~USD 0.15 |
+| **Calculated subtotal** | Compute and persistent storage | **~USD 2.34 / month** |
+
+*Note: Rates vary depending on the chosen Fly.io region, outbound network bandwidth, and optional dedicated IP addresses. The template configuration enables automatic machine suspension (`auto_stop_machines = true`), which may reduce running hours and compute costs when synchronisation is idle, though provisioned storage volumes continue to be billed. Check the current official pricing and recalculate costs for your chosen configuration before deploying.*
+
+[^fly-pricing]: November 2026 ([Fly.io resource pricing](https://docs.fly.io/about/pricing)); Ashburn (`iad`), with 30 days of continuous Machine operation.
 
 > [!WARNING]
 > Before replacing or deleting an existing CouchDB instance, back up every available Vault and the remote database, then [choose the authoritative copy](recovery.md#first-choose-the-authoritative-copy). Stop or suspend synchronisation on other devices while reviewing recovery options. Local files alone do not establish that every needed edit or revision has been preserved.
 
 > [!NOTE] 
 > **What and why is the Fly.io?**  
-> At some point, we started to experience problems related to our IBM Cloudant account. At the same time, Self-hosted LiveSync started to improve its functionality, requiring CouchDB in a more natural state to use all its features.
->
-> Fly.io charges according to current account and resource usage, including Machines, persistent volumes, and network usage. Check [Fly.io pricing](https://fly.io/pricing/) and the [pricing documentation](https://fly.io/docs/about/pricing/) before deploying. A time-limited trial does not provide ongoing free hosting.
+> Fly.io hosts the Machine and persistent volume while you administer CouchDB. For other environments, see [your own server](setup_own_server.md), the [Docker stack](../docker/README.md), or [IBM Cloudant](setup_cloudant.md).
 
 ## Required materials
 
@@ -267,8 +283,16 @@ Note: Each of these should also be repeated until finished in 200.
 
 #### 6. Use it from Self-hosted LiveSync
 
-Now the CouchDB is ready to use from Self-hosted LiveSync. Use your Fly.io app's hostname in `URI`, and the unique credentials configured above in `Username` and `Password`. The `Database name` could be anything you want.
-Please refer to [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device).
+Now CouchDB is ready for Self-hosted LiveSync. Use these values during manual setup:
+
+| Prepared value | Setup dialogue field |
+| --- | --- |
+| `https://<your-app>.fly.dev` | `URL` |
+| Your configured `COUCHDB_USER` | `Username` |
+| Your configured `COUCHDB_PASSWORD` secret | `Password` |
+| Your chosen database name, such as `obsidiannotes` | `Database Name` |
+
+Please refer to [Configure CouchDB manually on the first device](./quick_setup.md#configure-couchdb-manually-on-the-first-device). After your first device synchronises a test note, generate a new Setup URI on that device and follow the additional-device steps in Quick setup. Confirm that a note created on each device reaches the other unchanged.
 
 ## Delete the Instance
 

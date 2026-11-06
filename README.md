@@ -34,37 +34,69 @@ This plug-in may be particularly useful for researchers, engineers, and develope
 Self-hosting lets us choose a server we trust and manage it ourselves. Please set up and maintain your own server, and keep it secure.
 
 <a id="setup-workflows"></a>
+<a id="what-you-need"></a>
 
-### What you need
+### 1. Choose a synchronisation backend
 
-| Method | What you need | Nice to have |
-| --- | --- | --- |
-| CouchDB | A CouchDB-compatible server. | — |
-| Object Storage | An S3-compatible service or server. | — |
-| Peer-to-Peer | Nothing. | Your own signalling server. |
+Choose **CouchDB** or **Object Storage** for central storage, or use **WebRTC Peer-to-Peer (P2P)** without a central storage server. CouchDB and Object Storage are alternatives: choosing Object Storage does not require a CouchDB server. P2P can also run alongside either central backend; its connection is selected independently.
 
-For a CouchDB-compatible server, choose a setup guide for your environment:
+> [!TIP]
+> **You can switch backends at any time**: Self-hosted LiveSync supports multiple connection profiles via **Saved connections** in settings. You can begin with a hosted option such as Fly.io or Cloudflare R2, and switch to your own server later without rebuilding your Vault files.
 
-- [Your own server](docs/setup_own_server.md): run CouchDB on a Raspberry Pi or another server you manage.
-- [Docker](docker/README.md): deploy CouchDB with the supplied Docker stack.
-- [Fly.io](docs/setup_flyio.md): manage your own CouchDB instance on hosted infrastructure.
-- [IBM Cloudant (managed)](docs/setup_cloudant.md): use a database service managed by IBM.
+#### Backend comparison and decision guide
 
-The linked guides explain the setup and any provider-specific costs.
+| Backend / Environment | LiveSync Mode<br>(Real-time continuous) | Sync while others offline | Mobile support<br>(iOS and Android) | Maintenance effort | Monthly cost example | Recommended for |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **CouchDB (Self-hosted)**<br>*(Own VPS, NAS, Docker, or Raspberry Pi)* | ✅ Full | ✅ Yes | ⚠️ Requires HTTPS (public or private endpoint)[^private-https] | High (manage OS, Docker, and backups) | Free (on existing hardware) | Users with home servers or private infrastructure |
+| **CouchDB (Fly.io)**<br>*(Cloud container PaaS)* | ✅ Full | ✅ Yes | ✅ Out of the box (HTTPS included) | Low (scripted setup via notebook) | ~USD 2.34 / mo in Ashburn[^fly-pricing]<br>*(see [cost details](docs/setup_flyio.md#costs-before-deployment))* | Users wanting real-time sync without managing hardware |
+| **Object Storage (S3 / R2)**<br>*(Cloudflare R2, AWS S3, or MinIO)* | ❌ Periodic or on-save only | ✅ Yes | Managed services: HTTPS included<br>Self-hosted: configure HTTPS | Managed services: bucket configuration<br>Self-hosted: manage the server and backups | USD 0.00 within R2 free allowances[^r2-pricing]<br>*(see [cost guide](docs/setup_object_storage_costs.md))* | Users who prefer Object Storage without server maintenance |
+| **WebRTC Peer-to-Peer**<br>*(Direct device-to-device)* | ✅ Full *(while connected)* | ❌ Both devices must be online | ⚠️ Limited by OS background tasks | None (free public signalling relay) | Free (no server required) | Users who prefer no central storage server |
+
+> [!NOTE]
+> **How Object Storage request counts affect costs**:
+> Unlike traditional file-synchronisation tools that scan every single file on each sync (generating thousands of `LIST` or `HEAD` operations), LiveSync uses **Journal Sync**. It packages only recent changes into compressed delta journals.
+> **Routine checks do not inspect each Vault file**. Whether your Vault contains 100 or 50,000 files, the journal listing step of an idle check uses one LIST request. Synchronisation also checks the bucket and reads or updates synchronisation parameters and device records. Metadata and Chunks travel together in journal packages, so initial and incremental transfer counts depend on those packages. See [Object Storage transfers, request scaling, and service costs](docs/setup_object_storage_costs.md) for a calculation example covering journal listing and transfers, with control requests identified separately.[^r2-pricing]
+
+The figures above are calculation examples. Prices and free allowances may change. Check the linked official pricing pages and recalculate costs for your chosen configuration before deploying.
+
+[^fly-pricing]: November 2026 ([Fly.io resource pricing](https://docs.fly.io/about/pricing)); one `shared-cpu-1x` Machine with 256 MB RAM and a 1 GB persistent volume in Ashburn (`iad`), running continuously for 30 days. Outbound data transfer and optional resources are additional.
+[^r2-pricing]: November 2026 ([Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/)); Standard storage. Free allowances apply to the account's combined usage.
+[^private-https]: A private HTTPS endpoint accessible only to your devices can be provided by services such as [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve). See the [Docker stack](docker/README.md#profile-details) for setup options.
+
+<a id="prepare-your-chosen-backend"></a>
+
+### 2. Prepare your chosen backend
+
+Follow the setup guide for your selected method:
+
+- **CouchDB**:
+  - **Self-hosted**: deploy using the [Docker stack](docker/README.md) or follow [Your own server](docs/setup_own_server.md).
+  - **Fly.io**: follow [Setup CouchDB on Fly.io](docs/setup_flyio.md) for a scripted cloud deployment.
+  - **IBM Cloudant**: follow [IBM Cloudant setup](docs/setup_cloudant.md) for managed CouchDB hosting.
+- **Object Storage**:
+  - Follow [Object Storage Setup](docs/setup_object_storage.md) using Cloudflare R2, Amazon S3, or a self-hosted MinIO bucket.
+- **Peer-to-Peer**:
+  - Follow [Peer-to-Peer Setup](docs/setup_p2p.md) after reviewing the [P2P communication model](docs/p2p.md). No server provisioning is required when using the public signalling relay.
 
 <a id="3-minute-setup---couchdb-on-flyio"></a>
 
 For the Fly.io video walkthrough, see [automated setup](docs/setup_flyio.md#a-very-automated-setup).
 
-P2P does not require a central data-storage server, but a signalling relay is still required for peer discovery. You can use the project's public signalling relay, so there is no server to provision. At least one device containing the required data must be online while another device synchronises. Follow the [Peer-to-Peer Setup](docs/setup_p2p.md) after reviewing the [P2P communication model](docs/p2p.md).
+If you would like to test WebRTC connectivity between your devices before setting up P2P, try the experimental [WebPeer browser utility](https://vrtmrz.github.io/obsidian-livesync/webpeer/) ([documentation](src/apps/webpeer/README.md)).
 
-If you would like to see how P2P setup and connectivity behave on your devices, try the guided connection check in the experimental [WebPeer browser utility](https://vrtmrz.github.io/obsidian-livesync/webpeer/). It uses an empty Vault and does not test note synchronisation. See the [WebPeer documentation](src/apps/webpeer/README.md) for its scope and limitations.
+<a id="start-synchronising"></a>
 
-### Start synchronising
+### 3. Connect your devices and verify synchronisation
 
-1. Install and configure Self-hosted LiveSync on your first device using [Quick Setup](docs/quick_setup.md) for CouchDB, [Object Storage Setup](docs/setup_object_storage.md), or [Peer-to-Peer Setup](docs/setup_p2p.md).
-2. Generate a Setup URI from that working device and follow the same guide to add your other devices.
-3. Create test notes and confirm that they synchronise in both directions.
+Regardless of your chosen backend, connecting your devices follows four straightforward steps:
+
+1. **Prepare your backend** using the guide selected in Step 2 (not required for P2P with the public relay).
+2. **Set up your first device**: install Self-hosted LiveSync and configure your connection and encryption using the appropriate guide:
+   - For CouchDB: follow [Quick Setup](docs/quick_setup.md) to initialise the local and remote databases from your Vault.
+   - For Object Storage: follow [Object Storage Setup](docs/setup_object_storage.md) to initialise the local database and upload its journals to your bucket.
+   - For Peer-to-Peer: follow [Peer-to-Peer Setup](docs/setup_p2p.md) to initialise the local LiveSync database. P2P has no central remote database.
+3. **Connect additional devices using a Setup URI**: on your working first device, run `Copy settings as a new Setup URI` from the command palette. Open that encrypted URI on your second device so it receives the identical encryption and connection profiles.
+4. **Verify two-way synchronisation**: create a test note on your first device and confirm that it appears on the second. Then edit the note on the second device and confirm that the change reflects back on the first device. Configure optional features (such as customisation or hidden-file sync) only after this verification succeeds.
 
 <a id="third-party-managed-couchdb-hosting"></a>
 

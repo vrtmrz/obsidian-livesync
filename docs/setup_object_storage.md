@@ -2,17 +2,42 @@
 
 This guide establishes Object Storage synchronisation on a first device, generates a Setup URI for another device from that working device, and verifies synchronisation in both directions.
 
-Object Storage uses the S3-compatible API. Prepare the following before starting:
+Object Storage exchanges compressed [journals](glossary.md#user-facing-and-operational-terms) through an S3-compatible service or server (such as Cloudflare R2, Amazon S3, or MinIO). It supports manual, periodic, and event-triggered synchronisation; real-time LiveSync mode is unavailable. A CouchDB server is not required.
+
+Before selecting a commercial storage service or configuring polling intervals, see [Object Storage transfers, request scaling, and service costs](setup_object_storage_costs.md).
+
+## Before starting
+
+Prepare the following:
 
 - an HTTPS endpoint reachable by every device;
 - an access key and secret key with access to the selected bucket;
 - a bucket name and region;
-- a unique bucket prefix when the bucket is shared; and
+- a unique bucket prefix when the bucket is shared or reserved for this Vault;
+- CORS configuration permitting Obsidian's web origins (`app://obsidian.md`, `capacitor://localhost`, `http://localhost`) with `ETag` exposed (or enable `Use internal API` during setup to bypass CORS restrictions); and
 - separate passphrases for Vault encryption and Setup URI encryption.
 
 Back up every Vault involved, and do not use Obsidian Sync, iCloud synchronisation, or another synchronisation service on the same Vault.
 
+### Setting fields reference
+
+Match your storage service credentials to the plug-in setup fields:
+
+| Value from your service or server | Setup dialogue field | Setup URI generator variable |
+| --- | --- | --- |
+| S3 API endpoint (not the admin web console) | `Endpoint URL` | `endpoint` |
+| Access key ID | `Access Key ID` | `access_key` |
+| Secret access key | `Secret Access Key` | `secret_key` |
+| Existing bucket name | `Bucket Name` | `bucket` |
+| Region specified by the provider (e.g., `auto` for R2) | `Region` | `region` |
+| Folder prefix reserved for this Vault, such as `my-vault/` | `Folder Prefix` | `bucket_prefix` |
+| Path-style addressing (required by some servers like MinIO) | `Use Path-Style Access` | `force_path_style` |
+| Bypass CORS via Obsidian's native request API | `Use internal API` | `use_custom_request_handler` |
+
 ## Generate the initial Setup URI
+
+> [!TIP]
+> If you prefer to configure settings directly in Obsidian rather than using the command-line Setup URI generator, see [Configure the first device manually](#configure-the-first-device-manually).
 
 The public generator applies the Object Storage preset and records the connection as the selected remote profile. Run it from a trusted terminal:
 
@@ -100,6 +125,19 @@ Confirm that the first device's test note appears unchanged. Create a second ord
 ![Note from the first device received by the second Object Storage device](../images/object-storage-setup/guide-object-storage-setup-first-to-second.png)
 
 ![Second-device note received by the first Object Storage device](../images/object-storage-setup/guide-object-storage-setup-second-to-first.png)
+
+## Configure the first device manually
+
+If you prefer to configure settings directly in Obsidian rather than using the Deno Setup URI generator, use this manual procedure:
+
+1. Install and enable Self-hosted LiveSync, then open onboarding from the `Welcome to Self-hosted LiveSync` Notice.
+2. Select `I am setting this up for the first time`, then choose `Configure a remote manually` and select `Proceed with manual configuration`.
+3. Configure `End-to-End Encryption` and enter a strong Vault encryption passphrase. Save this passphrase securely.
+4. Select the S3-compatible Object Storage option and proceed to `S3/MinIO/R2 Configuration`.
+5. Enter your bucket settings using the [Setting fields reference](#setting-fields-reference) table above.
+6. Select `Test Settings and Continue`. If the connection test fails, verify the API endpoint, credentials, bucket permissions, and region. If CORS blocks the request or cannot be configured on your bucket, enable `Use internal API` to route requests through Obsidian's native HTTP handler.
+7. Proceed to `Restart and Initialise Server`, then complete the confirmation steps as described in [Set up the first device](#set-up-the-first-device).
+8. Once your test note synchronises, follow [Generate the second-device Setup URI](#generate-the-second-device-setup-uri) to connect subsequent devices easily.
 
 ## Safety notes
 
