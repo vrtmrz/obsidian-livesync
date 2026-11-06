@@ -17,7 +17,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### P2P synchronisation
 
 - P2P status shows Stats with diagnostic details collapsed by default. Expand
-  'Diagnostic log' to see the latest relay, peer, and synchronisation observations.
+  'Diagnostic summary' to see the latest relay, peer, and synchronisation observations.
   With Diag enabled, their events also appear in the Log Pane without updating
   the editor status or producing notifications.
     - Unobserved information is labelled explicitly. Relay rejection messages are

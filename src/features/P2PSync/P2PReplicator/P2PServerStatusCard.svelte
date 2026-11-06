@@ -203,7 +203,7 @@
                 </div>
             </div>
             <details class="diag-details">
-                <summary>{translateMessage("Diagnostic log")}</summary>
+                <summary>{translateMessage("Diagnostic summary")}</summary>
                 <div class="diag-summary">
                     {#each diagnosticRows as row (row.category)}
                         <div title={row.title}>

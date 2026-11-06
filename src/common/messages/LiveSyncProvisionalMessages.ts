@@ -9,7 +9,7 @@
  * the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
-    "Diagnostic log": "Diagnostic log",
+    "Diagnostic summary": "Diagnostic summary",
     "Open log": "Open log",
     "Detailed P2P diagnostics and Log Pane output are enabled":
         "Detailed P2P diagnostics and Log Pane output are enabled",
