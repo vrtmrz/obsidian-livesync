@@ -17,7 +17,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 #### Recovery
 
 - Files saved while host size information is stale retain the correct content size, preventing an incorrect size record from blocking reflection to other devices. (#1324)
-- Verify reports a file whose recorded size differs from its readable content, and offers a guarded correction when that exact content matches the Vault and has no conflict. (#1324)
+- **Inspect conflicts and file/database differences** reports files whose recorded size differs from their readable content, and offers a guarded **Correct recorded file size** action when that exact content matches the Vault without conflicts. (#1324)
 
 ### Improved
 
