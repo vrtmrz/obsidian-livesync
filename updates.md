@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### CLI
+
+#### Fixed
+
+- The daemon now detects files written into newly created folders during a burst of writes, including files renamed from temporary names, without requiring a restart. (#1328)
+    - The CLI requires Node.js 22.22 or later. The Docker image includes its own runtime.
+
 ## 1.0.46
 
 7th November, 2026

@@ -4,6 +4,9 @@
     "version": "1.0.46-cli",
     "main": "dist/index.cjs",
     "type": "module",
+    "engines": {
+        "node": ">=22.22"
+    },
     "scripts": {
         "dev": "vite",
         "build": "vite build",
@@ -12,7 +15,7 @@
         "buildRun": "npm run build && npm run cli --",
         "build:docker": "docker build -f Dockerfile -t livesync-cli ../../..",
         "check": "tsc -p tsconfig.json",
-        "test:unit": "cd ../../.. && npx vitest run --config vitest.config.unit.ts src/apps/cli/main.unit.spec.ts src/apps/cli/main.bootstrap.unit.spec.ts src/apps/cli/settingsPersistence.unit.spec.ts src/apps/cli/runtimeState.unit.spec.ts src/apps/cli/services/NodeKeyValueDBService.unit.spec.ts src/apps/cli/services/NodeLocalStorage.unit.spec.ts src/apps/cli/services/storageCaseSensitivity.unit.spec.ts src/apps/cli/managers/CLIStorageEventManagerAdapter.unit.spec.ts src/apps/cli/commands/utils.unit.spec.ts src/apps/cli/commands/runCommand.unit.spec.ts src/apps/cli/commands/journalSkip.unit.spec.ts src/apps/cli/commands/daemonCommand.unit.spec.ts src/apps/cli/commands/p2p.unit.spec.ts src/apps/cli/deploy/install.unit.spec.ts src/apps/cli/adapters/NodeFileSystemAdapter.unit.spec.ts",
+        "test:unit": "cd ../../.. && npx vitest run --config vitest.config.unit.ts src/apps/cli/main.unit.spec.ts src/apps/cli/main.bootstrap.unit.spec.ts src/apps/cli/settingsPersistence.unit.spec.ts src/apps/cli/runtimeState.unit.spec.ts src/apps/cli/services/NodeKeyValueDBService.unit.spec.ts src/apps/cli/services/NodeLocalStorage.unit.spec.ts src/apps/cli/services/storageCaseSensitivity.unit.spec.ts src/apps/cli/managers/CLIStorageEventManagerAdapter.unit.spec.ts src/apps/cli/managers/CLIStorageEventManagerAdapter.real-watch.unit.spec.ts src/apps/cli/commands/utils.unit.spec.ts src/apps/cli/commands/runCommand.unit.spec.ts src/apps/cli/commands/journalSkip.unit.spec.ts src/apps/cli/commands/daemonCommand.unit.spec.ts src/apps/cli/commands/p2p.unit.spec.ts src/apps/cli/deploy/install.unit.spec.ts src/apps/cli/adapters/NodeFileSystemAdapter.unit.spec.ts",
         "test:e2e:two-vaults": "bash test/test-e2e-two-vaults-with-docker-linux.sh",
         "test:e2e:two-vaults:common": "bash test/test-e2e-two-vaults-common.sh",
         "test:e2e:two-vaults:matrix": "bash test/test-e2e-two-vaults-matrix.sh",
@@ -38,7 +41,7 @@
     },
     "dependencies": {
         "@aws-crypto/sha256-js": "5.2.0",
-        "chokidar": "^4.0.0",
+        "chokidar": "6.0.0",
         "minimatch": "^11.0.3",
         "octagonal-wheels": "0.1.56",
         "pouchdb-adapter-http": "^9.0.0",
