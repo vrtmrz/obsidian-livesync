@@ -211,7 +211,7 @@
         "@smithy/types": "^4.14.3",
         "@smithy/util-retry": "^4.4.5",
         "@vrtmrz/browser-ui-kit": "0.1.0",
-        "@vrtmrz/livesync-commonlib": "0.3.2",
+        "@vrtmrz/livesync-commonlib": "0.4.0",
         "@vrtmrz/obsidian-plugin-kit": "0.1.7",
         "@vrtmrz/ui-interactions": "0.1.2",
         "@vrtmrz/value-store": "0.1.0",
