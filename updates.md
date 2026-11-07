@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+#### Recovery
+
+- Files saved while host size information is stale retain the correct content size, preventing an incorrect size record from blocking reflection to other devices. (#1324)
+- **Inspect conflicts and file/database differences** reports files whose recorded size differs from their readable content, and offers a guarded **Correct recorded file size** action when that exact content matches the Vault without conflicts. (#1324)
+
 ### Improved
 
 #### P2P synchronisation

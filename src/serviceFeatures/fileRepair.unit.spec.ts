@@ -1,9 +1,8 @@
+import PouchDB from "pouchdb-core";
+import MemoryAdapter from "pouchdb-adapter-memory";
+PouchDB.plugin(MemoryAdapter);
 import { describe, expect, it, vi } from "vitest";
-import {
-    discardLiveBranch,
-    discardUnreadableLiveRevision,
-    inspectFileRepair,
-} from "./fileRepair";
+import { discardLiveBranch, discardUnreadableLiveRevision, inspectFileRepair, repairRevisionSize } from "./fileRepair";
 
 function createCore() {
     const current = {
@@ -48,6 +47,7 @@ function createCore() {
             getFilesIncludeHidden: vi.fn(async () => ["note.md"]),
         },
         localDatabase: {
+            putRaw: vi.fn(async (_doc: unknown) => ({ ok: true, id: "f:note", rev: "4-repaired" })),
             localDatabase: {
                 get: vi.fn(async (_id: string, options?: { rev?: string }) =>
                     options?.rev === "2-conflict" ? conflict : current
@@ -94,6 +94,20 @@ function createCore() {
 }
 
 describe("file repair inspection", () => {
+    it("reports a size-only mismatch even when Vault bytes match", async () => {
+        const { core, current } = createCore();
+        current._conflicts = [];
+        current.size = 45;
+        expect((await inspectFileRepair(core as never, "note.md")).requiresAttention).toBe(true);
+    });
+
+    it("omits matching bytes with correct size despite differing timestamps", async () => {
+        const { core, current } = createCore();
+        current._conflicts = [];
+        current.mtime = 9000;
+        expect((await inspectFileRepair(core as never, "note.md")).requiresAttention).toBe(false);
+    });
+
     it("shows the winner and every conflict revision independently", async () => {
         const { core } = createCore();
 
@@ -146,12 +160,10 @@ describe("file repair inspection", () => {
     it("rechecks liveness and readability before discarding an exact revision", async () => {
         const { core, deleteRevisionFromDB } = createCore();
 
-        await expect(
-            discardUnreadableLiveRevision(core as never, "note.md", "2-conflict")
-        ).resolves.toBe("discarded");
-        await expect(
-            discardUnreadableLiveRevision(core as never, "note.md", "3-current")
-        ).resolves.toBe("revision-is-readable");
+        await expect(discardUnreadableLiveRevision(core as never, "note.md", "2-conflict")).resolves.toBe("discarded");
+        await expect(discardUnreadableLiveRevision(core as never, "note.md", "3-current")).resolves.toBe(
+            "revision-is-readable"
+        );
 
         expect(deleteRevisionFromDB).toHaveBeenCalledOnce();
         expect(deleteRevisionFromDB).toHaveBeenCalledWith("note.md", "2-conflict");
@@ -175,9 +187,7 @@ describe("file repair inspection", () => {
                 }),
             }),
         ]);
-        await expect(
-            discardUnreadableLiveRevision(core as never, "note.md", "1-root")
-        ).resolves.toBe("discarded");
+        await expect(discardUnreadableLiveRevision(core as never, "note.md", "1-root")).resolves.toBe("discarded");
         expect(deleteRevisionFromDB).toHaveBeenCalledWith("note.md", "1-root");
     });
 
@@ -188,9 +198,9 @@ describe("file repair inspection", () => {
             _conflicts: [],
         });
 
-        await expect(
-            discardUnreadableLiveRevision(core as never, "note.md", "2-conflict")
-        ).resolves.toBe("no-longer-live");
+        await expect(discardUnreadableLiveRevision(core as never, "note.md", "2-conflict")).resolves.toBe(
+            "no-longer-live"
+        );
 
         expect(deleteRevisionFromDB).not.toHaveBeenCalled();
     });
@@ -198,9 +208,7 @@ describe("file repair inspection", () => {
     it("discards an exact readable winner while another live branch remains", async () => {
         const { core, deleteRevisionFromDB } = createCore();
 
-        await expect(
-            discardLiveBranch(core as never, "note.md", "3-current")
-        ).resolves.toBe("discarded");
+        await expect(discardLiveBranch(core as never, "note.md", "3-current")).resolves.toBe("discarded");
 
         expect(deleteRevisionFromDB).toHaveBeenCalledWith("note.md", "3-current");
     });
@@ -209,9 +217,7 @@ describe("file repair inspection", () => {
         const { core, current, deleteRevisionFromDB } = createCore();
         current._conflicts = [];
 
-        await expect(
-            discardLiveBranch(core as never, "note.md", "3-current")
-        ).resolves.toBe("only-live-revision");
+        await expect(discardLiveBranch(core as never, "note.md", "3-current")).resolves.toBe("only-live-revision");
 
         expect(deleteRevisionFromDB).not.toHaveBeenCalled();
     });
@@ -219,10 +225,112 @@ describe("file repair inspection", () => {
     it("refuses to discard a branch which is no longer live", async () => {
         const { core, deleteRevisionFromDB } = createCore();
 
-        await expect(
-            discardLiveBranch(core as never, "note.md", "1-stale")
-        ).resolves.toBe("no-longer-live");
+        await expect(discardLiveBranch(core as never, "note.md", "1-stale")).resolves.toBe("no-longer-live");
 
         expect(deleteRevisionFromDB).not.toHaveBeenCalled();
+    });
+});
+
+describe("recorded size repair", () => {
+    function repairFixture() {
+        const fixture = createCore();
+        fixture.current._conflicts = [];
+        fixture.current.size = 45;
+        return fixture;
+    }
+    it("writes a child changing only size and omitting response metadata", async () => {
+        const { core, current } = repairFixture();
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("repaired");
+        const corrected = core.localDatabase.putRaw.mock.calls[0][0];
+        const expected = { ...current, size: 7 } as Partial<typeof current>;
+        delete expected._conflicts;
+        delete expected._revs_info;
+        expect(corrected).toEqual(expected);
+    });
+    it.each(["conflict", "different-body", "missing-chunk", "deleted", "absent-vault"])("refuses %s", async (state) => {
+        const { core, current } = repairFixture();
+        if (state === "conflict") current._conflicts = ["2-conflict"];
+        if (state === "different-body")
+            core.storageAccess.readHiddenFileBinary.mockResolvedValue(new TextEncoder().encode("edit").buffer);
+        if (state === "missing-chunk") core.localDatabase.allDocsRaw.mockResolvedValue({ rows: [] });
+        if (state === "deleted") current.deleted = true;
+        if (state === "absent-vault") core.storageAccess.isExistsIncludeHidden.mockResolvedValue(false);
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("unsafe");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+    it("refuses a selected revision replaced before inspection", async () => {
+        const { core } = repairFixture();
+        expect(await repairRevisionSize(core as never, "note.md", "2-old")).toBe("stale");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+    it("refuses a revision advancing between inspection and final metadata read", async () => {
+        const { core, current } = repairFixture();
+        const read = core.localDatabase.localDatabase.get;
+        read.mockResolvedValueOnce(current)
+            .mockResolvedValueOnce(current)
+            .mockResolvedValueOnce({ ...current, _rev: "4-advanced" });
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("stale");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+    it("refuses a Vault edit after inspection", async () => {
+        const { core, current } = repairFixture();
+        core.storageAccess.readHiddenFileBinary
+            .mockResolvedValueOnce(new TextEncoder().encode("current").buffer)
+            .mockResolvedValueOnce(new TextEncoder().encode("new edit").buffer);
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("unsafe");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+    it("treats a document removed after inspection as stale", async () => {
+        const { core, current } = repairFixture();
+        core.localDatabase.localDatabase.get
+            .mockResolvedValueOnce(current)
+            .mockResolvedValueOnce(current)
+            .mockRejectedValueOnce({ status: 404 });
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("stale");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+    it("refuses advancement during the last Vault read through CAS", async () => {
+        const { core, current } = repairFixture();
+        core.localDatabase.putRaw.mockRejectedValue({ status: 409 });
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("stale");
+    });
+    it("does not repeat a correction or change mtime for matching content", async () => {
+        const { core, current } = repairFixture();
+        current.size = 7;
+        expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("unchanged");
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+});
+
+describe("size repair revision ancestry", () => {
+    it("preserves metadata and chunks in a real PouchDB child and is idempotent", async () => {
+        const { core, current } = createCore();
+        const database = new PouchDB(`size-repair-${crypto.randomUUID()}`, { adapter: "memory" });
+        try {
+            const metadata = { ...current } as Partial<typeof current> & { _id: string };
+            delete metadata._rev;
+            delete metadata._conflicts;
+            delete metadata._revs_info;
+            const stored = await database.put({ ...metadata, size: 45 });
+            core.localDatabase.localDatabase = database as never;
+            core.localDatabase.putRaw.mockImplementation((doc) => database.put(doc as never));
+            core.localDatabase.getDBEntryFromMeta.mockImplementation(async (meta) => ({ ...meta, data: ["current"] }));
+            expect(await repairRevisionSize(core as never, "note.md", stored.rev)).toBe("repaired");
+            const corrected = (await database.get(current._id, { revs: true })) as typeof current & {
+                _revisions: { ids: string[] };
+            };
+            expect(corrected.size).toBe(7);
+            expect(corrected.children).toEqual(current.children);
+            expect(corrected.ctime).toBe(current.ctime);
+            expect(corrected.mtime).toBe(current.mtime);
+            expect(corrected.path).toBe(current.path);
+            expect(corrected).not.toHaveProperty("data");
+            expect(corrected._revisions.ids[1]).toBe(stored.rev.split("-")[1]);
+            expect(await repairRevisionSize(core as never, "note.md", corrected._rev)).toBe("unchanged");
+            expect((await inspectFileRepair(core as never, "note.md")).requiresAttention).toBe(false);
+            expect(core.localDatabase.putRaw).toHaveBeenCalledOnce();
+        } finally {
+            await database.destroy();
+        }
     });
 });

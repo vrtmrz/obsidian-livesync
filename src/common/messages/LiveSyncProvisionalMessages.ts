@@ -286,6 +286,7 @@ export const liveSyncProvisionalEnglishMessages = {
     "Apply database revision to Vault": "Apply database revision to Vault",
     "Mark this revision as the Vault version": "Mark this revision as the Vault version",
     "Store Vault file as a child of this revision": "Store Vault file as a child of this revision",
+    "Correct recorded file size": "Correct recorded file size",
     "Apply logical deletion to Vault": "Apply logical deletion to Vault",
     "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.":
         "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.",

@@ -8,10 +8,7 @@ import {
     readAsBlob,
 } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { isPlainText } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
-import type {
-    FileRepairInspection,
-    FileRepairRevision,
-} from "./fileRepair";
+import { canRepairRevisionSize, type FileRepairInspection, type FileRepairRevision } from "./fileRepair";
 
 export type FileRepairRevisionActions = {
     compareWithVault: boolean;
@@ -22,6 +19,7 @@ export type FileRepairRevisionActions = {
     retryRevision: boolean;
     discardBranch: boolean;
     discardRevision: boolean;
+    repairSize: boolean;
 };
 
 export type FileRepairTimestampRelation =
@@ -87,6 +85,7 @@ export function getFileRepairRevisionActions(
             !hasConflictBranches &&
             !revision.metadata.deleted &&
             !revision.contentReadable,
+        repairSize: canRepairRevisionSize(inspection, revision),
     };
 }
 
