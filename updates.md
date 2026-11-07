@@ -16,49 +16,38 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 7th November, 2026
 
+P2P synchronisation can stop connecting when our devices are on different versions. And this is one of those versions.
+
+If we use P2P synchronisation, let us make sure all our devices are on the same version.
+
 ### Fixed
 
-#### Recovery
+#### Synchronisation and recovery
 
-- Files saved while host size information is stale retain the correct content size, preventing an incorrect size record from blocking reflection to other devices. (#1324)
-- **Inspect conflicts and file/database differences** reports files whose recorded size differs from their readable content, and offers a guarded **Correct recorded file size** action when that exact content matches the Vault without conflicts. (#1324)
+- Receiving devices no longer reject newly saved files with 'seems to be corrupted! Writing prevented' because rapid edits left the sender's cached file size out of date. New saves record the byte length of the content actually read. (#1324)
+    - Existing incorrect size records need explicit repair. Use **Inspect conflicts and file/database differences** → **Correct recorded file size** when the readable current database revision has no conflicts and matches the Vault exactly. The correction retains the file content and timestamps.
+
+#### P2P synchronisation
+
+- Peer actions and long device names now fit narrow panes. Larger buttons and wrapped labels keep the controls readable and usable.
 
 ### Improved
 
 #### P2P synchronisation
 
-- P2P status shows Stats with diagnostic details collapsed by default. Expand
-  'Diagnostic summary' to see the latest relay, peer, and synchronisation observations.
-  With Diag enabled, their events also appear in the Log Pane without updating
-  the editor status or producing notifications.
-    - Unobserved information is labelled explicitly. Relay rejection messages are
-      unavailable through the current transport API; an open room does not confirm
-      that a relay accepted its announcements.
+- We can inspect the latest relay, peer, and synchronisation observations in **P2P Status**. Expand **Diagnostic summary** below **Stats**; detailed observations start collapsed.
+    - Enable **Diag** to show diagnostic events in the Log Pane without editor-status updates or notifications. Opening the Log Pane also displays its buffered messages.
+    - Unobserved information is labelled explicitly. An open room does not establish relay acceptance; relay rejection details remain unavailable through the diagnostic summary.
 
-- Larger peer controls wrap onto additional lines in narrow panes, keeping action labels
-  readable alongside long device names.
+- We can see sent (↑) and received (↓) database document revision counts in the P2P panes and editor status, and in the main status bar when P2P is our main remote. Counts include Metadata and Chunks, rather than Vault files.
+    - Directional ⏩ labels show changes-feed comparison progress, including when no revisions need transferring. Each label disappears three seconds after its count last changes; its absence alone does not establish completion. Peers without document statistics retain sequence values labelled `seq`.
 
-- P2P progress shows sent (↑) and received (↓) document revision counts, including
-  Metadata and Chunks. Directional ⏩ labels show comparison progress even when no
-  transfer is needed, and disappear three seconds after their last count change.
-    - Counts appear in the P2P panes and editor status. Only P2P also uses them in
-      the main status bar. Older peers retain a sequence display labelled `seq`.
+- The updated transport incorporates upstream improvements to peer discovery after relay reconnection, missed signalling messages, and stale connections after rejoining or waiting. Connection offers are created on demand.
+    - All communicating devices in our P2P group, including CLI and WebPeer clients, must be updated together before P2P synchronisation resumes. Trystero 0.26.0 cannot exchange data with the previous transport.
 
-- P2P connections include upstream improvements to peer discovery after relay
-  reconnection, recovery from missed signalling messages, and stale connections
-  after rejoining or waiting. Connection offers are created on demand to reduce
-  idle resource use.
-    - Update every device in the P2P group, including CLI and WebPeer clients,
-      before resuming P2P synchronisation. The updated transport uses Trystero
-      0.26.0 and cannot exchange data with the previous transport.
+### Documentation
 
-### Fixed
-
-#### Synchronisation
-
-- New saves record the byte length of the stored content, preventing stale host
-  file-size information from causing a receiving device to reject the file. (#1324)
-    - Existing incorrect Metadata needs explicit repair.
+- Clarified backend selection and hosting requirements, including Object Storage request costs. Added a guide to P2P diagnostic observations, logs, and transfer progress.
 
 ## 1.0.45
 
