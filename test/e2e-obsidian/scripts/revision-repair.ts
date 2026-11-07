@@ -11,6 +11,8 @@ import { createTemporaryVault } from "../runner/vault.ts";
 import type { Locator, Page } from "playwright";
 
 const path = "revision-repair.md";
+const sizeRepairPath = "revision-size-repair.md";
+const sizeRepairContent = "Size repair fixture with multibyte text: 日本語\n";
 const healthyDeletedPath = "healthy-logical-deletion.md";
 const baseContent = "Revision repair\n\nShared base.\n";
 const branchContents = [
@@ -33,6 +35,29 @@ type RevisionTree = {
 type VaultWinnerState = {
     matches: boolean;
     winnerRevision: string;
+};
+
+type SizeRepairFixture = {
+    revisionWithWrongSize: string;
+    expectedSize: number;
+    expectedPath: string;
+    expectedCtime: number;
+    expectedMtime: number;
+    expectedChunks: string[];
+};
+
+type SizeRepairState = SizeRepairFixture & {
+    revision: string;
+    size: number;
+    path: string;
+    ctime: number;
+    mtime: number;
+    chunks: string[];
+    bodyMatches: boolean;
+    chunksAvailable: boolean;
+    historyStart: number;
+    historyIds: string[];
+    provenanceRevision: string | null;
 };
 
 async function createAndOpenBaseFile(cliBinary: string, env: NodeJS.ProcessEnv): Promise<void> {
@@ -89,6 +114,68 @@ async function createHealthyLogicalDeletion(cliBinary: string, env: NodeJS.Proce
             "  await sleep(250);",
             "}",
             "throw new Error(`Timed out waiting for a healthy logical deletion: ${path}`);",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function createSizeRepairFixture(cliBinary: string, env: NodeJS.ProcessEnv): Promise<SizeRepairFixture> {
+    await evalObsidianJson<unknown>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(sizeRepairPath)};`,
+            `const content=${JSON.stringify(sizeRepairContent)};`,
+            "const file=app.vault.getAbstractFileByPath(path)??await app.vault.create(path,content);",
+            "await app.workspace.getLeaf(false).openFile(file);",
+            "return JSON.stringify({ok:true});",
+            "})()",
+        ].join(""),
+        env
+    );
+    const saved = await waitForLocalDatabaseEntry(cliBinary, env, sizeRepairPath);
+    return await evalObsidianJson<SizeRepairFixture>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(sizeRepairPath)};`,
+            `const expectedSize=new TextEncoder().encode(${JSON.stringify(sizeRepairContent)}).length;`,
+            `const savedRevision=${JSON.stringify(saved.rev)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const id=await core.services.path.path2id(path);",
+            "const original=await core.localDatabase.localDatabase.get(id);",
+            "if(original._rev!==savedRevision) throw new Error('Size repair source changed before fixture setup');",
+            "const wrong=await core.localDatabase.putRaw({...original,size:expectedSize+7});",
+            "if(!wrong.ok) throw new Error('Could not create size-only Metadata fixture');",
+            "core.localDatabase.clearCaches();",
+            "const revision=await core.localDatabase.localDatabase.get(id);",
+            "return JSON.stringify({revisionWithWrongSize:revision._rev,expectedSize,expectedPath:path,expectedCtime:original.ctime,expectedMtime:original.mtime,expectedChunks:original.children??[]});",
+            "})()",
+        ].join(""),
+        env
+    );
+}
+
+async function readSizeRepairState(cliBinary: string, env: NodeJS.ProcessEnv): Promise<SizeRepairState> {
+    return await evalObsidianJson<SizeRepairState>(
+        cliBinary,
+        [
+            "(async()=>{",
+            `const path=${JSON.stringify(sizeRepairPath)};`,
+            `const expected=${JSON.stringify(sizeRepairContent)};`,
+            "const core=app.plugins.plugins['obsidian-livesync'].core;",
+            "const id=await core.services.path.path2id(path);",
+            "const raw=await core.localDatabase.localDatabase.get(id,{revs:true});",
+            "const entry=await core.localDatabase.getDBEntry(path,undefined,false,true,true);",
+            "if(!entry) throw new Error('Corrected size repair entry cannot be decoded');",
+            "const body=await new Blob(Array.isArray(entry.data)?entry.data:[entry.data]).text();",
+            "const children=raw.children??[];",
+            "const rows=children.length?await core.localDatabase.allDocsRaw({keys:children}):{rows:[]};",
+            "const available=rows.rows.filter(row=>row.value?.rev&&!row.value?.deleted).length===children.length;",
+            "const provenance=await core.services.keyValueDB.openSimpleStore('file-reflection-provenance-v1').get(path);",
+            "const revisions=raw._revisions??{start:0,ids:[]};",
+            "return JSON.stringify({revision:raw._rev,size:raw.size,path:raw.path,ctime:raw.ctime,mtime:raw.mtime,chunks:children,bodyMatches:body===expected,chunksAvailable:available,historyStart:revisions.start,historyIds:revisions.ids,provenanceRevision:provenance?.revision??null});",
             "})()",
         ].join(""),
         env
@@ -210,16 +297,16 @@ async function readFileReflectionProvenance(
     );
 }
 
-function repairCard(settings: Locator): Locator {
-    return settings.locator(".sls-repair-result").filter({ hasText: path });
+function repairCard(settings: Locator, targetPath = path): Locator {
+    return settings.locator(".sls-repair-result").filter({ hasText: targetPath });
 }
 
-function revisionCard(settings: Locator, revision: string): Locator {
-    return repairCard(settings).locator(".sls-repair-revision").filter({ hasText: revision });
+function revisionCard(settings: Locator, revision: string, targetPath = path): Locator {
+    return repairCard(settings, targetPath).locator(".sls-repair-revision").filter({ hasText: revision });
 }
 
-async function openRevisionActionMenu(page: Page, settings: Locator, revision: string): Promise<Locator> {
-    const actionButton = revisionCard(settings, revision).getByRole("button", {
+async function openRevisionActionMenu(page: Page, settings: Locator, revision: string, targetPath = path): Promise<Locator> {
+    const actionButton = revisionCard(settings, revision, targetPath).getByRole("button", {
         name: `More actions for revision ${revision}`,
         exact: true,
     });
@@ -250,8 +337,8 @@ async function openRevisionActionMenu(page: Page, settings: Locator, revision: s
     return menu;
 }
 
-async function selectRevisionAction(page: Page, settings: Locator, revision: string, action: string): Promise<void> {
-    const menu = await openRevisionActionMenu(page, settings, revision);
+async function selectRevisionAction(page: Page, settings: Locator, revision: string, action: string, targetPath = path): Promise<void> {
+    const menu = await openRevisionActionMenu(page, settings, revision, targetPath);
     const item = menu.getByText(action, { exact: true });
     await item.waitFor({ state: "visible", timeout: uiTimeoutMs });
     await item.click({ timeout: uiTimeoutMs });
@@ -317,6 +404,7 @@ async function main(): Promise<void> {
         await createAndOpenBaseFile(cliBinary, session.cliEnv);
         const base = await waitForLocalDatabaseEntry(cliBinary, session.cliEnv, path);
         const healthyDeletionRevision = await createHealthyLogicalDeletion(cliBinary, session.cliEnv);
+        const sizeRepairFixture = await createSizeRepairFixture(cliBinary, session.cliEnv);
         const fixture = await createBrokenConflict(cliBinary, session.cliEnv, base.rev);
         const healthyDeletionProvenance = await readFileReflectionProvenance(
             cliBinary,
@@ -347,7 +435,8 @@ async function main(): Promise<void> {
             );
         }
 
-        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+        const sizeRepairPort = session.remoteDebuggingPort;
+        await withObsidianPage(sizeRepairPort, async (page) => {
             const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
             const settings = await settingsNavigator.openPage("Hatch");
             const verifySetting = settings.locator(".setting-item").filter({
@@ -694,8 +783,73 @@ async function main(): Promise<void> {
             );
         }
 
+        await withObsidianPage(sizeRepairPort, async (page) => {
+            const settingsNavigator = await openLiveSyncSettings(page, uiTimeoutMs);
+            const settings = await settingsNavigator.openPage("Hatch");
+            const verifySetting = settings.locator(".setting-item").filter({
+                has: settingsNavigator.page.getByText("Inspect conflicts and file/database differences", {
+                    exact: true,
+                }),
+            });
+            await verifySetting.getByRole("button", { name: "Begin inspection", exact: true }).click({
+                timeout: uiTimeoutMs,
+            });
+            const card = repairCard(settings, sizeRepairPath);
+            await card.waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const winner = revisionCard(settings, sizeRepairFixture.revisionWithWrongSize, sizeRepairPath);
+            await winner.getByText(/^📦 DB:.*Δsize/u).waitFor({ state: "visible", timeout: uiTimeoutMs });
+            const menu = await openRevisionActionMenu(
+                page,
+                settings,
+                sizeRepairFixture.revisionWithWrongSize,
+                sizeRepairPath
+            );
+            await menu.getByText("Correct recorded file size", { exact: true }).waitFor({
+                state: "visible",
+                timeout: uiTimeoutMs,
+            });
+            const screenshot = await captureObsidianElement(
+                sizeRepairPort,
+                "revision-repair-size-correction-actions.png",
+                (currentPage) => currentPage.locator(".menu:visible").last()
+            );
+            console.log(`Size correction actions screenshot: ${screenshot}`);
+            await page.keyboard.press("Escape");
+            await selectRevisionAction(
+                page,
+                settings,
+                sizeRepairFixture.revisionWithWrongSize,
+                "Correct recorded file size",
+                sizeRepairPath
+            );
+            await card.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        });
+        const sizeRepairState = await readSizeRepairState(cliBinary, session.cliEnv);
+        const correctedRevisionGeneration = Number(sizeRepairState.revision.split("-")[0]);
+        const expectedParentId = sizeRepairFixture.revisionWithWrongSize.split("-").slice(1).join("-");
+        if (
+            sizeRepairState.revision === sizeRepairFixture.revisionWithWrongSize ||
+            sizeRepairState.size !== sizeRepairFixture.expectedSize ||
+            sizeRepairState.path !== sizeRepairFixture.expectedPath ||
+            sizeRepairState.ctime !== sizeRepairFixture.expectedCtime ||
+            sizeRepairState.mtime !== sizeRepairFixture.expectedMtime ||
+            JSON.stringify(sizeRepairState.chunks) !== JSON.stringify(sizeRepairFixture.expectedChunks) ||
+            !sizeRepairState.bodyMatches ||
+            !sizeRepairState.chunksAvailable ||
+            sizeRepairState.historyStart !== correctedRevisionGeneration ||
+            sizeRepairState.historyIds[1] !== expectedParentId ||
+            sizeRepairState.provenanceRevision !== sizeRepairState.revision
+        ) {
+            throw new Error(
+                `Size repair did not preserve the exact file body, Chunks, Metadata fields, ancestry, and provenance: ${JSON.stringify({
+                    fixture: sizeRepairFixture,
+                    state: sizeRepairState,
+                })}`
+            );
+        }
+
         console.log(
-            "Real Obsidian omitted a healthy logical deletion; rendered each live revision with compact actions and diagnostics; showed that the Vault matched the winner while one conflict remained; compared and applied an exact readable revision without changing the tree; preserved Vault provenance; kept an unreadable branch through automatic checking, retry, and cancelled discard; and discarded only the selected branch after confirmation."
+            "Real Obsidian omitted a healthy logical deletion; rendered each live revision with compact actions and diagnostics; showed that the Vault matched the winner while one conflict remained; compared and applied an exact readable revision without changing the tree; preserved Vault provenance; kept an unreadable branch through automatic checking, retry, and cancelled discard; discarded only the selected branch after confirmation; and corrected a Vault-matching Metadata size through Verify while preserving its body, Chunks, timestamps, ancestry, and provenance."
         );
         console.log(`Repair card screenshot: ${repairCardScreenshot}`);
         console.log(`Mobile-width repair card screenshot: ${mobileWidthScreenshot}`);

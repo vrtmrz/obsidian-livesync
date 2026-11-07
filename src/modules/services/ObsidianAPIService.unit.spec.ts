@@ -248,3 +248,16 @@ describe("ObsidianAPIService.nativeFetch cache control", () => {
         expect(sentHeaders().has("pragma")).toBe(false);
     });
 });
+
+describe("ObsidianAPIService.registerCleanup", () => {
+    it("delegates the original callback to native component ownership without invoking it immediately", () => {
+        const register = vi.fn();
+        const service = new ObsidianAPIService({ app: {}, plugin: { register } } as unknown as ObsidianServiceContext);
+        const cleanup = vi.fn();
+        expect(service.registerCleanup(cleanup)).toBeUndefined();
+        expect(register).toHaveBeenCalledExactlyOnceWith(cleanup);
+        expect(cleanup).not.toHaveBeenCalled();
+        register.mock.calls[0][0]();
+        expect(cleanup).toHaveBeenCalledOnce();
+    });
+});

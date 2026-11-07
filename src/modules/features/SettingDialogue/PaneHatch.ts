@@ -32,12 +32,14 @@ import {
     chooseAndCopyFileDatabaseInfo,
     collectFileDatabaseInfoPaths,
     copyFileDatabaseInfo,
+    inspectFileDatabaseInfo,
     retryReadFileDatabaseRevision,
 } from "@/serviceFeatures/fileDatabaseInfo.ts";
 import {
     discardLiveBranch,
     discardUnreadableLiveRevision,
     inspectFileRepair,
+    repairRevisionSize,
     type FileRepairInspection,
     type FileRepairRevision,
 } from "@/serviceFeatures/fileRepair.ts";
@@ -782,6 +784,31 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
                                         metadata.revision!,
                                         false
                                     )
+                            );
+                        },
+                    });
+                }
+                if (metadata.revision && policy.repairSize) {
+                    revisionActions.push({
+                        title: $msg("Correct recorded file size"),
+                        run: async () => {
+                            await runMutation(
+                                `Correct the recorded size on database revision ${metadata.revision}`,
+                                async () => {
+                                    const result = await repairRevisionSize(
+                                        this.core,
+                                        path,
+                                        metadata.revision!
+                                    );
+                                    if (result !== "repaired" && result !== "unchanged") {
+                                        return false;
+                                    }
+                                    const current = await inspectFileDatabaseInfo(this.core, path);
+                                    const currentRevision = current.database.currentRevision;
+                                    return currentRevision !== null
+                                        ? storeStorageOnRevision(path, currentRevision, false)
+                                        : false;
+                                }
                             );
                         },
                     });

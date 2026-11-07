@@ -22,6 +22,7 @@ type FixtureLog = {
 
 type ShutdownObservation = {
     closeCalls: number;
+    cleanupCalls: number;
     disposeCalls: number;
     disposeCompleted: boolean;
     fixtureLogs: FixtureLog[];
@@ -106,6 +107,7 @@ function createShutdownScript(options: {
     duringMarker: string;
     failureMarker: string;
     afterMarker: string;
+    cleanupMarker: string;
     reloadMarker: string;
     oldReloadMarker: string;
     injectFailure: boolean;
@@ -133,6 +135,7 @@ function createShutdownScript(options: {
             consoleLogs:[],
             uiAddLogCalls:0,
             events:[],
+            cleanupCalls:0,
             closeStarted:false,
             closeCalls:0,
             disposeCalls:0,
@@ -141,6 +144,10 @@ function createShutdownScript(options: {
             disableError:"",
         };
         app.__livesyncLogLifecycleState=state;
+        api.registerCleanup(()=>{
+            state.cleanupCalls++;
+            state.events.push("cleanup:"+fixtures.cleanupMarker);
+        });
 
         const originalAddLog=module.__addLog;
         const originalConsoleLog=console.log;
@@ -307,8 +314,13 @@ function createShutdownScript(options: {
                 "The disposed ModuleLog UI handler received a post-disposal log");
             await state.disablePromise;
             require(!state.disableError,"Disabling the plug-in failed: "+state.disableError);
+            require(state.cleanupCalls===1,
+                "The registered API cleanup callback did not run exactly once after plug-in disable completed");
+            require(state.events.filter(event=>event==="cleanup:"+fixtures.cleanupMarker).length===1,
+                "The registered API cleanup marker was not recorded exactly once");
             return JSON.stringify({
                 closeCalls:state.closeCalls,
+                cleanupCalls:state.cleanupCalls,
                 disposeCalls:state.disposeCalls,
                 disposeCompleted:state.disposeCompleted,
                 fixtureLogs:state.fixtureLogs,
@@ -353,6 +365,7 @@ async function runCase(options: {
     const markers = {
         duringMarker: `log-lifecycle-${options.caseName}-during-${randomUUID()}`,
         afterMarker: "log-lifecycle-" + options.caseName + "-after-disposal-" + randomUUID(),
+        cleanupMarker: `log-lifecycle-${options.caseName}-api-cleanup-${randomUUID()}`,
         failureMarker: options.injectFailure
             ? `log-lifecycle-${options.caseName}-injected-close-failure-${randomUUID()}`
             : "",

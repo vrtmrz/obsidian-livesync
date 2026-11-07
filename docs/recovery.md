@@ -98,6 +98,7 @@ The `Hatch` recovery controls are ordered by escalation. Running **Recreate chun
    - **Compare with Vault** opens a read-only comparison for readable text.
    - **Apply this revision to Vault** replaces the Vault file with that readable database revision.
    - **Mark this revision as the Vault version** records an exact byte-for-byte match without creating a child revision.
+   - **Correct recorded file size** is available when a readable, conflict-free database winner has the same bytes as the Vault but its recorded size differs. It creates a child Metadata revision with the decoded byte size while preserving the body, Chunks, path, and timestamps. The action rechecks the selected revision; if the database has advanced, inspect the file again.
    - **Store Vault file as a child of this revision** preserves the current Vault bytes on that selected branch.
    - **Retry reading revision** retries configured chunk retrieval without changing the revision tree.
    - **Apply logical deletion to Vault**, **Discard this branch**, and **Discard unreadable revision** are destructive decisions. Use them only after preserving every version which may still be needed.

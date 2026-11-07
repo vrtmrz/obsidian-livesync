@@ -13,6 +13,7 @@
     import { delay, fireAndForget } from "octagonal-wheels/promises";
     import P2PServerStatusCard from "./P2PServerStatusCard.svelte";
     import { $msg as translateMessage } from "@/common/translation";
+    import { observeP2PDiagnosticsProgress, type P2PStatusProjection } from "@/modules/features/P2PStatusLabel";
 
     interface Props {
         p2p: P2PServiceViews;
@@ -27,6 +28,7 @@
 
     let serverInfo = $state<P2PServerInfo | undefined>(undefined);
     let syncingPeerId = $state<string | null>(null);
+    let peerProgress = $state<P2PStatusProjection["peers"]>(new Map());
 
     const logLevel = $derived(showResult ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
     async function requestServerStatus() {
@@ -34,6 +36,9 @@
         eventHub.emitEvent(EVENT_REQUEST_STATUS);
     }
     onMount(() => {
+        const unsubscribeProgress = observeP2PDiagnosticsProgress(p2p.diagnostics, (snapshot) => {
+            peerProgress = snapshot.peers;
+        });
         // ServerStatus
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
@@ -42,7 +47,10 @@
             await delay(100);
             await requestServerStatus();
         });
-        return unsubscribe;
+        return () => {
+            unsubscribe();
+            unsubscribeProgress();
+        };
     });
 
     async function handleSync(peerId: string) {
@@ -109,6 +117,14 @@
                     <div class="peer-item">
                         <div class="peer-info">
                             <div class="peer-name">{peer.name}</div>
+                            {#if peerProgress.has(peer.peerId)}
+                                <div
+                                    class="peer-progress"
+                                    title="↑↓: transferred document revisions (seq for older peers); ⏩: compared changes-feed entries"
+                                >
+                                    {peerProgress.get(peer.peerId)?.message}
+                                </div>
+                            {/if}
                             <div class="peer-meta">
                                 <span class="badge">{peer.platform}</span>
                                 <span class="peer-id-mini" title={peer.peerId}>
@@ -176,6 +192,12 @@
 </div>
 
 <style>
+    .peer-progress {
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
     .p2p-container {
         display: flex;
         flex-direction: column;

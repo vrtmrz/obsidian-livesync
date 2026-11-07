@@ -14,6 +14,8 @@
     import { extractP2PRoomSuffix } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
     import { $msg as translateMessage } from "@/common/translation";
+    import { observeP2PDiagnosticRows, type P2PDiagnosticRow } from "@/modules/features/P2PDiagnosticDisplay";
+    import { VIEW_TYPE_LOG } from "@/modules/features/Log/LogPaneView";
 
     interface Props {
         p2p: P2PServiceViews;
@@ -29,6 +31,12 @@
     const initialSettings = readCurrentSettings();
     let roomSuffix = $state<string>(extractP2PRoomSuffix(initialSettings?.P2P_roomID ?? ""));
     let useDiagRTC = $state<boolean>(initialSettings?.P2P_useDiagRTC ?? false);
+    let diagnosticRows = $state<readonly P2PDiagnosticRow[]>([]);
+
+    function openLog() {
+        const currentCore = core;
+        if (currentCore) fireAndForget(() => currentCore.services.API.showWindow(VIEW_TYPE_LOG));
+    }
 
     async function requestServerStatus() {
         p2p.diagnostics.requestStatus();
@@ -66,6 +74,9 @@
     }
 
     onMount(() => {
+        const unsubscribeDiagnostics = observeP2PDiagnosticRows(p2p.diagnostics, (rows) => {
+            diagnosticRows = rows;
+        });
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
             roomSuffix = extractP2PRoomSuffix(status?.roomId ?? "");
@@ -84,6 +95,7 @@
         });
 
         return () => {
+            unsubscribeDiagnostics();
             unsubscribe();
             unsubscribeStatus();
             unsubscribeSettings();
@@ -161,8 +173,8 @@
             class="broadcast-button {useDiagRTC ? 'is-on' : 'is-off'}"
             onclick={toggleDiagRTC}
             title={useDiagRTC
-                ? translateMessage("Diagnostic RTCPeerConnection is enabled")
-                : translateMessage("Use Diagnostic RTCPeerConnection for statistics")}
+                ? translateMessage("Detailed P2P diagnostics and Log Pane output are enabled")
+                : translateMessage("Enable detailed P2P diagnostics and Log Pane output")}
         >
             {useDiagRTC ? translateMessage("On") : translateMessage("Off")}
         </button>
@@ -190,12 +202,48 @@
                     <span>{serverInfo.diag.totalClosedConnections}</span>
                 </div>
             </div>
+            <details class="diag-details">
+                <summary>{translateMessage("Diagnostic summary")}</summary>
+                <div class="diag-summary">
+                    {#each diagnosticRows as row (row.category)}
+                        <div title={row.title}>
+                            <span>{row.label}: {row.text}</span>{#if row.time}<span> · {row.time}</span>{/if}
+                        </div>
+                    {/each}
+                    {#if core}
+                        <button class="diag-open-log" onclick={openLog}>{translateMessage("Open log")}</button>
+                    {/if}
+                </div>
+            </details>
         </div>
     {/if}
 </div>
 
 <style>
+    .diag-details {
+        margin-top: var(--size-4-2);
+    }
+
+    .diag-details > summary {
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        cursor: pointer;
+    }
+
+    .diag-summary {
+        margin-top: var(--size-4-2);
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        overflow-wrap: anywhere;
+    }
+
+    .diag-open-log {
+        margin-top: var(--size-4-1);
+        font-size: inherit;
+    }
+
     .server-status {
+        min-width: 0;
         border: 1px solid var(--divider-color);
         border-radius: 0.5rem;
         padding: 1rem;
@@ -211,6 +259,7 @@
         display: flex;
         justify-content: space-between;
         flex-wrap: wrap;
+        overflow-wrap: anywhere;
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
     }

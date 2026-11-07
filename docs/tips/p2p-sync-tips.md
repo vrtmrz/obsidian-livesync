@@ -67,6 +67,8 @@ Keep Obsidian visible and the device awake during initial transfer, rebuild, or 
 
 ## Collect evidence
 
+Use the [P2P diagnostic guide](p2p-diagnostics.md) to capture the latest observations, enable **Diag**, and compare transfer progress and logs on both devices before changing settings.
+
 If the same room works on one network but not another, include both network types in the report. Run `Generate full report for opening the issue with debug info`, remove credentials and private relay details, and state whether:
 
 - both devices reached `Connected`;

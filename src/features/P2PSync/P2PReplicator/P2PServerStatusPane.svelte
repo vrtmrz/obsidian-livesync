@@ -25,6 +25,7 @@
     import { SetupManager } from "@/modules/features/SetupManager";
     import { Menu } from "@/deps";
     import { $msg as translateMessage } from "@/common/translation";
+    import { observeP2PDiagnosticsProgress, type P2PStatusProjection } from "@/modules/features/P2PStatusLabel";
     import {
         hasExactP2PPeer,
         togglePersistedP2PPeer,
@@ -42,6 +43,7 @@
     let decidingPeerId = $state<string | null>(null);
     let replicatingPeerId = $state<string | null>(null);
     let communicatingUntil = $state<Record<string, number>>({});
+    let peerProgress = $state<P2PStatusProjection["peers"]>(new Map());
     const COMMUNICATION_HOLD_MS = 2500;
     // Later setting changes arrive through EVENT_SETTING_SAVED; these values only seed local state at mount time.
     const readCurrentSettings = () => core.services.setting.currentSettings();
@@ -125,6 +127,9 @@
     }
 
     onMount(() => {
+        const unsubscribeProgress = observeP2PDiagnosticsProgress(p2p.diagnostics, (snapshot) => {
+            peerProgress = snapshot.peers;
+        });
         const unsubscribe = eventHub.onEvent(EVENT_SERVER_STATUS, (status) => {
             serverInfo = status;
         });
@@ -159,6 +164,7 @@
         });
 
         return () => {
+            unsubscribeProgress();
             unsubscribe();
             unsubscribeReplicatorStatus();
             unsubscribeReplicatorProgress();
@@ -477,6 +483,14 @@
                             <div class="peer-meta">
                                 <span class="badge">{peer.platform}</span>
                             </div>
+                            {#if peerProgress.has(peer.peerId)}
+                                <div
+                                    class="peer-progress"
+                                    title="↑↓: transferred document revisions (seq for older peers); ⏩: compared changes-feed entries"
+                                >
+                                    {peerProgress.get(peer.peerId)?.message}
+                                </div>
+                            {/if}
                         </div>
                         <div class="peer-actions">
                             {#if isAccepted(peer)}
@@ -484,37 +498,39 @@
                                     <span class="badge status-chip {getAcceptanceStatusClass(peer)}">
                                         {getAcceptanceStatus(peer)}
                                     </span>
-                                    <button
-                                        class="emoji-button"
-                                        disabled={replicatingPeerId !== null}
-                                        title={replicatingPeerId === peer.peerId
-                                            ? translateMessage("Replicating...")
-                                            : translateMessage("Replicate now")}
-                                        aria-label={replicatingPeerId === peer.peerId
-                                            ? translateMessage("Replicating")
-                                            : translateMessage("Replicate now")}
-                                        onclick={() => startReplication(peer)}
-                                    >
-                                        {replicatingPeerId === peer.peerId ? "⏳" : "🔄"}
-                                    </button>
-                                    <button
-                                        class="action-button"
-                                        disabled={decidingPeerId !== null}
-                                        onclick={() => revokeDecision(peer)}
-                                    >
-                                        {translateMessage("Revoke")}
-                                    </button>
-                                    <button
-                                        class="emoji-button"
-                                        title={translateMessage("More actions for ${DEVICE}", { DEVICE: peer.name })}
-                                        aria-label={translateMessage("More actions for ${DEVICE}", {
-                                            DEVICE: peer.name,
-                                        })}
-                                        disabled={!canEditP2PSettings()}
-                                        onclick={(event) => openPeerMenu(event, peer)}
-                                    >
-                                        …
-                                    </button>
+                                    <div class="decision-buttons">
+                                        <button
+                                            class="emoji-button"
+                                            disabled={replicatingPeerId !== null}
+                                            title={replicatingPeerId === peer.peerId
+                                                ? translateMessage("Replicating...")
+                                                : translateMessage("Replicate now")}
+                                            aria-label={replicatingPeerId === peer.peerId
+                                                ? translateMessage("Replicating")
+                                                : translateMessage("Replicate now")}
+                                            onclick={() => startReplication(peer)}
+                                        >
+                                            {replicatingPeerId === peer.peerId ? "⏳" : "🔄"}
+                                        </button>
+                                        <button
+                                            class="action-button"
+                                            disabled={decidingPeerId !== null}
+                                            onclick={() => revokeDecision(peer)}
+                                        >
+                                            {translateMessage("Revoke")}
+                                        </button>
+                                        <button
+                                            class="emoji-button"
+                                            title={translateMessage("More actions for ${DEVICE}", { DEVICE: peer.name })}
+                                            aria-label={translateMessage("More actions for ${DEVICE}", {
+                                                DEVICE: peer.name,
+                                            })}
+                                            disabled={!canEditP2PSettings()}
+                                            onclick={(event) => openPeerMenu(event, peer)}
+                                        >
+                                            …
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="decision-row watch-row">
                                     <span class="decision-label">{translateMessage("Follow changes")}</span>
@@ -540,45 +556,49 @@
                                 </div>
                                 <div class="decision-row">
                                     <span class="decision-label">{translateMessage("PERMANENT")}</span>
-                                    <button
-                                        class="emoji-button"
-                                        title={translateMessage("Allow permanently")}
-                                        aria-label={translateMessage("Allow permanently")}
-                                        disabled={decidingPeerId !== null}
-                                        onclick={() => makeDecision(peer, true, false)}
-                                    >
-                                        ✅
-                                    </button>
-                                    <button
-                                        class="emoji-button mod-warning"
-                                        title={translateMessage("Deny permanently")}
-                                        aria-label={translateMessage("Deny permanently")}
-                                        disabled={decidingPeerId !== null}
-                                        onclick={() => makeDecision(peer, false, false)}
-                                    >
-                                        🚫
-                                    </button>
+                                    <div class="decision-buttons">
+                                        <button
+                                            class="emoji-button"
+                                            title={translateMessage("Allow permanently")}
+                                            aria-label={translateMessage("Allow permanently")}
+                                            disabled={decidingPeerId !== null}
+                                            onclick={() => makeDecision(peer, true, false)}
+                                        >
+                                            ✅
+                                        </button>
+                                        <button
+                                            class="emoji-button mod-warning"
+                                            title={translateMessage("Deny permanently")}
+                                            aria-label={translateMessage("Deny permanently")}
+                                            disabled={decidingPeerId !== null}
+                                            onclick={() => makeDecision(peer, false, false)}
+                                        >
+                                            🚫
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="decision-row">
                                     <span class="decision-label">{translateMessage("SESSION")}</span>
-                                    <button
-                                        class="emoji-button"
-                                        title={translateMessage("Allow in session")}
-                                        aria-label={translateMessage("Allow in session")}
-                                        disabled={decidingPeerId !== null}
-                                        onclick={() => makeDecision(peer, true, true)}
-                                    >
-                                        ✅
-                                    </button>
-                                    <button
-                                        class="emoji-button mod-warning"
-                                        title={translateMessage("Deny in session")}
-                                        aria-label={translateMessage("Deny in session")}
-                                        disabled={decidingPeerId !== null}
-                                        onclick={() => makeDecision(peer, false, true)}
-                                    >
-                                        🚫
-                                    </button>
+                                    <div class="decision-buttons">
+                                        <button
+                                            class="emoji-button"
+                                            title={translateMessage("Allow in session")}
+                                            aria-label={translateMessage("Allow in session")}
+                                            disabled={decidingPeerId !== null}
+                                            onclick={() => makeDecision(peer, true, true)}
+                                        >
+                                            ✅
+                                        </button>
+                                        <button
+                                            class="emoji-button mod-warning"
+                                            title={translateMessage("Deny in session")}
+                                            aria-label={translateMessage("Deny in session")}
+                                            disabled={decidingPeerId !== null}
+                                            onclick={() => makeDecision(peer, false, true)}
+                                        >
+                                            🚫
+                                        </button>
+                                    </div>
                                 </div>
                             {/if}
                             {#if !isAccepted(peer) && (peer.isAccepted !== undefined || peer.isTemporaryAccepted !== undefined)}
@@ -605,10 +625,22 @@
 </div>
 
 <style>
+    .peer-progress {
+        color: var(--text-muted);
+        font-size: var(--font-ui-small);
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
     .p2p-container {
+        min-width: 0;
         display: flex;
         flex-direction: column;
         gap: 1rem;
+    }
+
+    .peers-section button {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
     }
 
     .peers-section {
@@ -627,6 +659,8 @@
 
     .pane-header-actions {
         display: flex;
+        flex-wrap: wrap;
+        max-width: 100%;
         align-items: center;
         gap: 0.4rem;
         min-width: 0;
@@ -634,6 +668,8 @@
 
     .remote-picker-wrap {
         display: inline-flex;
+        flex: 1 1 10rem;
+        max-width: 100%;
         gap: 0.3rem;
         align-items: center;
         min-width: 0;
@@ -641,8 +677,8 @@
 
     .remote-picker {
         max-width: 10rem;
-        min-width: 1em;
-        flex-shrink: 1;
+        min-width: 0;
+        flex: 1 1 0;
         height: 1.9rem;
         border: 1px solid var(--divider-color);
         border-radius: 0.4rem;
@@ -661,10 +697,11 @@
         margin: 0;
         font-size: 1.1rem;
         font-weight: 700;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
     }
 
     .icon-button {
+        padding: 0;
         width: 1.9rem;
         height: 1.9rem;
         display: inline-flex;
@@ -700,8 +737,12 @@
     }
 
     .refresh {
-        font-size: 0.8rem;
-        padding: 0.2rem 0.5rem;
+        max-width: 100%;
+        height: auto;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
         border: 1px solid var(--divider-color);
         border-radius: 0.3rem;
         background-color: var(--interactive-normal);
@@ -736,6 +777,8 @@
     }
 
     .peer-name {
+        flex-wrap: wrap;
+        overflow-wrap: anywhere;
         font-weight: 600;
         margin-bottom: 0.25rem;
         font-size: 0.9rem;
@@ -752,6 +795,9 @@
     }
 
     .badge {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
         background-color: var(--background-tertiary);
         padding: 0.1rem 0.4rem;
         border-radius: 0.25rem;
@@ -817,17 +863,25 @@
     }
 
     .decision-row {
-        display: grid;
-        grid-template-columns: 1fr auto auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
         align-items: center;
         gap: 0.35rem;
     }
 
-    .accepted-row {
-        grid-template-columns: 1fr auto auto auto;
+    .decision-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        min-width: 0;
+        max-width: 100%;
     }
 
     .decision-label {
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
         font-size: 0.7rem;
         font-weight: 700;
         color: var(--text-muted);
@@ -835,22 +889,25 @@
     }
 
     .action-button {
-        font-size: 0.75rem;
-        padding: 0.2rem 0.45rem;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
         border: 1px solid var(--divider-color);
         border-radius: 0.3rem;
         background-color: var(--interactive-normal);
         color: var(--text-normal);
         cursor: pointer;
         width: auto;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        max-width: 100%;
+        height: auto;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .emoji-button {
-        width: 2rem;
-        height: 1.7rem;
+        flex-shrink: 0;
+        width: 2.75rem;
+        height: 2.75rem;
+        font-size: 1.125rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -903,7 +960,7 @@
     }
 
     .revoke-inline {
-        justify-self: start;
+        align-self: flex-start;
     }
 
     .no-peers {

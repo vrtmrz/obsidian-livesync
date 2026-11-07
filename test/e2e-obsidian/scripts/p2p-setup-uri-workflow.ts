@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { Locator, Page } from "playwright";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { assertEqual, waitForLocalDatabaseEntry } from "../runner/liveSyncWorkflow.ts";
@@ -602,6 +603,14 @@ async function waitForDetectedPeer(port: number): Promise<void> {
 
 async function capturePeerActionsMenu(port: number): Promise<string> {
     await withObsidianPage(port, async (page) => {
+        const detectedPeers = page.getByRole("heading", { name: "Detected Peers" }).last();
+        await detectedPeers.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const pane = detectedPeers.locator(
+            "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' workspace-leaf-content ')][1]"
+        );
+        await assertP2PDiagnosticSummary(pane);
+        await assertPeerActionButtonsFit(pane);
+
         const moreActions = page.getByRole("button", { name: /^More actions for /u }).first();
         await moreActions.waitFor({ state: "visible", timeout: uiTimeoutMs });
         await moreActions.click({ timeout: uiTimeoutMs });
@@ -639,6 +648,117 @@ async function capturePeerActionsMenu(port: number): Promise<string> {
         await page.locator(".menu:visible").waitFor({ state: "hidden", timeout: uiTimeoutMs });
     });
     return screenshot;
+}
+
+async function assertP2PDiagnosticSummary(pane: Locator): Promise<void> {
+    const stats = pane.getByRole("heading", { name: "Stats", exact: true });
+    await stats.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    const diagnosticDetails = pane.locator("details.diag-details");
+    await diagnosticDetails.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    if (await diagnosticDetails.evaluate((element) => (element as HTMLDetailsElement).open)) {
+        throw new Error("The P2P diagnostic summary was open before the user expanded it.");
+    }
+    const diagnosticSummary = diagnosticDetails.locator("summary");
+    await diagnosticSummary.click({ timeout: uiTimeoutMs });
+    const diagnosticRows = diagnosticDetails.locator(".diag-summary > div");
+    await diagnosticRows.first().waitFor({ state: "visible", timeout: uiTimeoutMs });
+    const rowText = await diagnosticRows.allInnerTexts();
+    for (const label of ["Relay:", "Peer:", "Sync:"]) {
+        if (!rowText.some((text) => text.trim().startsWith(label))) {
+            throw new Error(`The expanded P2P diagnostics did not show the ${label} observation.`);
+        }
+    }
+    const openLog = diagnosticDetails.getByRole("button", { name: "Open log", exact: true });
+    await openLog.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    if (!(await stats.isVisible())) {
+        throw new Error("The P2P Stats section was hidden while diagnostic observations were expanded.");
+    }
+    await diagnosticSummary.click({ timeout: uiTimeoutMs });
+    await diagnosticRows.first().waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    if (await diagnosticDetails.evaluate((element) => (element as HTMLDetailsElement).open)) {
+        throw new Error("The P2P diagnostic summary did not collapse after it was toggled again.");
+    }
+    if (!(await stats.isVisible())) {
+        throw new Error("The P2P Stats section was hidden after collapsing diagnostic observations.");
+    }
+}
+
+async function assertPeerActionButtonsFit(pane: Locator): Promise<void> {
+    const peerItem = pane.locator(".peers-section .peer-item").first();
+    await peerItem.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    await peerItem.scrollIntoViewIfNeeded();
+    const actionButtons = await peerItem.evaluate((element) => {
+        const item = element.getBoundingClientRect();
+        const viewport = {
+            width: document.documentElement.clientWidth,
+            height: document.documentElement.clientHeight,
+        };
+        return {
+            hasHorizontalOverflow: element.scrollWidth > element.clientWidth,
+            buttons: Array.from(element.querySelectorAll("button"))
+                .filter((button) => button.getClientRects().length > 0)
+                .map((button) => {
+                    const rect = button.getBoundingClientRect();
+                    return {
+                        label: button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "",
+                        width: rect.width,
+                        height: rect.height,
+                        insidePeer:
+                            rect.left >= item.left &&
+                            rect.top >= item.top &&
+                            rect.right <= item.right &&
+                            rect.bottom <= item.bottom,
+                        insideViewport:
+                            rect.left >= 0 &&
+                            rect.top >= 0 &&
+                            rect.right <= viewport.width &&
+                            rect.bottom <= viewport.height,
+                    };
+                }),
+        };
+    });
+    if (
+        actionButtons.buttons.length === 0 ||
+        actionButtons.hasHorizontalOverflow ||
+        actionButtons.buttons.some(
+            (button) =>
+                button.width < 44 ||
+                button.height < 44 ||
+                !button.insidePeer ||
+                !button.insideViewport
+        )
+    ) {
+        throw new Error(
+            `P2P peer action buttons were too small or did not fit their peer item and viewport: ${JSON.stringify(actionButtons)}`
+        );
+    }
+}
+
+async function assertPeerDocumentProgress(page: Page, directions: readonly ("↑" | "↓")[]): Promise<void> {
+    const detectedPeers = page.getByRole("heading", { name: "Detected Peers" }).last();
+    await detectedPeers.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    const pane = detectedPeers.locator(
+        "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' workspace-leaf-content ')][1]"
+    );
+    const progress = pane.locator(".peers-section .peer-item .peer-progress").first();
+    await progress.waitFor({ state: "visible", timeout: uiTimeoutMs });
+    const deadline = Date.now() + uiTimeoutMs;
+    let message = "";
+    while (Date.now() < deadline) {
+        message = (await progress.innerText()).replace(/\s+/gu, " ").trim();
+        const documentProgress = message.replace(/⏩[↑↓]\s+\d+/gu, "");
+        if (
+            directions.every((direction) =>
+                new RegExp(`${direction}\\s+\\d+(?:\\s|$)`, "u").test(documentProgress)
+            )
+        ) {
+            return;
+        }
+        await page.waitForTimeout(100);
+    }
+    throw new Error(
+        `Completed P2P transfer progress did not show document counters for ${directions.join(" and ")}: ${message}`
+    );
 }
 
 async function captureNote(port: number, path: string, text: string, filename: string): Promise<string> {
@@ -740,6 +860,9 @@ async function main(): Promise<void> {
             console.log("P2P workflow: return replication requested; waiting for the second device's note.");
             await waitForPathContent(vaultA, noteFromSecond, secondContent);
             console.log("P2P workflow: return note reached the first device.");
+            await withObsidianPage(portA, async (page) => {
+                await assertPeerDocumentProgress(page, ["↑", "↓"]);
+            });
         } finally {
             returnJourneyFinished = true;
             await returnJourneyAcceptor;

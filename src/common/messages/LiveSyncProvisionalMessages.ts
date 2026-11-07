@@ -9,6 +9,12 @@
  * the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Diagnostic summary": "Diagnostic summary",
+    "Open log": "Open log",
+    "Detailed P2P diagnostics and Log Pane output are enabled":
+        "Detailed P2P diagnostics and Log Pane output are enabled",
+    "Enable detailed P2P diagnostics and Log Pane output":
+        "Enable detailed P2P diagnostics and Log Pane output",
     "Enable SyncGuard": "Enable SyncGuard",
     "Enable device-local SyncGuard protection during synchronisation.":
         "Enable device-local SyncGuard protection during synchronisation.",
@@ -280,6 +286,7 @@ export const liveSyncProvisionalEnglishMessages = {
     "Apply database revision to Vault": "Apply database revision to Vault",
     "Mark this revision as the Vault version": "Mark this revision as the Vault version",
     "Store Vault file as a child of this revision": "Store Vault file as a child of this revision",
+    "Correct recorded file size": "Correct recorded file size",
     "Apply logical deletion to Vault": "Apply logical deletion to Vault",
     "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.":
         "Apply logical deletion ${REVISION} to ${FILE}? The current Vault file will be removed.",

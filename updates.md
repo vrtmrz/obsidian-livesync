@@ -12,6 +12,50 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+#### Recovery
+
+- Files saved while host size information is stale retain the correct content size, preventing an incorrect size record from blocking reflection to other devices. (#1324)
+- **Inspect conflicts and file/database differences** reports files whose recorded size differs from their readable content, and offers a guarded **Correct recorded file size** action when that exact content matches the Vault without conflicts. (#1324)
+
+### Improved
+
+#### P2P synchronisation
+
+- P2P status shows Stats with diagnostic details collapsed by default. Expand
+  'Diagnostic summary' to see the latest relay, peer, and synchronisation observations.
+  With Diag enabled, their events also appear in the Log Pane without updating
+  the editor status or producing notifications.
+    - Unobserved information is labelled explicitly. Relay rejection messages are
+      unavailable through the current transport API; an open room does not confirm
+      that a relay accepted its announcements.
+
+- Larger peer controls wrap onto additional lines in narrow panes, keeping action labels
+  readable alongside long device names.
+
+- P2P progress shows sent (↑) and received (↓) document revision counts, including
+  Metadata and Chunks. Directional ⏩ labels show comparison progress even when no
+  transfer is needed, and disappear three seconds after their last count change.
+    - Counts appear in the P2P panes and editor status. Only P2P also uses them in
+      the main status bar. Older peers retain a sequence display labelled `seq`.
+
+- P2P connections include upstream improvements to peer discovery after relay
+  reconnection, recovery from missed signalling messages, and stale connections
+  after rejoining or waiting. Connection offers are created on demand to reduce
+  idle resource use.
+    - Update every device in the P2P group, including CLI and WebPeer clients,
+      before resuming P2P synchronisation. The updated transport uses Trystero
+      0.26.0 and cannot exchange data with the previous transport.
+
+### Fixed
+
+#### Synchronisation
+
+- New saves record the byte length of the stored content, preventing stale host
+  file-size information from causing a receiving device to reject the file. (#1324)
+    - Existing incorrect Metadata needs explicit repair.
+
 ## 1.0.45
 
 5th November, 2026
