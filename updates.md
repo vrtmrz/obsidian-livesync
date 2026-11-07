@@ -41,6 +41,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
       before resuming P2P synchronisation. The updated transport uses Trystero
       0.26.0 and cannot exchange data with the previous transport.
 
+### Fixed
+
+#### Synchronisation
+
+- New saves record the byte length of the stored content, preventing stale host
+  file-size information from causing a receiving device to reject the file. (#1324)
+    - Existing incorrect Metadata needs explicit repair.
+
 ## 1.0.45
 
 5th November, 2026
