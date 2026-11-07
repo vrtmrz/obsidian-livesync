@@ -180,6 +180,23 @@ async function verifyP2PStatusPane(filename: string, mobile: boolean): Promise<s
             "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' workspace-leaf-content ')][1]"
         );
         await pane.getByText("Connection:", { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
+        const refresh = pane.getByRole("button", { name: "Refresh", exact: true });
+        await refresh.waitFor({ state: "visible", timeout: uiTimeoutMs });
+        if (mobile) {
+            const touchTarget = await refresh.evaluate((element) => {
+                const rect = element.getBoundingClientRect();
+                return {
+                    width: rect.width,
+                    height: rect.height,
+                    rootFontSize: getComputedStyle(document.documentElement).fontSize,
+                };
+            });
+            if (touchTarget.width < 44 || touchTarget.height < 44) {
+                throw new Error(
+                    `The mobile P2P Refresh touch target was smaller than 44 CSS pixels at the default font: ${JSON.stringify(touchTarget)}`
+                );
+            }
+        }
         await pane.getByRole("button", { name: "Open connection" }).waitFor({
             state: "visible",
             timeout: uiTimeoutMs,
