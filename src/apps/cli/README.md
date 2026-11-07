@@ -1,6 +1,10 @@
 # Self-hosted LiveSync CLI
 Command-line version of Self-hosted LiveSync plug-in for syncing vaults without Obsidian.
 
+## Requirements
+
+The CLI requires Node.js 22.22 or later. The Docker image includes its own Node.js runtime.
+
 ## Features
 
 - ✅ Sync Obsidian vaults using CouchDB without running Obsidian
