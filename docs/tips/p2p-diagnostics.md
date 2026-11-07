@@ -48,7 +48,7 @@ summary is held in memory and does not preserve history across a restart.
 
 | Row       | Examples                                                                                                        | What it establishes                                                                                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Relay** | `Room opening`, `Room opened`, `Room could not open`, `Room closed`                                             | The local room lifecycle. 'Room opened; relay replies not observed' confirms that the local room was established, though relay acceptance, peer discovery, and WebRTC data connectivity must be verified through subsequent rows and events. |
+| **Relay** | `Room opening`, `Room opened`, `Room could not open`, `Room closed`                                             | The local room lifecycle. 'Room opened; relay replies not observed' records local room opening. Relay acceptance remains unobserved; use later peer and sync observations to investigate discovery and data transfer. |
 | **Peer**  | `Peer advertised`, `Peer left`, `Authentication accepted`, `Authentication refused`, `Authentication timed out` | Discovery or the observed authentication outcome for the identified peer. A timeout indicates that the request exceeded its time limit, rather than an explicit rejection.                                                                    |
 | **Sync**  | `Pull started`, `Pull completed`, `Watching peer changes`, `Announcing changes`, `Change notification received` | The latest observed pull, watch, announcement, or notification activity. Note that notifications signal a peer to fetch changes, rather than carrying Vault data directly.                                                                   |
 
@@ -61,8 +61,8 @@ summary is held in memory and does not preserve history across a restart.
   unavailable response, rather than claiming refusal or disabled announcements.
 - Summary times are local observation times, while `[P2P Diag]` lines include an
   `observed` UTC timestamp. Consider any device-clock differences when comparing
-  reports across devices. Note that timestamps record when specific events occurred,
-  rather than representing an ongoing heartbeat or live health check.
+  reports across devices. Timestamps record when this device observed an event;
+  they are not an ongoing heartbeat or live health check.
 
 Relay rejection details are not provided by this diagnostic summary.
 Some existing RTC diagnostics also lack peer or room attribution and are not
@@ -84,9 +84,9 @@ P2P is the active synchronisation method.
 | **seq**       | A compatibility display of database sequence progress when document statistics are unavailable. Interpret it as a sequence value, not a document total or percentage.                                                        |
 
 Each directional comparison label disappears three seconds after its count
-last changes. Its absence indicates comparison inactivity rather than
-confirming that overall replication is complete. A zero transfer count can
-be normal when the receiver already has the data.
+last changes. A hidden label alone does not establish whether comparison or
+replication has finished. A zero transfer count can be normal when the receiver
+already has the data.
 
 `Pull completed` confirms that a single database pull has finished. To verify
 bidirectional synchronisation and full reflection, ensure the reverse direction
@@ -98,7 +98,7 @@ follow
 
 | Symptom or observation                                          | Next check                                                                                                                                                                                                                                                                                                                                   |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The peer does not appear                                        | Capture the **Relay** and **Peer** rows, then verify both devices' compatible versions, relay set, Group ID, and passphrase using [discovery checks](p2p-sync-tips.md#a-peer-does-not-appear). Note that a `Connected` status confirms signalling readiness, while peer discovery requires matching group and network settings.           |
+| The peer does not appear                                        | Capture the **Relay** and **Peer** rows, then verify both devices' compatible versions, relay set, Group ID, and passphrase using [discovery checks](p2p-sync-tips.md#a-peer-does-not-appear). A `Connected` status indicates that the local room is open; relay replies remain unobserved. Use peer and sync observations and both devices' logs to investigate discovery and transfer.           |
 | Authentication is refused                                       | Confirm the peer identity on both devices and check for pending approval prompts. The summary displays the observed outcome; please ensure the connection request is explicitly accepted on the receiving device.                                                                                                                         |
 | Authentication times out, or a peer appears but cannot transfer | Keep both devices active and check for an unanswered **P2P Connection Request** before troubleshooting network connectivity. Compare logs between devices, then follow existing [WebRTC and TURN checks](p2p-sync-tips.md#a-peer-appears-but-synchronisation-cannot-connect) to inspect the data path.                                        |
 | Manual replication works, but later edits do not arrive         | Confirm **Announce changes** on the source and **Follow changes** for that source on the receiver. Compare `Announcing changes`, `Watching peer changes`, and notification events on both devices. `Change notification ignored; peer is not watched` identifies a missing follow on the receiver.                                           |
