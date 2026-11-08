@@ -24,6 +24,7 @@ import { getForceRequirementError } from "./commands/utils";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
+import { isHiddenPath } from "./cliPathFilter";
 import { useP2PReplicatorFeature, type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
 import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
@@ -583,8 +584,7 @@ export async function main(
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
                 const parts = targetPath.split("/");
-                // if some part of the path starts with dot, treat it as internal file and ignore.
-                if (parts.some((part) => part.startsWith("."))) {
+                if (isHiddenPath(targetPath)) {
                     return await Promise.resolve(false);
                 }
                 // PouchDB LevelDB database directory lives in the vault directory.

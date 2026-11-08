@@ -9,6 +9,7 @@ import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { findCaseInsensitiveFile } from "@/apps/caseInsensitiveFileLookup";
+import { isHiddenPath } from "@/apps/cli/cliPathFilter";
 import {
     createStoragePathResolver,
     parseFilePath,
@@ -194,6 +195,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     private async scanDirectoryInto(relativePath: string, files: Map<string, NodeFile>): Promise<void> {
+        if (isHiddenPath(relativePath)) return;
         const resolver = this.createScanResolver();
         const filePath = parseFilePath(relativePath);
         if (resolver) {
@@ -232,6 +234,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         if (entries === null) return;
         for (const entry of entries) {
             if (entry.kind === "directory") {
+                if (isHiddenPath(entry.path)) continue;
                 await this.scanResolvedDirectoryInto(resolver, entry.path, files);
                 continue;
             }
@@ -261,6 +264,7 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
                 files.set(filePath, file);
             }
             for (const entryPath of entries.folders) {
+                if (isHiddenPath(entryPath)) continue;
                 await this.scanLegacyDirectoryInto(entryPath, files);
             }
         } catch (error) {

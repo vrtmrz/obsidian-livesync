@@ -29,6 +29,53 @@ describe("NodeFileSystemAdapter file enumeration", () => {
         await Promise.all(tempDirs.splice(0).map((directory) => fs.rm(directory, { recursive: true, force: true })));
     });
 
+    it.each([0, 1])("does not read hidden directories in identity mode %s", async (version) => {
+        const { directory } = await createVault();
+        for (const hiddenFile of [".tool/state/private.txt", "folder/.private/secret.md"]) {
+            await fs.mkdir(path.dirname(path.join(directory, hiddenFile)), { recursive: true });
+            await fs.writeFile(path.join(directory, hiddenFile), "excluded hidden content");
+        }
+        const report = vi.fn();
+        const adapter = new NodeFileSystemAdapter(directory, report, () => version);
+        const hiddenReads: string[] = [];
+        const error = Object.assign(new Error("Hidden directory is unreadable"), { code: "EACCES" });
+        const checkDirectory = (relativePath: string) => {
+            if (relativePath === ".tool" || relativePath === "folder/.private") {
+                hiddenReads.push(relativePath);
+                throw error;
+            }
+        };
+        const readDirectory = adapter.storage.readDirectory.bind(adapter.storage);
+        vi.spyOn(adapter.storage, "readDirectory").mockImplementation(async (relativePath) => {
+            checkDirectory(relativePath);
+            return await readDirectory(relativePath);
+        });
+        const list = adapter.storage.list.bind(adapter.storage);
+        vi.spyOn(adapter.storage, "list").mockImplementation(async (...args) => {
+            checkDirectory(args[0]);
+            return await list(...args);
+        });
+
+        expect((await adapter.getFiles()).map((file) => file.path).sort()).toEqual(paths);
+        await adapter.scanDirectory();
+        await adapter.scanDirectory(".tool/state");
+        expect(hiddenReads).toEqual([]);
+        expect(report).not.toHaveBeenCalled();
+    });
+
+    it.each([0, 1])("keeps explicit hidden file lookups available in identity mode %s", async (version) => {
+        const { directory } = await createVault();
+        const hiddenPath = ".tool/state/private.txt";
+        await fs.mkdir(path.dirname(path.join(directory, hiddenPath)), { recursive: true });
+        await fs.writeFile(path.join(directory, hiddenPath), "explicit hidden content");
+        const adapter = new NodeFileSystemAdapter(directory, undefined, () => version);
+
+        expect(await adapter.getAbstractFileByPath(hiddenPath)).toMatchObject({ path: hiddenPath });
+        expect(await adapter.storage.read(hiddenPath)).toBe(
+            "explicit hidden content"
+        );
+    });
+
     it("lists every file when one file was refreshed before the first enumeration", async () => {
         const { adapter } = await createVault();
 
