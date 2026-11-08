@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 #### Fixed
 
+- The CLI daemon now starts even when hidden directories in our Vault are unreadable. Vault scans skip these directories, which remain excluded from synchronisation. (#1325)
+
 - The daemon now detects files written into newly created folders during a burst of writes, including files renamed from temporary names, without requiring a restart. (#1328)
     - The CLI requires Node.js 22.22 or later. The Docker image includes its own runtime.
 
