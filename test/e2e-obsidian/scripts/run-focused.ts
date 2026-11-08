@@ -26,6 +26,7 @@ const focusedScenarios = new Set([
     "third-party-chunks",
     "couchdb-upload",
     "couchdb-http-cache",
+    "fetch-on-demand-chunks",
     "chunk-fetch-retry",
     "couchdb-manual-setup-workflow",
     "cli-to-obsidian-sync",

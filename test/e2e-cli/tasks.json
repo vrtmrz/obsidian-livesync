@@ -32,6 +32,9 @@
     "test:fetch-database-continuity": {
         "test": ["test-fetch-database-continuity.ts"]
     },
+    "test:fetch-on-demand-chunks": {
+        "test": ["test-fetch-on-demand-chunks.ts"]
+    },
     "test:remote-administration-exit-codes": {
         "test": ["test-remote-administration-exit-codes.ts"]
     },

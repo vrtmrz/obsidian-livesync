@@ -77,6 +77,21 @@ npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
 
 The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Node.js and Bash suites.
 
+## CLI Fetch with on-demand chunks
+
+Build the CLI, then run `node test/e2e-cli/run-task.ts test:fetch-on-demand-chunks`
+with Node.js 26 and Docker available. The standard CLI CI suite includes this task.
+It uses the existing disposable CouchDB test container and the CLI fixture
+connection variables, with local test defaults when they are absent.
+
+The scenario fetches into an empty Vault, repeats Fetch with the same files, and
+checks exact bytes, Metadata revisions, and removal of the reconstruction record.
+It then prohibits direct Chunk requests, verifies that unavailable content keeps
+Fetch failed and prevents daemon startup, and retries with requests permitted.
+The final daemon startup must preserve the original bytes and revision. Commonlib
+unit tests separately verify that the prohibition sends no direct request and
+that equal-time, equal-size edits retain their recorded revision ancestry.
+
 ## CLI Fetch database continuity
 
 The standard CLI CI suite and direct task runner execute
