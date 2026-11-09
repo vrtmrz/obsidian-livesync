@@ -18,11 +18,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - A transient failure while reading an ordinary Vault file no longer blocks synchronisation until Obsidian restarts. A later related file change or **Apply pending changes now** can retry the pending work using the current Vault state. (#1331)
 
-- Existing Vault files can be reconciled after CouchDB Fetch when on-demand replication omitted their Chunks. Strict content comparisons can retrieve the missing Chunks through the existing settings, including when Fast Setup falls back to Standard Fetch. (#1329, #1332)
+- CouchDB Fetch can finish content checks for existing files when **Fetch chunks on demand** has omitted the required Chunks from replication. The same correction applies when Fast Setup falls back to Standard Fetch. (#1329, #1332)
+    - **Use Only Local Chunks** remains respected; unavailable content keeps the operation incomplete for retry.
 
 ### CLI
 
 #### Fixed
+
+- Repeating CouchDB Fetch into an existing Vault can complete with **Fetch chunks on demand** enabled. The content checks retrieve missing Chunks through the configured policy while preserving **Use Only Local Chunks** and unresolved-file recovery. (#1329)
 
 - The CLI daemon now starts even when hidden directories in our Vault are unreadable. Vault scans skip these directories, which remain excluded from synchronisation. (#1325)
 

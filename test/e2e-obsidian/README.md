@@ -86,6 +86,7 @@ npm run test:e2e:obsidian:focused -- local-file-retry
 npm run test:e2e:obsidian:focused -- folder-batch
 npm run test:e2e:obsidian:focused -- security-seed-reconnect
 npm run test:e2e:obsidian:focused -- couchdb-http-cache
+npm run test:e2e:obsidian:focused -- fetch-on-demand-chunks
 npm run test:e2e:obsidian:focused -- replication-status
 npm run test:e2e:obsidian:focused -- sync-guard
 ```
@@ -398,6 +399,18 @@ For a real-Obsidian follow-up check, copy a path token from a pseudonym Usage or
 Set `E2E_OBSIDIAN_ARTIFACT_ROOT` to a directory containing the exact release `main.js`, `manifest.json`, and `styles.css` when testing downloaded artefacts. These three scenarios accept that directory. Invoke their direct commands above, because the focused wrapper rebuilds local artefacts. Record the commit, Obsidian version, artefact hashes, and results. If testing a local build, compare its hashes with the published release before relying on that evidence for BRAT acceptance.
 
 When these checks pass for the release artefacts, BRAT acceptance can be limited to installation or update, enabling the plug-in, and a cold start. Check any other changes included in that release using their own regression scenarios. The diagnostic export checks verify report payloads; they do not exercise the operating system's clipboard or download implementation on iOS or Android.
+
+### Fetch with on-demand Chunks
+
+`fetch-on-demand-chunks` checks Standard Fetch finalisation for an existing Vault
+when native Request API selection makes Fast Setup fall back from Streaming
+replication. It uses encrypted CouchDB, obfuscated paths, internal Metadata
+encryption, Markdown and attachment files, and on-demand Chunk retrieval. The
+scenario requires local Chunks to be absent before the strict scan, then checks
+remote delivery, exact file bytes, unchanged Metadata revisions, provenance,
+readiness, and released suspension after finalisation. It covers the shared
+failure path reported in #1329 and #1332; a Linux Obsidian run does not establish
+verification on the reporter's iPadOS/WebKit device.
 
 ### Environment variables
 
