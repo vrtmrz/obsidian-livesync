@@ -1,3 +1,4 @@
+import { displayRev } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import assert from "node:assert/strict";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -165,8 +166,12 @@ test(
                 "--write-settings"
             );
             assert.notEqual(omittedChunkFetch.code, 0, "Fetch must fail when local-only chunk reads omit the remote chunk");
-            assert.match(omittedChunkFetch.combined, /useOnlyLocalChunk=true/);
-            assert.match(omittedChunkFetch.combined, /Could not reconcile/);
+            assert.ok(
+                omittedChunkFetch.combined.includes(
+                    `Could not reconcile ${notePath}: content for current database revision ${displayRev(originalRevision)} is unavailable;`
+                ),
+                omittedChunkFetch.combined
+            );
             assert.deepEqual(
                 await readFile(receiverNote),
                 expectedBytes,
