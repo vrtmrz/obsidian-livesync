@@ -14,6 +14,10 @@ implementation-order steps 1–3 are present in current Self-hosted LiveSync
 1.0.42 with Commonlib 0.2.2. The version fields above retain the investigated
 baseline. Further same-path coalescing in step 4 remains a follow-up.
 
+The accepted [failed-operation retry decision](2026_11_local_file_operation_retry.md)
+extends this contract with finite recovery during the same application session.
+Its implementation and publication status are tracked separately.
+
 ## Context
 
 [Issue #1207](https://github.com/vrtmrz/obsidian-livesync/issues/1207) includes

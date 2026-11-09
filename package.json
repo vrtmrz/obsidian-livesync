@@ -93,6 +93,7 @@
         "test:e2e:obsidian:startup-content-check": "tsx test/e2e-obsidian/scripts/startup-content-check.ts",
         "test:e2e:obsidian:startup-scan": "tsx test/e2e-obsidian/scripts/startup-scan.ts",
         "test:e2e:obsidian:stale-file-restart": "tsx test/e2e-obsidian/scripts/stale-file-restart.ts",
+        "test:e2e:obsidian:local-file-retry": "tsx test/e2e-obsidian/scripts/local-file-retry.ts",
         "test:e2e:obsidian:folder-batch": "tsx test/e2e-obsidian/scripts/folder-batch.ts",
         "test:e2e:obsidian:setup-uri-workflow": "tsx test/e2e-obsidian/scripts/setup-uri-workflow.ts",
         "test:e2e:obsidian:two-vault-sync": "tsx test/e2e-obsidian/scripts/two-vault-sync.ts",
