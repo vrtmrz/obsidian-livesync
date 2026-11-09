@@ -12,9 +12,16 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- CouchDB Fetch can finish content checks for existing files when **Fetch chunks on demand** has omitted the required Chunks from replication. The same correction applies when Fast Setup falls back to Standard Fetch. (#1332)
+    - **Use Only Local Chunks** remains respected; unavailable content keeps the operation incomplete for retry.
+
 ### CLI
 
 #### Fixed
+
+- Repeating CouchDB Fetch into an existing Vault can complete with **Fetch chunks on demand** enabled. The content checks retrieve missing Chunks through the configured policy while preserving **Use Only Local Chunks** and unresolved-file recovery. (#1329)
 
 - The CLI daemon now starts even when hidden directories in our Vault are unreadable. Vault scans skip these directories, which remain excluded from synchronisation. (#1325)
 

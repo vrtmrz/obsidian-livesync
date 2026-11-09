@@ -28,6 +28,7 @@ const testSteps: Step[] = [
     { name: "vault reflection", args: ["run", "test:e2e:obsidian:vault-reflection"] },
     { name: "joined devices with CouchDB", args: ["run", "test:e2e:obsidian:joined-devices"] },
     { name: "CouchDB upload", args: ["run", "test:e2e:obsidian:couchdb-upload"] },
+    { name: "on-demand Chunk fetch", args: ["run", "test:e2e:obsidian:fetch-on-demand-chunks"] },
     {
         name: "manual CouchDB setup workflow",
         args: ["run", "test:e2e:obsidian:couchdb-manual-setup-workflow"],
