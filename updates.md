@@ -12,24 +12,36 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.47
+
+9th November, 2026
+
 ### Fixed
 
 #### Synchronisation and recovery
 
-- A transient failure while reading an ordinary Vault file no longer blocks synchronisation until Obsidian restarts. A later related file change or **Apply pending changes now** can retry the pending work using the current Vault state. (#1331)
+- Temporary read failures no longer leave synchronisation blocked until Obsidian restarts. (#1331)
+    - A related file change or **Apply pending changes now** retries the failed operation.
+    - This applies to ordinary Vault files and uses the current Vault state.
 
-- CouchDB Fetch can finish content checks for existing files when **Fetch chunks on demand** has omitted the required Chunks from replication. The same correction applies when Fast Setup falls back to Standard Fetch. (#1329, #1332)
-    - **Use Only Local Chunks** remains respected; unavailable content keeps the operation incomplete for retry.
+- Fixed CouchDB Fetch failures in Vaults that already contain the fetched files. (#1329, #1332)
+    - With **Fetch chunks on demand** enabled, missing Chunks are retrieved when needed.
+    - The same fix applies when Fast Setup falls back to Standard Fetch.
+    - **Use Only Local Chunks** remains respected. Unavailable content keeps Fetch incomplete for retry.
 
 ### CLI
 
 #### Fixed
 
-- Repeating CouchDB Fetch into an existing Vault can complete with **Fetch chunks on demand** enabled. The content checks retrieve missing Chunks through the configured policy while preserving **Use Only Local Chunks** and unresolved-file recovery. (#1329)
+- Fixed repeated CouchDB Fetch failures in an existing Vault. (#1329)
+    - Content checks retrieve missing Chunks with **Fetch chunks on demand** enabled.
+    - **Use Only Local Chunks** remains respected. Incomplete Fetch operations retain their recovery state.
 
-- The CLI daemon now starts even when hidden directories in our Vault are unreadable. Vault scans skip these directories, which remain excluded from synchronisation. (#1325)
+- Unreadable hidden directories no longer prevent the CLI daemon from starting. (#1325)
+    - Vault scans skip these directories, which remain excluded from synchronisation.
 
-- The daemon now detects files written into newly created folders during a burst of writes, including files renamed from temporary names, without requiring a restart. (#1328)
+- The daemon no longer misses files written into newly created folders. (#1328)
+    - This includes bursts of writes and files renamed from temporary names.
     - The CLI requires Node.js 22.22 or later. The Docker image includes its own runtime.
 
 ## 1.0.46
@@ -272,111 +284,3 @@ Thank you for your contributions!
 - @ARCJ137442, for adding separate push and pull comparison progress displays (#1294).
 - @Jovlang, for correcting Docker health-check credential quoting and authenticated readiness checks (#1295).
 - @kannazuki-c, for expanding the Simplified Chinese translations (#1258).
-
-## 1.0.42
-
-27th October, 2026
-
-Making content checks mandatory in the 1.0.41 pre-release came with a little too much overhead, so 1.0.42 makes them optional. This has turned into a slightly larger release.
-
-### Synchronisation
-
-#### New Feature
-
-- Rapid edits can produce fewer intermediate versions on other devices while LiveSync mode remains active.
-    - Enable **Batch database updates in LiveSync mode** to group successive local edits.
-        - Disabled by default; each synchronisation mode keeps its own choice.
-        - Updates reach other devices later. Batching does not detect template completion or prevent genuine concurrent-edit conflicts.
-- CouchDB synchronisation no longer looks idle while it is comparing change history.
-    - A ⏩ icon and comparison count show activity before documents are transferred.
-        - This count represents history entries, not files remaining to synchronise.
-- Status counts are easier to follow, with less movement as values change.
-    - CSS snippets can hide unwanted items or style individual `livesync-stat-` items, including inactive ones.
-
-- We can choose stricter content checks at start-up.
-    - Enable **Strict content check on startup** to compare file contents even when their modification times and sizes match the recorded local database state. This can increase start-up time in large Vaults.
-    - The setting is disabled by default. Ordinary start-up can skip content reads when the exact modification time, file size, and recorded database revision match, with no conflicts or pending file changes.
-    - While the setting is disabled, an edit which preserves its exact size and modification time can go undetected during start-up. Manual scans and explicit recovery operations remain strict.
-
-#### Fixed
-
-- Recent Vault edits remain recoverable after an interrupted local database save.
-    - This includes edits whose modification times compare equal to the database copy, and pending Hidden File Sync and Customisation Sync changes.
-- Manual synchronisation no longer starts before already accepted local changes finish saving to the database.
-    - Settings application also waits for those saves. Failed saves stay pending and report a failure.
-- Text from third-party tools is handled more robustly.
-    - Characters split across Chunks no longer trigger false corruption warnings.
-- Start-up integrity checks use less memory for healthy Vault files. (#1283)
-- Start-up checks avoid false repair warnings for files that change during inspection. (#1283)
-    - This applies when the final size matches the database and there are no conflicts.
-
-### Customisation Sync
-
-#### Fixed
-
-- Applying a multi-file customisation no longer skips files after the list is refreshed. (#1271)
-- Choosing **Automatic** now explains a missing Hidden File Sync prerequisite instead of proceeding into a failed initialisation. (#1270)
-    - Enable and initialise Hidden File Sync on this device first. The current mode is kept when the prerequisite is missing.
-- Initialising a whole plug-in in **Automatic** mode no longer omits its selected **MAIN** or **DATA** files.
-
-### Setup tools
-
-#### Fixed
-
-- Setup URI generation can avoid shell-variable collisions and unintended use of the operating-system username. (#817, #1274)
-    - Use `LIVESYNC_HOST`, `LIVESYNC_USER`, `LIVESYNC_PASS`, `LIVESYNC_DB`, and `LIVESYNC_PASSPHRASE` for connection and encryption values.
-        - Existing scripts remain supported: the previous names are used when the corresponding prefixed value is unset or blank.
-
-### Miscellaneous
-
-- Dependencies have been updated, including security fixes.
-
-### Acknowledgements
-
-Thank you for your contributions!
-
-- @rwbru, for the original Setup URI environment-variable fix (#817).
-- @junkerderprovinz, for adapting that fix to the current generator while preserving compatibility with existing scripts (#1274).
-- @s-qin, for reducing memory use during start-up checks and avoiding repeated content decoding in Commonlib (#1283, Commonlib #184).
-
-## 1.0.40
-
-24th October, 2026
-
-This has turned into a slightly larger set of changes overall, but I have finally been able to implement the features I felt we would need.
-
-### Synchronisation
-
-#### New Feature
-
-- We can choose **Review devices** in Remote Configuration, the command palette, or a version Notice to review participating devices.
-    - Our device appears first, with its lockout state. Other records show the platform, plug-in version, app version, and last recorded connection time when available.
-    - An advisory Notice identifies Self-hosted LiveSync and lists newer and older versions separately, with one shared recommendation and **Review devices** action. The dialogue explains possible storage costs and P2P compatibility limits.
-- We can forget records belonging to lost or retired devices while preserving the remote lock state and other devices.
-    - Forgetting a record does not delete Vault files or revoke credentials. A returning device can register again on an unlocked remote.
-
-#### Fixed
-
-- We can reuse unchanged content more reliably after edits with the V3 Rabin–Karp chunk splitter.
-    - Corrected rolling-window processing lets boundary detection recover after an insertion. Existing content remains readable, and installing this update does not trigger a full re-chunk of our Vaults.
-    - Chunk-size values 0 and 1 now use content-defined binary boundaries below their maximum lengths, improving reuse after an insertion instead of producing fixed-length pieces.
-    - Editing or explicitly rewriting a file, recreating its chunks, or rebuilding from our files can produce different chunk boundaries and additional chunks. Older and updated devices can retain different chunk layouts; this affects reuse and storage, not the file contents.
-- We can preserve all conflict branches, including deleted branches, during Fast Setup.
-    - A fresh, complete Fast Fetch can also hand its verified progress to ordinary synchronisation before file watching resumes, reducing the first subsequent identifier scan. Existing resume cursors and On Demand chunk retrieval retain their existing behaviour.
-
-#### Changed
-
-- New setup uses the same Chunk-size recommendation of 0 across remote types, and Setting Doctor no longer recommends increasing every self-hosted V3 configuration to 60.
-    - Setting Doctor no longer flags the saved **Enhance chunk size** value. When rebuilding with V3 Rabin–Karp, we recommend setting it to 0. This is now an efficient choice across all supported remote types.
-    - Existing explicit and agreed values are retained. Smaller Chunks favour reuse during editing, but increase document counts and can make first uploads and large rebuilds slower. Mostly immutable binary Vaults can still benefit from a larger explicit value.
-
-### Hidden File Sync
-
-#### Fixed
-
-- We can synchronise selected hidden files while the normal-file allow-list is set. (#1272)
-    - Normal-file exclusion patterns still apply to hidden files, and the Selector descriptions now explain their scope.
-
-### CLI
-
-- Unreadable or malformed device-local state now stops initialisation instead of being treated as empty. Existing valid state files keep their format.

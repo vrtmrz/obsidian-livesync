@@ -15,8 +15,8 @@ baseline.
 
 Publication note (9th November, 2026): The implementation is published in
 [Commonlib 0.4.1](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.4.1).
-Self-hosted LiveSync now pins that exact registry version in its root dependency.
-Publication in a Self-hosted LiveSync release remains pending.
+The Self-hosted LiveSync 1.0.47 source pins that exact registry version; see
+the [release notes](../../updates.md#1047).
 
 This decision extends [local file save completion and batching](2026_10_local_file_save_completion_and_batching.md)
 with finite retries during the same application session. Its durable completion,
