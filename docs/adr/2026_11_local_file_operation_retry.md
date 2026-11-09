@@ -9,10 +9,14 @@ status: accepted
 
 ## Status
 
-Accepted on 2026-11-08. Implemented in Commonlib and locally verified through
-an exact packed candidate. Package publication and the final Self-hosted
-LiveSync dependency update are pending. The version fields identify the
-reviewed baseline; this behaviour remains unreleased.
+Accepted on 2026-11-08. Implemented in Commonlib and initially verified through
+an exact packed candidate. The version fields retain the original reviewed
+baseline.
+
+Publication note (9th November, 2026): The implementation is published in
+[Commonlib 0.4.1](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.4.1).
+Self-hosted LiveSync now pins that exact registry version in its root dependency.
+Publication in a Self-hosted LiveSync release remains pending.
 
 This decision extends [local file save completion and batching](2026_10_local_file_save_completion_and_batching.md)
 with finite retries during the same application session. Its durable completion,
@@ -305,6 +309,12 @@ methods, callback receivers, deferred-hook error precedence, and bounded chunk
 repair. The complete Commonlib and consumer checks, including the three real
 Obsidian scenarios, passed with the extracted implementation. Final TSDoc-only
 corrections preserve the tested package's runtime bytes and declaration syntax.
+
+Registry-package verification on 2026-11-09 passed clean installation with npm
+10 and npm 11, the complete consumer checks and unit tests, WebApp and WebPeer
+builds, and all 19 CLI E2E tasks under Node.js 26. The published Commonlib 0.4.1
+files matched the installed package. The 12 focused database-text assertion cases
+and all three real Obsidian scenarios also passed with that registry installation.
 
 The [real Obsidian scenario](../../test/e2e-obsidian/scripts/local-file-retry.ts)
 uses ordinary Vault events and targeted read failures. It verifies a failed

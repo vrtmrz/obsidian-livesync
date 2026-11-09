@@ -12,6 +12,14 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+#### Synchronisation and recovery
+
+- A transient failure while reading an ordinary Vault file no longer blocks synchronisation until Obsidian restarts. A later related file change or **Apply pending changes now** can retry the pending work using the current Vault state. (#1331)
+
+- Existing Vault files can be reconciled after CouchDB Fetch when on-demand replication omitted their Chunks. Strict content comparisons can retrieve the missing Chunks through the existing settings, including when Fast Setup falls back to Standard Fetch. (#1329, #1332)
+
 ### CLI
 
 #### Fixed
