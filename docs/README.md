@@ -53,7 +53,7 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 | Remote resources and Fast Setup | [CouchDB connection ownership](adr/2026_08_couchdb_remote_connection_ownership.md), [Fast Fetch eligibility](adr/2026_08_fast_fetch_transport_eligibility.md), and [persistence and completion](adr/2026_08_fast_fetch_persistence_and_completion.md) |
 | P2P lifecycle and setup | [Transport lifecycle](adr/2026_07_p2p_transport_lifecycle.md), [connection check](adr/2026_07_p2p_connection_check.md), [profile-aware onboarding](adr/2026_07_multiple_remote_onboarding.md), and [compatibility controls](adr/2026_08_p2p_transport_compatibility.md) |
 | Settings interface integration | [Declarative settings adapter](adr/2026_08_declarative_settings_adapter.md) |
-| Saving and path identity | [Local file save completion and batching](adr/2026_10_local_file_save_completion_and_batching.md) and [Unicode path identity](adr/2026_10_unicode_path_identity.md) |
+| Saving and path identity | [Local file save completion and batching](adr/2026_10_local_file_save_completion_and_batching.md), [failed local operation retries](adr/2026_11_local_file_operation_retry.md), and [Unicode path identity](adr/2026_10_unicode_path_identity.md) |
 | Activity and Chunk arrival | [Bounded remote activity](adr/2026_07_bounded_remote_activity.md) and [Chunk arrival quiescence](adr/2026_07_chunk_arrival_quiescence.md) |
 | Compatibility and validation | [Release notes and database compatibility gates](adr/2026_07_release_notes_and_database_compatibility.md) and [real Obsidian E2E](adr/2026_06_real_obsidian_e2e.md) |
 
