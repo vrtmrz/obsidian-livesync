@@ -1,3 +1,4 @@
+import { matchesPlainDatabaseText } from "../runner/localFileRetryAssertions.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
@@ -57,13 +58,13 @@ const evaluationHelpers = `
             const raw=await core.localDatabase.getRaw(meta._id,{rev,revs:true}).catch(()=>null);
             const history=raw?._revisions?.ids?.map((id,index)=>(raw._revisions.start-index)+'-'+id)??[];
             const value=Array.isArray(doc?.data)?doc.data.join(''):typeof doc?.data==='string'?doc.data:null;
-            branches.push({rev,body:value,deleted:!!doc?._deleted,history});
+            branches.push({rev,body:value,type:doc?.type,datatype:doc?.datatype,deleted:!!doc?._deleted,history});
         }
         const current=branches.find(branch=>branch.rev===meta._rev);
         return {path:meta.path,deleted:!!meta.deleted,present:!!current&&!meta.deleted&&!current.deleted,rev:meta._rev,
-            currentBody:current?.body??null,branches};
+            currentBody:current?.body??null,current,branches};
     };
-    const bodyMatches=(actual,expected)=>actual===expected||actual===btoa(expected);
+    const databaseBodyMatches=${matchesPlainDatabaseText.toString()};
     const installReadFailure=paths=>{
         const key='__livesyncLocalFileRetry';
         globalThis[key]?.restore?.();
@@ -106,16 +107,8 @@ const evaluationHelpers = `
  * @param body - The scenario expression using the shared in-app probes.
  * @returns The decoded scenario result; evaluation and transport failures reject the promise.
  */
-async function evaluate<T>(
-    cliBinary: string,
-    session: ObsidianLiveSyncSession,
-    body: string
-): Promise<T> {
-    return await evalObsidianJson<T>(
-        cliBinary,
-        `(async()=>{${evaluationHelpers}\n${body}\n})()`,
-        session.cliEnv
-    );
+async function evaluate<T>(cliBinary: string, session: ObsidianLiveSyncSession, body: string): Promise<T> {
+    return await evalObsidianJson<T>(cliBinary, `(async()=>{${evaluationHelpers}\n${body}\n})()`, session.cliEnv);
 }
 
 /**
@@ -225,7 +218,7 @@ async function main(): Promise<void> {
                 const finalState=await databaseState(${JSON.stringify(paths.renamed)});
                 const oldState=await databaseState(${JSON.stringify(paths.temporary)});
                 require(finalState&&finalState.path===${JSON.stringify(paths.renamed)}&&!finalState.deleted&&
-                    bodyMatches(finalState.currentBody,${JSON.stringify(content.renamed)}),
+                    databaseBodyMatches(finalState.current,${JSON.stringify(content.renamed)}),
                     'The final current database document does not contain the renamed file bytes at the final path.');
                 require(finalState.branches.length===1&&finalState.branches[0].history.length===1,
                     'Rename recovery created an unexpected branch or revision.');
@@ -273,10 +266,10 @@ async function main(): Promise<void> {
                 await waitFor(async()=>(await pendingEvents()).some(event=>eventPaths(event).includes(path)&&!initialEventKeys.has(event.key)),
                     'The edit which triggered recovery was not retained while the earlier read was held.');
                 const earlierReadBody=hook.heldReadBody;
-                require(bodyMatches(earlierReadBody,${JSON.stringify(content.initial)})||
-                    bodyMatches(earlierReadBody,${JSON.stringify(content.firstEdit)}),
+                require(earlierReadBody===${JSON.stringify(content.initial)}||
+                    earlierReadBody===${JSON.stringify(content.firstEdit)},
                     'The held retry read did not capture the pre-latest file body.');
-                require(!bodyMatches(earlierReadBody,${JSON.stringify(content.latestEdit)}),
+                require(earlierReadBody!==${JSON.stringify(content.latestEdit)},
                     'The held read already contained the later edit.');
                 require(await isPending(path),
                     'The failed save stopped being pending while its retry read was held.');
@@ -298,13 +291,13 @@ async function main(): Promise<void> {
 
                 await waitFor(async()=>{
                     const state=await databaseState(path);
-                    return !!state&&state.present&&bodyMatches(state.currentBody,${JSON.stringify(content.latestEdit)})&&
+                    return !!state&&state.present&&databaseBodyMatches(state.current,${JSON.stringify(content.latestEdit)})&&
                         !(await isPending(path));
                 },'The latest same-path body was not committed before its pending event resolved.');
                 const finalState=await databaseState(path);
-                require(bodyMatches(finalState.currentBody,${JSON.stringify(content.latestEdit)}),
+                require(databaseBodyMatches(finalState.current,${JSON.stringify(content.latestEdit)}),
                     'An earlier completion consumed or replaced the latest same-path body.');
-                require(finalState.branches.some(branch=>bodyMatches(branch.body,${JSON.stringify(content.latestEdit)})),
+                require(finalState.branches.some(branch=>databaseBodyMatches(branch,${JSON.stringify(content.latestEdit)})),
                     'The latest same-path body is absent from the current revision leaves.');
                 require(await app.vault.read(file)===${JSON.stringify(content.latestEdit)},
                     'The earlier completion replaced the latest real Vault body.');
@@ -355,15 +348,15 @@ async function main(): Promise<void> {
             `
             await waitFor(async()=>{
                 const state=await databaseState(${JSON.stringify(paths.restarted)});
-                return !!state&&!state.deleted&&bodyMatches(state.currentBody,${JSON.stringify(content.restart)})&&
+                return !!state&&!state.deleted&&databaseBodyMatches(state.current,${JSON.stringify(content.restart)})&&
                     !(await isPending(${JSON.stringify(paths.restarted)}));
-            },'Natural restart did not replay the pending file event with restored reads.');
+            },'Natural startup did not recover the pending file with restored reads.');
             const state=await databaseState(${JSON.stringify(paths.restarted)});
             const file=app.vault.getAbstractFileByPath(${JSON.stringify(paths.restarted)});
             require(!!file&&await app.vault.read(file)===${JSON.stringify(content.restart)},
-                'The restart fixture Vault file changed during local replay.');
+                'The restart fixture Vault file changed during startup recovery.');
             require(state.branches.length===1&&state.branches[0].history.length===1,
-                'Restart replay created an unexpected branch or revision.');
+                'Startup recovery created an unexpected branch or revision.');
             return JSON.stringify({currentBody:state.currentBody,revision:state.rev,
                 history:state.branches[0].history,pendingResolved:!(await isPending(${JSON.stringify(paths.restarted)}))});
             `

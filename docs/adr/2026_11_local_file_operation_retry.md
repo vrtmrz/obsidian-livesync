@@ -309,11 +309,16 @@ corrections preserve the tested package's runtime bytes and declaration syntax.
 The [real Obsidian scenario](../../test/e2e-obsidian/scripts/local-file-retry.ts)
 uses ordinary Vault events and targeted read failures. It verifies a failed
 temporary read followed by rename recovery, a retained same-path successor
-saving the latest bytes while an earlier read is held, and replay after closing
-and reopening the same isolated Vault and profile without replication. Assertions
-check current content, pending ownership, and revision history. Replication
-against a remote service and the natural atomic-writer timing are outside this
-local verification.
+saving the latest bytes while an earlier read is held, and local recovery after
+closing and reopening the same isolated Vault and profile without replication.
+Assertions check plain database content and its datatype, exact Vault content,
+pending ownership, and revision history. The restart scenario verifies the
+combined start-up result; it does not isolate snapshot replay from the ordinary
+Vault scan. Snapshot replay itself is covered by Commonlib's dedicated
+[manager](https://github.com/vrtmrz/livesync-commonlib/blob/88641a27fb33f94a30381207c1ec28390f216a93/src/managers/StorageEventManager.unit.spec.ts)
+and [database replay](https://github.com/vrtmrz/livesync-commonlib/blob/88641a27fb33f94a30381207c1ec28390f216a93/src/serviceModules/ServiceFileHandlerBase.replay.unit.spec.ts)
+tests. Replication against a remote service and the natural atomic-writer timing
+are outside this local verification.
 
 ## References
 
