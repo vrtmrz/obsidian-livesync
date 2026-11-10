@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- Ordinary start-up scans can apply retained database deletions to Vault files whose content is confirmed unchanged. (#1338)
+    - Files with local changes or insufficient provenance remain available for review.
+    - Interrupted provenance and scan-record cleanup is retried from existing local state during a later scan.
+
 ## 1.0.47
 
 9th November, 2026

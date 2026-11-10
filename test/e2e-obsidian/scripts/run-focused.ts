@@ -42,6 +42,7 @@ const focusedScenarios = new Set([
     "startup-integrity",
     "startup-content-check",
     "stale-file-restart",
+    "deletion-recovery",
     "local-file-retry",
     "folder-batch",
     "setup-uri-workflow",

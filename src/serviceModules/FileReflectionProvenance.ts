@@ -20,8 +20,12 @@ export type FileReflectionProvenanceStoreFactory = {
  * watching, or replication can invoke it. Operations are never held waiting for
  * readiness; they fail on a lifecycle violation and may fail during reset.
  */
-export function createFileReflectionProvenance(keyValueDB: FileReflectionProvenanceStoreFactory) {
+export function createFileReflectionProvenance(
+    keyValueDB: FileReflectionProvenanceStoreFactory,
+    enableDeletionRecovery = false
+) {
     return new StoredFileReflectionProvenance(
-        keyValueDB.openSimpleStore<FileReflectionProvenanceRecord>(FILE_REFLECTION_PROVENANCE_STORE)
+        keyValueDB.openSimpleStore<FileReflectionProvenanceRecord>(FILE_REFLECTION_PROVENANCE_STORE),
+        enableDeletionRecovery
     );
 }

@@ -31,6 +31,11 @@ Commonlib 0.1.23, and its limits. In particular, deletion protection does not
 promise full support for external folder case changes or convergence of path
 spelling.
 
+For a comparison of watcher saves, incoming reflection, ordinary
+scans, Fetch, and Inspector actions, see [File writing and database-to-Vault
+reflection](design_docs/file_write_and_reflection_paths.md). It records their
+protection, completion, retry ownership, and runtime access costs.
+
 ## Current technical references
 
 - [Database Data Structures](datastructure.md) describes current Metadata and

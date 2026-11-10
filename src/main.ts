@@ -115,7 +115,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             path: services.path,
             replication: services.replication,
             storageAccess: storageAccess,
-            fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB),
+            fileReflectionProvenance: createFileReflectionProvenance(services.keyValueDB, true),
         });
         const rebuilder = new ServiceRebuilder({
             path: services.path,
