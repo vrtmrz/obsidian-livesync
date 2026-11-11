@@ -2,7 +2,7 @@
 date: 2026-11-10
 commonlib-version: "0.4.1"
 self-hosted-livesync-version: "1.0.47"
-status: accepted; Commonlib published in 0.4.2; application unreleased
+status: accepted; published in Self-hosted LiveSync 1.0.48 with Commonlib 0.4.2
 ---
 
 # Recover unapplied database deletions during an ordinary scan
@@ -13,8 +13,9 @@ Accepted on 10 November 2026 after the content-preservation, Fetcher-policy,
 startup integration, and three-file concurrency review. Commonlib implementation
 is published in
 [0.4.2](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.4.2).
-The Obsidian integration consumes that exact registry version and remains
-unreleased. The reviewed versions describe the
+The Obsidian integration consumes that exact registry version and is published in
+[Self-hosted LiveSync 1.0.48](https://github.com/vrtmrz/obsidian-livesync/releases/tag/1.0.48).
+The reviewed versions describe the
 baseline, not a release containing this recovery. Historical review findings and measured
 baseline calls remain below; implementation verification is tracked separately.
 
@@ -72,8 +73,8 @@ The implementation models these observations as named subtypes of
 Only an absent file with cleared provenance can be applied. Pending cleanup and
 unknown removal effects retain retry evidence; a protected edited or unprovable
 file need not converge automatically. The subtype table is recorded in Commonlib's
-`docs/deletion-recovery.md`, included in the local package candidate. This contract
-remains unreleased.
+`docs/deletion-recovery.md`, included in published Commonlib 0.4.2 and adopted by
+Self-hosted LiveSync 1.0.48.
 
 Represent file effect, bookkeeping, and reason separately. For example, the file
 can be unchanged, confirmed absent, or unknown after an error; provenance can be
@@ -470,8 +471,8 @@ require these tests and measurements.
 
 The original 10 November review identified the following gaps. This revision
 records the agreed responses while retaining the baseline evidence. They are
-implemented in the unreleased source candidate; validation and publication remain
-separate outcomes.
+implemented in the then-unreleased source candidate. The current publication and
+validation status is recorded below.
 
 ### Physical deletion, cleanup, and restart outcomes
 
@@ -553,8 +554,8 @@ validation establishes the published bytes; it does not establish iPhone perform
 
 The guarded handler, opt-in provenance enumeration, cleanup discovery, shared
 three-file admission, and ordered scanner bookkeeping are implemented in the
-published Commonlib 0.4.2 package. The unreleased Obsidian host integration enables
-the capability.
+published Commonlib 0.4.2 package. Self-hosted LiveSync 1.0.48 enables the capability
+in the Obsidian host.
 The reviewed-version frontmatter remains the published baseline, not a claim
 that registry Commonlib 0.4.1 includes this change.
 
@@ -563,6 +564,12 @@ through real local revision storage with injected host boundaries. Packed-packag
 checks validate the candidate independently. Real Obsidian restart validation and
 consumer checks use those same packed bytes; physical iPhone timing and peak
 memory remain separate evidence. The application dependency now selects that
-exact published immutable Commonlib
-version and integrity. Application release and physical iPhone measurements remain
-separate follow-ups.
+exact published immutable Commonlib version and integrity.
+
+The published plug-in assets passed deletion-recovery E2E in real Obsidian,
+including edited-content protection and exact Metadata history across two
+restarts. Their build attestations were verified against the release tag and
+source commit. BRAT installation and start-up were accepted before stable
+promotion. An actual Vault start-up check reported no noticeable delay; no
+quantitative device timing or peak-memory measurement was supplied. Physical
+iPhone measurements remain a separate follow-up.

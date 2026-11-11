@@ -15,7 +15,9 @@ Self-hosted LiveSync `517f5c248fdd777acb657f6d70de3913ba6390aa` with the exact
 Commonlib 0.4.1 registry package selected by its lockfile. It describes current
 behaviour of that published baseline; it introduces no new recovery guarantee.
 The [accepted deletion recovery design](database_to_vault_deletion_recovery.md)
-records the additional opt-in policy in the unreleased implementation candidate.
+records the additional opt-in policy published in
+[Self-hosted LiveSync 1.0.48](https://github.com/vrtmrz/obsidian-livesync/releases/tag/1.0.48)
+with Commonlib 0.4.2. The version and commit above retain the original baseline.
 
 Hidden File Sync and Customisation Sync retain their owning contracts. Document
 History restoration has a separate [restoration contract](document_history_revision_restoration.md).
