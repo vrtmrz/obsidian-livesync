@@ -2,7 +2,7 @@
 date: 2026-11-10
 commonlib-version: "0.4.1"
 self-hosted-livesync-version: "1.0.47"
-status: accepted; unreleased
+status: accepted; Commonlib published in 0.4.2; application unreleased
 ---
 
 # Recover unapplied database deletions during an ordinary scan
@@ -10,8 +10,11 @@ status: accepted; unreleased
 ## Status and purpose
 
 Accepted on 10 November 2026 after the content-preservation, Fetcher-policy,
-startup integration, and three-file concurrency review. Implementation is complete
-in the local candidate and remains unreleased. The reviewed versions describe the
+startup integration, and three-file concurrency review. Commonlib implementation
+is published in
+[0.4.2](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.4.2).
+The Obsidian integration consumes that exact registry version and remains
+unreleased. The reviewed versions describe the
 baseline, not a release containing this recovery. Historical review findings and measured
 baseline calls remain below; implementation verification is tracked separately.
 
@@ -541,17 +544,17 @@ retain the file, and do not claim remote absence. Exceptions retain their phase
 and diagnostic cause. This conservative result avoids changing existing Chunk
 retrieval semantics or adding a second retry policy.
 
-The implementation is prepared against an exact local packed Commonlib artefact.
-Publication and replacement with an immutable registry dependency are separate
-release operations. Local candidate validation must identify the packed bytes;
-it does not establish registry availability or iPhone performance.
+The implementation was prepared against an exact local packed Commonlib artefact.
+The application now pins registry Commonlib 0.4.2 and its integrity. Registry
+validation establishes the published bytes; it does not establish iPhone performance.
 
 
 ## Implementation and publication status
 
 The guarded handler, opt-in provenance enumeration, cleanup discovery, shared
 three-file admission, and ordered scanner bookkeeping are implemented in the
-unreleased Commonlib source candidate. The Obsidian host enables the capability.
+published Commonlib 0.4.2 package. The unreleased Obsidian host integration enables
+the capability.
 The reviewed-version frontmatter remains the published baseline, not a claim
 that registry Commonlib 0.4.1 includes this change.
 
@@ -559,5 +562,7 @@ Owner tests establish the two-body-read path and preservation/restart contracts
 through real local revision storage with injected host boundaries. Packed-package
 checks validate the candidate independently. Real Obsidian restart validation and
 consumer checks use those same packed bytes; physical iPhone timing and peak
-memory remain separate evidence. A releasing application must replace the local
-candidate with the exact published immutable Commonlib version and integrity.
+memory remain separate evidence. The application dependency now selects that
+exact published immutable Commonlib
+version and integrity. Application release and physical iPhone measurements remain
+separate follow-ups.
