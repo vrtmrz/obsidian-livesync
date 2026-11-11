@@ -5,15 +5,22 @@
     import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
+    import PlaintextReceiptWarning from "./PlaintextReceiptWarning.svelte";
     import { $msg as translateMessage } from "@/common/translation";
 
-    import { TYPE_CANCELLED, TYPE_APPLY, type OutroExistingUserResultType } from "./setupDialogTypes";
+    import {
+        TYPE_CANCELLED,
+        TYPE_APPLY,
+        type OutroApplyInitialData,
+        type OutroExistingUserResultType,
+    } from "./setupDialogTypes";
     type Props = {
         setResult: (result: OutroExistingUserResultType) => void;
-        getInitialData?: () => { isP2P?: boolean } | undefined;
+        getInitialData?: () => OutroApplyInitialData | undefined;
     };
     const { setResult, getInitialData }: Props = $props();
     const isP2P = $derived(getInitialData?.()?.isP2P === true);
+    const enableUnencryptedContent = $derived(getInitialData?.()?.enableUnencryptedContent === true);
 </script>
 
 {#if isP2P}
@@ -37,6 +44,9 @@
             {translateMessage("Restart this device, then choose the source device when P2P Rebuild opens.")}
         </Question>
     </Instruction>
+    {#if enableUnencryptedContent}
+        <PlaintextReceiptWarning />
+    {/if}
     <UserDecisions>
         <Decision
             title={translateMessage("Restart and Select Source Device")}
@@ -71,6 +81,9 @@
             )}</Question
         >
     </Instruction>
+    {#if enableUnencryptedContent}
+        <PlaintextReceiptWarning />
+    {/if}
     <UserDecisions>
         <Decision
             title={translateMessage("Restart and Fetch Data")}

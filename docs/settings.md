@@ -331,6 +331,14 @@ For CouchDB, this encrypts paths, times, sizes, and Chunk references in the Meta
 
 Enabling the preference protects future Metadata writes. Existing Metadata and earlier revisions can remain readable in the remote database. If you want to protect existing Metadata too, prepare the authoritative data, update every device to a compatible version, and manually Rebuild the remote database. LiveSync does not gather data or start a Rebuild when you change this preference. The action to enable it without rebuilding explicitly reminds you to update every other synchronising device first, including devices currently running LiveSync. Plaintext and encrypted Metadata can coexist during the transition. Document IDs, revision information, document counts, and ciphertext lengths remain visible.
 
+#### Accept unencrypted content
+
+Setting key: `acceptUnencryptedContent`
+
+This preference is disabled by default. With End-to-End Encryption enabled, it allows us to receive plaintext content written by third-party tools which do not use the E2EE passphrase. It affects receipt only; content sent by this plug-in remains encrypted. Anyone with write access to the CouchDB database can inject plaintext.
+
+The setting is included in exported settings Markdown, Setup URIs, and QR codes. Its saved value is retained while E2EE is off, but has no effect then. With E2EE enabled and this preference on, the E2EE Configuration summary reports its status and effect. Changing only this preference applies it to the active CouchDB connection without a Fetch or Rebuild. Other encryption changes keep their existing application requirements.
+
 #### Encryption Algorithm
 
 Setting key: E2EEAlgorithm

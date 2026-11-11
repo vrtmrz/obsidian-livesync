@@ -130,6 +130,20 @@ describe("active Replicator configuration identity", () => {
         );
     });
 
+    it("recreates an encrypted CouchDB connection when plaintext receipt becomes enabled", () => {
+        const current = configuredSettings({ encrypt: true });
+        const enabled = { ...current, acceptUnencryptedContent: true };
+
+        expect(getCouchDBReplicatorConfigurationIdentity(enabled)).not.toBe(
+            getCouchDBReplicatorConfigurationIdentity(current)
+        );
+
+        const disabledE2EE = { ...current, encrypt: false, acceptUnencryptedContent: false };
+        expect(
+            getCouchDBReplicatorConfigurationIdentity({ ...disabledE2EE, acceptUnencryptedContent: true })
+        ).toBe(getCouchDBReplicatorConfigurationIdentity(disabledE2EE));
+    });
+
     it("projects only the active CouchDB authentication mode", () => {
         const basic = configuredSettings({ useJWT: false, jwtKey: "inactive-a" });
         expect(getCouchDBReplicatorConfigurationIdentity({ ...basic, jwtKey: "inactive-b" })).toBe(

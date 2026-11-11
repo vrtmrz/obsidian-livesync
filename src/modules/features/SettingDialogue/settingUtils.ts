@@ -11,6 +11,7 @@ import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import type PouchDB from "pouchdb-core";
 import type {} from "pouchdb-replication";
+import { $msg as translateMessage } from "@/common/translation";
 
 /**
  * Generates a summary of P2P configuration settings
@@ -56,7 +57,13 @@ export function getCouchDBConfigSummary(setting: ObsidianLiveSyncSettings, showA
  */
 export function getE2EEConfigSummary(setting: ObsidianLiveSyncSettings, showAdvanced = false) {
     const settingTable: Partial<ObsidianLiveSyncSettings> = pickEncryptionSettings(setting);
-    return getSummaryFromPartialSettings(settingTable, showAdvanced);
+    const summary = getSummaryFromPartialSettings(settingTable, showAdvanced);
+    if (setting.encrypt === true && setting.acceptUnencryptedContent === true) {
+        summary[translateMessage("Accept unencrypted content")] = translateMessage(
+            "Enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext; content sent by this plug-in remains encrypted."
+        );
+    }
+    return summary;
 }
 
 /**

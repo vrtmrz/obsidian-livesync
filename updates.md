@@ -12,6 +12,23 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Changed
+
+#### Encryption
+
+- With E2EE enabled, CouchDB documents containing unencrypted file content are now rejected by default.
+    - To retain the previous behaviour for third-party integrations that intentionally write plaintext, expand **Advanced** in the E2EE dialogue and enable **Accept unencrypted content**. The setting is off by default.
+    - Enabling it allows anyone with write access to the remote database to supply plaintext file content. Content sent by this plug-in remains encrypted.
+    - The setting is included in exported settings Markdown, Setup URIs, and QR codes. Changing this setting alone does not require Fetch or Rebuild.
+
+### Miscellaneous
+
+- Updated dependencies.
+
+### Acknowledgements
+
+- @Hama1cco, for reporting plaintext content acceptance with E2EE enabled.
+
 ## 1.0.48
 
 11th November, 2026

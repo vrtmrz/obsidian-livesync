@@ -85,6 +85,10 @@ export type OutroAskUserModeResultType =
     | typeof TYPE_CANCELLED;
 
 export type OutroExistingUserResultType = typeof TYPE_APPLY | typeof TYPE_CANCELLED;
+export type OutroApplyInitialData = {
+    isP2P: boolean;
+    enableUnencryptedContent: boolean;
+};
 
 export type OutroNewUserResultType = typeof TYPE_APPLY | typeof TYPE_CANCELLED;
 

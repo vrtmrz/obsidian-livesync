@@ -192,10 +192,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         contentEl.closest(".modal-container")?.classList.add("livesync-message-box-container");
         this.titleEl.setText(this.title);
         const div = contentEl.createDiv();
-        div.setCssStyles({
-            userSelect: "text",
-            webkitUserSelect: "text",
-        });
+        div.addClass("sls-message-box-markdown");
         void MarkdownRenderer.render(this.plugin.app, this.contentMd, div, "/", this.component);
         const buttonSetting = new Setting(contentEl);
         const labelWrapper = contentEl.createDiv();
@@ -206,23 +203,18 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
         labelEl.addClass("sls-dialogue-note-countdown");
         if (!this.timeout || !this.timer) {
             labelWrapper.empty();
-            labelWrapper.setCssStyles({ display: "none" });
+            labelWrapper.addClass("sls-hidden");
         }
 
-        buttonSetting.infoEl.setCssStyles({ display: "none" });
-        buttonSetting.controlEl.setCssStyles({ flexWrap: "wrap" });
+        buttonSetting.infoEl.addClass("sls-hidden");
+        buttonSetting.controlEl.addClass("sls-message-box-button-control");
         if (this.wideButton) {
-            buttonSetting.controlEl.setCssStyles({
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                flexGrow: "1",
-            });
+            buttonSetting.controlEl.addClass("sls-message-box-button-control-wide");
         }
         contentEl.addEventListener("click", () => {
             if (this.timer) {
                 labelWrapper.empty();
-                labelWrapper.setCssStyles({ display: "none" });
+                labelWrapper.addClass("sls-hidden");
                 compatGlobal.clearInterval(this.timer);
                 this.timer = undefined;
                 this.defaultButtonComponent?.setButtonText(`${this.defaultAction}`);
@@ -244,10 +236,7 @@ export class MessageBox<T extends readonly string[]> extends AutoClosableModal {
                     btn.setCta();
                 }
                 if (this.wideButton) {
-                    btn.buttonEl.setCssStyles({
-                        flexGrow: "1",
-                        width: "100%",
-                    });
+                    btn.buttonEl.addClass("sls-message-box-wide-button");
                 }
                 return btn;
             });

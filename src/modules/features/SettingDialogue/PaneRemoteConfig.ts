@@ -145,9 +145,13 @@ export function paneRemoteConfig(
                             if (applied) {
                                 this.editingSettings.encryptInternalMetadata =
                                     this.core.settings.encryptInternalMetadata;
+                                this.editingSettings.acceptUnencryptedContent =
+                                    this.core.settings.acceptUnencryptedContent;
                                 if (this.initialSettings) {
                                     this.initialSettings.encryptInternalMetadata =
                                         this.core.settings.encryptInternalMetadata;
+                                    this.initialSettings.acceptUnencryptedContent =
+                                        this.core.settings.acceptUnencryptedContent;
                                 }
                                 this.requestUpdate();
                             }

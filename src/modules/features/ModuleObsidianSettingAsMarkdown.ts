@@ -159,8 +159,14 @@ export class ModuleObsidianSettingsAsMarkdown extends AbstractModule {
                         const APPLY_AND_REBUILD = "Apply settings and restart obsidian with red_flag_rebuild.md";
                         const APPLY_AND_FETCH = "Apply settings and restart obsidian with red_flag_fetch.md";
                         const CANCEL = "Cancel";
+                        const enablesUnencryptedContent =
+                            settingToApply.encrypt === true &&
+                            settingToApply.acceptUnencryptedContent === true &&
+                            !(this.settings.encrypt === true && this.settings.acceptUnencryptedContent === true);
                         const result = await this.core.confirm.askSelectStringDialogue(
-                            "Ready for apply the setting.",
+                            enablesUnencryptedContent
+                                ? "Accepting unencrypted content will be enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. Content sent by this plug-in remains encrypted."
+                                : "Ready for apply the setting.",
                             [APPLY_AND_RESTART, APPLY_ONLY, APPLY_AND_FETCH, APPLY_AND_REBUILD, CANCEL],
                             { defaultAction: APPLY_AND_RESTART }
                         );

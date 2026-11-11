@@ -56,11 +56,9 @@ export function paneHelp(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, 
                 lifetimeComponent
             );
             if (pageDisposed) return;
-            troubleShootEl.querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")?.parentElement?.setCssStyles({
-                position: "sticky",
-                top: "-1em",
-                backgroundColor: "var(--modal-background)",
-            });
+            troubleShootEl
+                .querySelector<HTMLAnchorElement>(".sls-troubleshoot-anchor")
+                ?.parentElement?.addClass("sls-troubleshoot-sticky");
             troubleShootEl.querySelectorAll<HTMLAnchorElement>("a.internal-link").forEach((anchorEl) => {
                 anchorEl.addEventListener("click", (evt) => {
                     fireAndForget(async () => {
@@ -77,7 +75,7 @@ export function paneHelp(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, 
                                     uri.substring(1).toLowerCase()
                             );
                             if (target) {
-                                target.setCssStyles({ scrollMargin: "3em" });
+                                target.addClass("sls-troubleshoot-heading-target");
                                 target.scrollIntoView({
                                     behavior: "instant",
                                     block: "start",
@@ -86,7 +84,7 @@ export function paneHelp(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, 
                         } else {
                             evt.preventDefault();
                             await loadMarkdownPage(uri, basePath);
-                            troubleShootEl.setCssStyles({ scrollMargin: "1em" });
+                            troubleShootEl.addClass("sls-troubleshoot-scroll-target");
                             troubleShootEl.scrollIntoView({
                                 behavior: "instant",
                                 block: "start",

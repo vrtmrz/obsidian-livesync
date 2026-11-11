@@ -4,6 +4,7 @@
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
     import Option from "@/modules/services/LiveSyncUI/components/Option.svelte";
+    import PlaintextReceiptWarning from "./PlaintextReceiptWarning.svelte";
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
@@ -13,13 +14,16 @@
         TYPE_EXISTING,
         TYPE_NEW,
         TYPE_COMPATIBLE_EXISTING,
+        type OutroApplyInitialData,
     } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
 
     type Props = {
         setResult: (result: OutroAskUserModeResultType) => void;
+        getInitialData?: () => OutroApplyInitialData | undefined;
     };
-    const { setResult }: Props = $props();
+    const { setResult, getInitialData }: Props = $props();
+    const enableUnencryptedContent = $derived(getInitialData?.()?.enableUnencryptedContent === true);
     let userType = $state<OutroAskUserModeResultType>(TYPE_CANCELLED);
     const canProceed = $derived.by(() => {
         return userType === TYPE_EXISTING || userType === TYPE_NEW || userType === TYPE_COMPATIBLE_EXISTING;
@@ -79,6 +83,9 @@
                 "Unless you are certain, selecting this options is bit dangerous. It assumes that the server configuration is compatible with this device. If this is not the case, data loss may occur. Please ensure you know what you are doing."
             )}
         </InfoNote>
+        {#if enableUnencryptedContent && userType === TYPE_COMPATIBLE_EXISTING}
+            <PlaintextReceiptWarning />
+        {/if}
     </Option>
 </Instruction>
 <UserDecisions>
