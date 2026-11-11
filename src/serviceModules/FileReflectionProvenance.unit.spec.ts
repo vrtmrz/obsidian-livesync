@@ -2,10 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SimpleStore } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import type { FileReflectionProvenanceRecord } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileReflectionProvenance";
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import {
-    createFileReflectionProvenance,
-    FILE_REFLECTION_PROVENANCE_STORE,
-} from "./FileReflectionProvenance";
+import { createFileReflectionProvenance, FILE_REFLECTION_PROVENANCE_STORE } from "./FileReflectionProvenance";
 
 describe("createFileReflectionProvenance", () => {
     it("uses one reset-scoped host store for exact reflected revisions", async () => {
@@ -24,14 +21,24 @@ describe("createFileReflectionProvenance", () => {
         const openSimpleStore = vi.fn().mockReturnValue(store);
         const path = "note.md" as FilePathWithPrefix;
 
-        const provenance = createFileReflectionProvenance({ openSimpleStore });
+        const provenance = createFileReflectionProvenance({ openSimpleStore }, true);
         expect(openSimpleStore).toHaveBeenCalledWith(FILE_REFLECTION_PROVENANCE_STORE);
         await provenance.set(path, { revision: "3-displayed", observedStorageMtime: 123.456 });
 
+        expect(provenance.listPaths).toBeTypeOf("function");
+        await expect(provenance.listPaths!()).resolves.toEqual([path]);
+        expect(store.keys).toHaveBeenCalledTimes(1);
+        expect(store.get).not.toHaveBeenCalled();
         expect(openSimpleStore).toHaveBeenCalledTimes(1);
         await expect(provenance.get(path)).resolves.toEqual({
             revision: "3-displayed",
             observedStorageMtime: 123.456,
         });
     });
+});
+
+it("keeps shared application composition opted out unless the host requests recovery", () => {
+    const openSimpleStore = vi.fn().mockReturnValue({ keys: vi.fn(), get: vi.fn() });
+    const provenance = createFileReflectionProvenance({ openSimpleStore });
+    expect(provenance.listPaths).toBeUndefined();
 });

@@ -29,6 +29,8 @@ Use these references for the area being changed, together with its relevant ADR.
 | Area | References |
 |---|---|
 | Overall synchronisation and terminology | [Technical overview](tech_info.md), [glossary](glossary.md), and [terminology conventions](terms.md) |
+| Recovering unapplied logical deletions | [Deletion recovery design](design_docs/database_to_vault_deletion_recovery.md): accepted implementation design; Commonlib 0.4.2 published, application unreleased |
+| File writing, Vault reflection, and recovery ownership | [Write and reflection paths](design_docs/file_write_and_reflection_paths.md): entry policies, completion, retry ownership, and runtime access costs |
 | Metadata, Chunks, and database representations | [Data structures](datastructure.md) |
 | Conflict resolution, provenance, and history restoration | [Conflict and provenance contract](specs_conflict_resolution.md), [Document History restoration](design_docs/document_history_revision_restoration.md), and [local save completion](adr/2026_10_local_file_save_completion_and_batching.md) |
 | Replicator and host boundaries | [Replicator architecture snapshot](design_docs/replicator_architecture.md) and [service feature and legacy Module boundaries](design_docs/service_feature_and_legacy_module_boundaries.md) |

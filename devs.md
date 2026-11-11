@@ -145,7 +145,9 @@ below describes how those boundaries are applied.
 For file-event admission versus physical Vault writes, see
 [File events and storage writes](docs/tech_info.md#file-events-and-storage-writes)
 and its linked Commonlib contract. Keep regression coverage for those two
-directions separate when changing deletion handling.
+directions separate when changing deletion handling. For a comparison of the
+entry points, force policy, completion, retained failures, and storage access,
+see [File writing and database-to-Vault reflection](docs/design_docs/file_write_and_reflection_paths.md).
 
 For shared synchronisation-setting comparisons, directional reconstruction
 consequences, and the lifetime of a recovery decision, see
