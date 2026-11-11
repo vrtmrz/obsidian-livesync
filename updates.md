@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.48
+
+11th November, 2026
+
 ### Fixed
 
 - Ordinary start-up scans can apply retained database deletions to Vault files whose content is confirmed unchanged. (#1338)
