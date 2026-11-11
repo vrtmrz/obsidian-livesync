@@ -16,11 +16,7 @@ export class PluginDialogModal extends Modal {
 
     override onOpen() {
         const { contentEl } = this;
-        this.contentEl.setCssStyles({
-            overflow: "auto",
-            display: "flex",
-            flexDirection: "column",
-        });
+        contentEl.addClass("sls-config-sync-modal-content");
         this.titleEl.setText("Customization Sync (Beta3)");
         if (!this.component) {
             this.component = mount(PluginPane, {

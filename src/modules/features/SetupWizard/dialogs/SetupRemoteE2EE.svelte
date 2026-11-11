@@ -40,6 +40,7 @@
         E2EEAlgorithm: DEFAULT_SETTINGS.E2EEAlgorithm,
         usePathObfuscation: true,
         encryptInternalMetadata: true,
+        acceptUnencryptedContent: DEFAULT_SETTINGS.acceptUnencryptedContent,
         idDerivationVersion: 0,
         idDerivationKey: "",
     };
@@ -390,6 +391,18 @@
         <InfoNote warning>
             {translateMessage(
                 "Changing the encryption algorithm will prevent access to any data previously encrypted with a different algorithm. Ensure that all your devices are configured to use the same algorithm to maintain access to your data."
+            )}
+        </InfoNote>
+        <InputRow label={translateMessage("Accept unencrypted content")}>
+            <input
+                type="checkbox"
+                bind:checked={encryptionSettings.acceptUnencryptedContent}
+                disabled={!encryptionSettings.encrypt}
+            />
+        </InputRow>
+        <InfoNote warning>
+            {translateMessage(
+                "With this option enabled, third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. This affects received content only; content sent by this plug-in remains encrypted."
             )}
         </InfoNote>
     </ExtraItems>

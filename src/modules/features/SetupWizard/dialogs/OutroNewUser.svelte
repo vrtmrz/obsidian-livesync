@@ -4,16 +4,23 @@
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import Question from "@/modules/services/LiveSyncUI/components/Question.svelte";
     import Instruction from "@/modules/services/LiveSyncUI/components/Instruction.svelte";
+    import PlaintextReceiptWarning from "./PlaintextReceiptWarning.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
     import { $msg as msg } from "@/common/translation";
-    import { TYPE_APPLY, TYPE_CANCELLED, type OutroNewUserResultType } from "./setupDialogTypes";
+    import {
+        TYPE_APPLY,
+        TYPE_CANCELLED,
+        type OutroApplyInitialData,
+        type OutroNewUserResultType,
+    } from "./setupDialogTypes";
 
     type Props = {
         setResult: (result: OutroNewUserResultType) => void;
-        getInitialData?: () => { isP2P?: boolean } | undefined;
+        getInitialData?: () => OutroApplyInitialData | undefined;
     };
     const { setResult, getInitialData }: Props = $props();
     const isP2P = $derived(getInitialData?.()?.isP2P === true);
+    const enableUnencryptedContent = $derived(getInitialData?.()?.enableUnencryptedContent === true);
     // let userType = $state<OutroNewUserResultType>(TYPE_CANCELLED);
 </script>
 
@@ -26,6 +33,9 @@
             <br />
             {msg("Ui.SetupWizard.OutroNewP2PUser.GuidanceNotice")}
         </p>
+        {#if enableUnencryptedContent}
+            <PlaintextReceiptWarning />
+        {/if}
     </Guidance>
     <Instruction>
         <Question>{msg("Ui.SetupWizard.OutroNewP2PUser.Question")}</Question>
@@ -55,6 +65,9 @@
                 "After restarting, the data on this device will be uploaded to the server as the 'master copy'. Please be aware that any unintended data currently on the server will be completely overwritten."
             )}
         </p>
+        {#if enableUnencryptedContent}
+            <PlaintextReceiptWarning />
+        {/if}
     </Guidance>
     <Instruction>
         <Question>{msg("Please select the button below to restart and proceed to the final confirmation.")}</Question>

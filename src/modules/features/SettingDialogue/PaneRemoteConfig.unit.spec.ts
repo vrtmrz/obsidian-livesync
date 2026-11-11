@@ -258,4 +258,46 @@ describe("paneRemoteConfig", () => {
         expect(host.initialSettings.idDerivationKey).toBe(nextIdKey);
         expect(host.requestUpdate).toHaveBeenCalledOnce();
     });
+
+    it("copies the applied plaintext receipt preference into both dialogue buffers", async () => {
+        const originalSettings = Object.assign(
+            {
+                encrypt: true,
+                passphrase: "passphrase",
+                E2EEAlgorithm: "v2",
+                usePathObfuscation: true,
+                encryptInternalMetadata: false,
+                remoteConfigurations: {},
+            },
+            { acceptUnencryptedContent: false }
+        );
+        const setupManager = {
+            onlyE2EEConfiguration: vi.fn(() => {
+                host.core.settings.acceptUnencryptedContent = true;
+                return Promise.resolve(true);
+            }),
+        };
+        const host = {
+            editingSettings: { ...originalSettings },
+            initialSettings: { ...originalSettings },
+            core: {
+                settings: { ...originalSettings },
+                getModule: vi.fn(() => setupManager),
+            },
+            lifetimeComponent: { register: vi.fn() },
+            requestUpdate: vi.fn(),
+        };
+        const addPanel = vi.fn((_parent: HTMLElement, heading: string) => ({
+            then(callback: (paneEl: HTMLElement) => void) {
+                if (heading === "E2EE Configuration") callback(createPanelElement());
+            },
+        }));
+
+        paneRemoteConfig.call(host as never, {} as HTMLElement, { addPanel } as never);
+        await runtime.clickHandlers.find((handler) => handler.setting === "Configure E2EE")!.run();
+
+        expect(host.editingSettings.acceptUnencryptedContent).toBe(true);
+        expect(host.initialSettings.acceptUnencryptedContent).toBe(true);
+        expect(host.requestUpdate).toHaveBeenCalledOnce();
+    });
 });

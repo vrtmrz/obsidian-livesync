@@ -351,6 +351,13 @@ export const liveSyncProvisionalEnglishMessages = {
     "Connection settings": "Connection settings",
     "Saved connections": "Saved connections",
     "ID generation": "ID generation",
+    "Accept unencrypted content": "Accept unencrypted content",
+    "Enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext; content sent by this plug-in remains encrypted.":
+        "Enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext; content sent by this plug-in remains encrypted.",
+    "With this option enabled, third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. This affects received content only; content sent by this plug-in remains encrypted.":
+        "With this option enabled, third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. This affects received content only; content sent by this plug-in remains encrypted.",
+    "Accepting unencrypted content will be enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. This affects received content only; content sent by this plug-in remains encrypted.":
+        "Accepting unencrypted content will be enabled. Third-party tools can add content without the E2EE passphrase. Anyone with database write access can inject plaintext. This affects received content only; content sent by this plug-in remains encrypted.",
     "Keep current configuration": "Keep current configuration",
     "Set an ID key": "Set an ID key",
     "Current configuration: a saved ID key is used.": "Current configuration: a saved ID key is used.",

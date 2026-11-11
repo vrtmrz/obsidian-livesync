@@ -55,11 +55,13 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
         "respects the sharing option for new and existing files (existing: %s)",
         async (existingFile) => {
             const { module, settings, files, storageAccess } = createHarness(false, existingFile);
+            (settings as any).acceptUnencryptedContent = true;
             settings.P2P_managedType = CLOUDFLARE_TURN_TYPE;
             await module.saveSettingToMarkdown(settings.settingSyncFile);
             const content = files.get(settings.settingSyncFile)!;
             expect(storageAccess.writeFileAuto).toHaveBeenCalled();
             const written = parse(module.extractSettingFromWholeText(content).body);
+            expect(written.acceptUnencryptedContent).toBe(true);
             expect(written).not.toHaveProperty("couchDB_PASSWORD");
             expect(content).not.toContain(settings.encryptedCouchDBConnection);
             expect(Object.keys(written).filter((key) => ["accessKey", "secretKey"].includes(key))).toEqual([]);
@@ -76,6 +78,7 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
         const { module, settings, files } = createHarness(true);
         settings.couchDB_USER = "synthetic-export-couch-user";
         settings.passphrase = "synthetic-export-passphrase";
+        (settings as any).acceptUnencryptedContent = true;
         settings.idDerivationKey = "synthetic-export-id-key";
         settings.jwtKey = "synthetic-export-jwt-key";
         settings.jwtKid = "synthetic-export-jwt-kid";
@@ -138,6 +141,7 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
         expect(written.couchDB_USER).toBe(settings.couchDB_USER);
         expect(written.couchDB_PASSWORD).toBe(settings.couchDB_PASSWORD);
         expect(written.passphrase).toBe(settings.passphrase);
+        expect(written.acceptUnencryptedContent).toBe(true);
         expect(written.idDerivationKey).toBe(settings.idDerivationKey);
         expect(written.jwtKey).toBe(settings.jwtKey);
         expect(written.jwtKid).toBe(settings.jwtKid);
@@ -231,6 +235,7 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
             couchDB_PASSWORD: "synthetic-local-password",
             couchDB_CustomHeaders: "X-Couch-Local: synthetic-couch-header",
             bucketCustomHeaders: "X-Bucket-Local: synthetic-bucket-header",
+            acceptUnencryptedContent: true,
             jwtKey: "synthetic-local-jwt-key",
             jwtKid: "synthetic-local-kid",
             jwtSub: "synthetic-local-subject",
@@ -305,6 +310,7 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
 
         const appliedSettings = applyExternalSettings.mock.calls[0]![0];
         expect(appliedSettings.P2P_AutoStart).toBe(true);
+        expect(appliedSettings.acceptUnencryptedContent).toBe(true);
         expect(appliedSettings.accessKey).toBe(currentSettings.accessKey);
         expect(appliedSettings.secretKey).toBe(currentSettings.secretKey);
         expect(appliedSettings.couchDB_USER).toBe(currentSettings.couchDB_USER);
@@ -319,5 +325,54 @@ describe("ModuleObsidianSettingsAsMarkdown", () => {
         expect(appliedSettings.P2P_ActiveRemoteConfigurationId).toBe(currentSettings.P2P_ActiveRemoteConfigurationId);
         expect(appliedSettings.idDerivationVersion).toBe(currentSettings.idDerivationVersion);
         expect(appliedSettings.idDerivationKey).toBe(currentSettings.idDerivationKey);
+    });
+
+    it("explains the plaintext receipt risk in the existing settings application dialogue", async () => {
+        const filename = "LiveSync/plaintext-policy.md";
+        const currentSettings = Object.assign(structuredClone(DEFAULT_SETTINGS), {
+            encrypt: true,
+            settingSyncFile: filename,
+            acceptUnencryptedContent: false,
+        });
+        const markdownSettings = { encrypt: true, acceptUnencryptedContent: true };
+        const document = "Synthetic note\n````yaml:livesync-setting\n" + stringify(markdownSettings) + "\n````\n";
+        const files = new Map([[filename, document]]);
+        const storageAccess = {
+            isExists: vi.fn(async (path: string) => files.has(path)),
+            readFileText: vi.fn(async (path: string) => files.get(path) ?? ""),
+        };
+        let openApplyDialogue: ((anchor: HTMLAnchorElement) => void) | undefined;
+        let chooseApply: (() => void) | undefined;
+        const askSelectStringDialogue = vi.fn(async (_message: string, _choices: string[]) => "Cancel");
+        const module = Object.assign(Object.create(ModuleObsidianSettingsAsMarkdown.prototype), {
+            core: {
+                settings: currentSettings,
+                storageAccess,
+                confirm: {
+                    askInPopup: vi.fn((_key: string, _text: string, callback: (anchor: HTMLAnchorElement) => void) => {
+                        openApplyDialogue = callback;
+                    }),
+                    askSelectStringDialogue,
+                },
+            },
+            _log: vi.fn(),
+        }) as ModuleObsidianSettingsAsMarkdown;
+
+        await module.checkAndApplySettingFromMarkdown(filename, false);
+        openApplyDialogue?.({
+            set text(_value: string) {},
+            addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+                chooseApply = listener as () => void;
+            },
+        } as HTMLAnchorElement);
+        chooseApply?.();
+
+        await vi.waitFor(() => expect(askSelectStringDialogue).toHaveBeenCalledOnce());
+        expect(askSelectStringDialogue.mock.calls[0]![0]).toContain(
+            "Anyone with database write access can inject plaintext"
+        );
+        expect(askSelectStringDialogue.mock.calls[0]![0]).toContain(
+            "Third-party tools can add content without the E2EE passphrase"
+        );
     });
 });
