@@ -15,7 +15,14 @@ import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import { writeFileAtomically } from "@/apps/cli/runtimeState";
+import {
+    isIgnoredVaultPath,
+    toVaultRelativePath,
+    type VaultRelativePath,
+    type CLIPathFilterOptions,
+} from "@/apps/cli/cliPathFilter";
 
 /**
  * CLI-specific persistence adapter (file-based snapshot)
@@ -86,18 +93,44 @@ class CLIConverterAdapter implements IStorageEventConverterAdapter<NodeFile> {
  * CLI-specific watch adapter using chokidar for real-time filesystem monitoring.
  */
 class CLIWatchAdapter implements IStorageEventWatchAdapter {
+    /** Retain the handle owned by this adapter so normal unload can close its watcher. */
     private _watcher: FSWatcher | undefined;
 
     constructor(
-        private basePath: string,
+        private readonly basePath: string,
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false,
-        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined,
+        private readonly pathFilterOptions: CLIPathFilterOptions = {},
+        private nameSource?: CLIFileNameSource
     ) {}
 
-    private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
+    // Bind conversion to the selected root; event callbacks cannot substitute a different root.
+    private _toVaultRelativePath(candidatePath: string): VaultRelativePath | undefined {
+        return toVaultRelativePath(this.basePath, candidatePath);
+    }
+
+    // Unlike an ignored-callback probe, an invalid emitted event is unexpected.
+    // Report it and let the caller omit that event while later valid events continue.
+    private _getEventPath(candidatePath: string): VaultRelativePath | undefined {
+        const relativePath = this._toVaultRelativePath(candidatePath);
+        if (relativePath === undefined) {
+            this.reportDiagnostic(
+                "[CLIWatchAdapter] File watcher event was ignored because its path is not valid within the selected Vault.",
+                { path: candidatePath, vaultPath: this.basePath }
+            );
+        }
+        return relativePath;
+    }
+
+    // Deleted files still have a lexical event path, so conversion must not require filesystem existence.
+    private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile | false {
+        const relativePath = this._getEventPath(filePath);
+        if (relativePath === undefined) {
+            return false;
+        }
         return {
-            path: path.relative(this.basePath, filePath).replace(/\\/g, "/") as FilePath,
+            path: relativePath,
             stat: {
                 // Floor to integer milliseconds; Linux fs.Stats.*Ms carry sub-millisecond
                 // precision, and timestamps are stored as integer ms everywhere else.
@@ -109,25 +142,32 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         };
     }
 
-    private _toNodeFolder(dirPath: string): NodeFolder {
+    private _toNodeFolder(dirPath: string): NodeFolder | false {
+        const relativePath = this._getEventPath(dirPath);
+        // The empty relative path is a valid root-folder event, so test the failure sentinel explicitly.
+        if (relativePath === undefined) {
+            return false;
+        }
         return {
-            path: path.relative(this.basePath, dirPath).replace(/\\/g, "/") as FilePath,
+            path: relativePath,
             isFolder: true,
         };
     }
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         if (!this.watchEnabled) return;
-        const baseIgnored: Array<RegExp | string | ((p: string) => boolean)> = [
-            /(^|[/\\])\./,
-            /(^|[/\\])[^/\\]*-livesync-v2([/\\]|$)/,
-        ];
-        // Bind rules to a local const before the closure — chokidar v4 requires a
-        // MatchFunction, not glob strings, for custom patterns.
-        const rules = this.ignoreRules;
-        const ignored = rules
-            ? [...baseIgnored, (p: string) => rules.shouldIgnore(path.relative(this.basePath, p))]
-            : baseIgnored;
+        if (this.nameSource) {
+            await this.nameSource.beginWatch(handlers);
+            return;
+        }
+        // Chokidar may probe ancestors of the root; exclude those candidates quietly.
+        // Entry exclusions see only the rebased path, preserving Vaults beneath hidden parents.
+        const ignored = (candidatePath: string): boolean => {
+            const relativePath = this._toVaultRelativePath(candidatePath);
+            return (
+                relativePath === undefined || isIgnoredVaultPath(relativePath, this.ignoreRules, this.pathFilterOptions)
+            );
+        };
 
         const watcher = chokidarWatch(this.basePath, {
             ignored,
@@ -141,27 +181,37 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
         watcher.on("add", (filePath, stats) => {
             const nodeFile = this._toNodeFile(filePath, stats);
-            handlers.onCreate(nodeFile);
+            if (nodeFile !== false) {
+                handlers.onCreate(nodeFile);
+            }
         });
 
         watcher.on("change", (filePath, stats) => {
             const nodeFile = this._toNodeFile(filePath, stats);
-            handlers.onChange(nodeFile);
+            if (nodeFile !== false) {
+                handlers.onChange(nodeFile);
+            }
         });
 
         watcher.on("unlink", (filePath) => {
             const nodeFile = this._toNodeFile(filePath, undefined);
-            handlers.onDelete(nodeFile);
+            if (nodeFile !== false) {
+                handlers.onDelete(nodeFile);
+            }
         });
 
         watcher.on("addDir", (dirPath) => {
             const nodeFolder = this._toNodeFolder(dirPath);
-            handlers.onCreate(nodeFolder);
+            if (nodeFolder !== false) {
+                handlers.onCreate(nodeFolder);
+            }
         });
 
         watcher.on("unlinkDir", (dirPath) => {
             const nodeFolder = this._toNodeFolder(dirPath);
-            handlers.onDelete(nodeFolder);
+            if (nodeFolder !== false) {
+                handlers.onDelete(nodeFolder);
+            }
         });
 
         watcher.on("error", (err) => {
@@ -173,11 +223,15 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
             process.exit(1);
         });
 
+        // Complete watch startup only after Chokidar has finished its initial discovery.
         await new Promise<void>((resolve) => watcher.once("ready", resolve));
         this._watcher = watcher;
     }
 
     close(): Promise<void> {
+        if (this.nameSource) {
+            return this.nameSource.close();
+        }
         if (this._watcher) {
             return this._watcher.close();
         }
@@ -200,11 +254,20 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
         ignoreRules?: IgnoreRules,
         watchEnabled: boolean = false,
         reportDiagnostic: CliDiagnosticReporter = () => undefined,
-        snapshotPath?: () => string
+        snapshotPath?: () => string,
+        pathFilterOptions?: CLIPathFilterOptions,
+        nameSource?: CLIFileNameSource
     ) {
         this.typeGuard = new NodeTypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic, snapshotPath);
-        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic);
+        this.watch = new CLIWatchAdapter(
+            basePath,
+            ignoreRules,
+            watchEnabled,
+            reportDiagnostic,
+            pathFilterOptions,
+            nameSource
+        );
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
     }

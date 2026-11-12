@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
 import { path } from "@vrtmrz/livesync-commonlib/node";
+import { parseFilePath } from "@vrtmrz/livesync-commonlib/storage";
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
@@ -17,6 +18,8 @@ import {
 import { ReplicateResultProcessor } from "@/serviceFeatures/replication/ReplicateResultProcessor";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { ServiceFileAccessCLI } from "./serviceModules/ServiceFileAccessImpl";
+import { StorageEventManagerCLI } from "./managers/StorageEventManagerCLI";
+import type { NodeFile, NodeFolder } from "./adapters/NodeTypes";
 import { runCommand } from "./commands/runCommand";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
@@ -30,6 +33,10 @@ vi.mock("@vrtmrz/livesync-commonlib/node", async (importOriginal) => {
 
 vi.mock("chokidar", { spy: true });
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", { spy: true });
+
+type StorageEventDeliveryObserver = {
+    watchVaultCreate(file: NodeFile | NodeFolder): void;
+};
 
 function createStandardIoMock() {
     return {
@@ -85,7 +92,8 @@ describe("CLI database preparation", () => {
         runner: CliCommandRunner,
         exitCode = 1,
         force = false,
-        writeSettings = false
+        writeSettings = false,
+        extraArgs: readonly string[] = []
     ) {
         process.exitCode = undefined;
         process.argv = [
@@ -98,6 +106,7 @@ describe("CLI database preparation", () => {
             vaultPath,
             "--settings",
             settingsPath,
+            ...extraArgs,
             command,
         ];
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
@@ -114,28 +123,31 @@ describe("CLI database preparation", () => {
         expect(restore).not.toHaveBeenCalled();
     });
 
-    it.each(["fetch", "rebuild"] as const)("invalidates old reflection work after the %s database reset", async (command) => {
-        const snapshotKey = "replicationResultProcessorSnapshot";
-        const oldSnapshot = { queued: [{ _id: "old", _rev: "1-old" }], processing: [] };
-        let retainedBeforeReset: unknown;
-        let retainedAfterReset: unknown;
-        let reset: boolean | undefined;
-        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
-            await core.services.keyValueDB.kvDB.set(snapshotKey, oldSnapshot);
-            retainedBeforeReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
-            reset = await core.services.database.resetDatabase();
-            retainedAfterReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
-            return false;
-        });
+    it.each(["fetch", "rebuild"] as const)(
+        "invalidates old reflection work after the %s database reset",
+        async (command) => {
+            const snapshotKey = "replicationResultProcessorSnapshot";
+            const oldSnapshot = { queued: [{ _id: "old", _rev: "1-old" }], processing: [] };
+            let retainedBeforeReset: unknown;
+            let retainedAfterReset: unknown;
+            let reset: boolean | undefined;
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                await core.services.keyValueDB.kvDB.set(snapshotKey, oldSnapshot);
+                retainedBeforeReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+                reset = await core.services.database.resetDatabase();
+                retainedAfterReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+                return false;
+            });
 
-        await start(command, runner, 1, true);
+            await start(command, runner, 1, true);
 
-        expect(runner).toHaveBeenCalledOnce();
-        expect(reset).toBe(true);
-        expect(retainedBeforeReset).toEqual(oldSnapshot);
-        expect(retainedAfterReset).toEqual({ queued: [], processing: [] });
-        expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
-    });
+            expect(runner).toHaveBeenCalledOnce();
+            expect(reset).toBe(true);
+            expect(retainedBeforeReset).toEqual(oldSnapshot);
+            expect(retainedAfterReset).toEqual({ queued: [], processing: [] });
+            expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
+        }
+    );
 
     it.each([
         { handleFilenameCaseSensitive: true, pathNormalizationVersion: 0 as const },
@@ -354,6 +366,130 @@ describe("CLI database preparation", () => {
             expect(await readFile(join(vaultPath, "notes/local.md"), "utf-8")).toBe("local content");
         }
     );
+
+    it.each([false, true])(
+        "uses the same database-directory exclusions for scans and delivery (include: %s)",
+        async (includeDbLikeDirs) => {
+            const databaseEntry = parseFilePath("notes/archive-livesync-v2/state");
+            await mkdir(join(vaultPath, "notes/archive-livesync-v2"));
+            await writeFile(join(vaultPath, databaseEntry), "database-directory fixture");
+            const storedPaths: string[] = [];
+            const deliveredPaths: string[] = [];
+            let inventoryPaths: readonly string[] = [];
+            let isTarget: boolean | undefined;
+            let nativeIgnored: boolean | undefined;
+            // Observe accepted source delivery before the protected callback can queue writes.
+            const delivery = StorageEventManagerCLI.prototype as unknown as StorageEventDeliveryObserver;
+            vi.spyOn(delivery, "watchVaultCreate").mockImplementation((file) => {
+                deliveredPaths.push(file.path);
+            });
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                isTarget = await core.services.vault.isTargetFile(databaseEntry);
+                const watch = vi.mocked(chokidar.watch);
+                const ignored = watch.mock.calls[watch.mock.calls.length - 1]?.[1]?.ignored;
+                const result = watch.mock.results[watch.mock.results.length - 1];
+                if (typeof ignored !== "function" || result?.type !== "return") {
+                    throw new Error("Expected the shared CLI source's native watcher");
+                }
+                nativeIgnored = ignored(join(vaultPath, databaseEntry));
+                result.value.emit("add", join(vaultPath, "notes/local.md"));
+                result.value.emit("add", join(vaultPath, databaseEntry));
+                inventoryPaths = await core.serviceModules.storageAccess.getFileNames({ fresh: true });
+                for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                    storedPaths.push(doc.path);
+                }
+                return false;
+            });
+
+            await start("daemon", runner, 1, false, false, includeDbLikeDirs ? ["--include-db-like-dirs"] : []);
+
+            expect(runner).toHaveBeenCalledOnce();
+            expect(nativeIgnored).toBe(false);
+            expect(inventoryPaths).toContain(databaseEntry);
+            expect(deliveredPaths).toContain("notes/local.md");
+            expect(deliveredPaths.includes(databaseEntry)).toBe(includeDbLikeDirs);
+            expect(isTarget).toBe(includeDbLikeDirs);
+            expect(storedPaths.sort()).toEqual(
+                includeDbLikeDirs ? [databaseEntry, "notes/local.md"] : ["notes/local.md"]
+            );
+        }
+    );
+
+    it("keeps actual, old, and derived database files excluded with the compatibility option", async () => {
+        const databaseRoot = join(vaultPath, "state");
+        // Retained entries simulate older suffixes; the opt-in must protect them
+        // alongside the active DB and the real view index created below.
+        for (const entry of ["previous-livesync-v2", "previous-livesync-v2-mrview-index"]) {
+            await mkdir(join(databaseRoot, entry), { recursive: true });
+            await writeFile(join(databaseRoot, entry, "CURRENT"), "retained database fixture");
+        }
+        const protectedEntries: { path: string; isTarget: boolean; nativeIgnored: boolean }[] = [];
+        const storedPaths: string[] = [];
+        const deliveredPaths: string[] = [];
+        let inventoryPaths: readonly string[] = [];
+        let hasDerivedDatabase = false;
+        // Record real source delivery without passing synthetic events into database writes.
+        const delivery = StorageEventManagerCLI.prototype as unknown as StorageEventDeliveryObserver;
+        vi.spyOn(delivery, "watchVaultCreate").mockImplementation((file) => {
+            deliveredPaths.push(file.path);
+        });
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            const database = core.services.database.localDatabase.localDatabase;
+            await database.createIndex({ index: { fields: ["path"], ddoc: "path-protection", name: "by-path" } });
+            const entries = (await readdir(databaseRoot)).filter((entry) => entry !== ".livesync");
+            hasDerivedDatabase = entries.some(
+                (entry) => entry.includes("-mrview-") && entry !== "previous-livesync-v2-mrview-index"
+            );
+            const watch = vi.mocked(chokidar.watch);
+            const ignored = watch.mock.calls[watch.mock.calls.length - 1]?.[1]?.ignored;
+            const result = watch.mock.results[watch.mock.results.length - 1];
+            if (typeof ignored !== "function" || result?.type !== "return") {
+                throw new Error("Expected the shared CLI source's native watcher");
+            }
+            result.value.emit("add", join(vaultPath, "notes/local.md"));
+            for (const entry of entries) {
+                const candidate = parseFilePath(`state/${entry}/CURRENT`);
+                protectedEntries.push({
+                    path: candidate,
+                    isTarget: await core.services.vault.isTargetFile(candidate),
+                    nativeIgnored: ignored(join(vaultPath, candidate)),
+                });
+                result.value.emit("add", join(vaultPath, candidate));
+            }
+            inventoryPaths = await core.serviceModules.storageAccess.getFileNames({ fresh: true });
+            for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                storedPaths.push(doc.path);
+            }
+            return false;
+        });
+        process.argv = [
+            "node",
+            "livesync-cli",
+            databaseRoot,
+            "--vault",
+            vaultPath,
+            "--settings",
+            settingsPath,
+            "--include-db-like-dirs",
+            "daemon",
+        ];
+
+        await expect(main(standardIo, runner)).rejects.toThrow("__EXIT__:1");
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(hasDerivedDatabase).toBe(true);
+        expect(protectedEntries).toEqual(
+            expect.arrayContaining([
+                { path: "state/previous-livesync-v2/CURRENT", isTarget: false, nativeIgnored: false },
+                { path: "state/previous-livesync-v2-mrview-index/CURRENT", isTarget: false, nativeIgnored: false },
+            ])
+        );
+        expect(protectedEntries.every((entry) => !entry.isTarget && !entry.nativeIgnored)).toBe(true);
+        expect(inventoryPaths).toEqual(expect.arrayContaining(protectedEntries.map((entry) => entry.path)));
+        expect(deliveredPaths).toContain("notes/local.md");
+        expect(protectedEntries.every((entry) => !deliveredPaths.includes(entry.path))).toBe(true);
+        expect(storedPaths).toEqual(["notes/local.md"]);
+    });
 
     it("retains filesystem creation time in database Metadata after an in-place edit", async (context) => {
         const note = join(vaultPath, "notes/local.md");

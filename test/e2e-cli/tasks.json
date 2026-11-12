@@ -20,6 +20,9 @@
     "test:daemon-startup": {
         "test": ["test-daemon-startup.ts"]
     },
+    "test:daemon-watch-paths": {
+        "test": ["test-daemon-watch-paths.ts"]
+    },
     "test:decoupled-vault": {
         "test": ["test-decoupled-vault.ts"]
     },

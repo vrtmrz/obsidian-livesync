@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
 import { fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import { runtimeScopeDirectory } from "../runtimeState";
@@ -67,6 +68,69 @@ describe("CLIStorageEventManagerAdapter", () => {
         }
     });
 
+    it("filters only checked Vault-relative candidates and keeps its root watchable", async () => {
+        const base = path.resolve(path.sep, ".parent", "vault-livesync-v2");
+        const reporter = vi.fn();
+        const adapter = new CLIStorageEventManagerAdapter(base, undefined, true, reporter);
+        await adapter.watch.beginWatch(makeHandlers());
+        const options = vi.mocked(chokidar.watch).mock.calls[0][1];
+        const ignored = options?.ignored;
+        if (typeof ignored !== "function") {
+            throw new Error("Expected the typed watcher filter");
+        }
+        expect(ignored(base)).toBe(false);
+        expect(ignored(path.join(base, "note.md"))).toBe(false);
+        expect(ignored(path.join(base, ".hidden.md"))).toBe(true);
+        expect(ignored(path.join(base, "local-livesync-v2", "state"))).toBe(true);
+        expect(ignored(path.dirname(base))).toBe(true);
+        expect(ignored(path.join(base + "-sibling", "note.md"))).toBe(true);
+        expect(ignored("relative.md")).toBe(true);
+        expect(reporter).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ["add", "onCreate"],
+        ["change", "onChange"],
+        ["unlink", "onDelete"],
+        ["addDir", "onCreate"],
+        ["unlinkDir", "onDelete"],
+    ] as const)("omits an invalid %s event and still delivers the next valid event", async (event, handler) => {
+        const base = path.resolve(path.sep, "vault");
+        const reporter = vi.fn();
+        const adapter = new CLIStorageEventManagerAdapter(base, undefined, true, reporter);
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        const registration = mockWatcher.on.mock.calls.find(([name]) => name === event);
+        const callback = registration?.[1] as ((candidate: string) => void) | undefined;
+        if (!callback) {
+            throw new Error(`Expected the ${event} handler`);
+        }
+        const outside = path.resolve(base, "..", "outside");
+        callback(outside);
+        expect(handlers[handler]).not.toHaveBeenCalled();
+        expect(reporter).toHaveBeenCalledWith(expect.stringContaining("ignored"), {
+            path: outside,
+            vaultPath: base,
+        });
+
+        callback(path.join(base, "valid"));
+        expect(handlers[handler]).toHaveBeenCalledTimes(1);
+        expect(handlers[handler]).toHaveBeenCalledWith(expect.objectContaining({ path: "valid" }));
+        expect(reporter).toHaveBeenCalledTimes(1);
+    });
+
+    it("preserves folder events for the Vault root", async () => {
+        const base = path.resolve(path.sep, "vault");
+        const adapter = new CLIStorageEventManagerAdapter(base, undefined, true);
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        const callback = mockWatcher.on.mock.calls.find(([event]) => event === "unlinkDir")?.[1] as (
+            candidate: string
+        ) => void;
+        callback(base);
+        expect(handlers.onDelete).toHaveBeenCalledWith(expect.objectContaining({ path: "", isFolder: true }));
+    });
+
     it("beginWatch is no-op when watchEnabled=false", async () => {
         const adapter = new CLIStorageEventManagerAdapter("/base", undefined, false);
         const handlers = makeHandlers();
@@ -84,6 +148,25 @@ describe("CLIStorageEventManagerAdapter", () => {
 
         expect(chokidar.watch).toHaveBeenCalledTimes(1);
         expect(chokidar.watch).toHaveBeenCalledWith("/base", expect.objectContaining({ ignoreInitial: true }));
+    });
+
+    it("borrows the prepared name source without starting a second watcher", async () => {
+        const source = { beginWatch: vi.fn(), close: vi.fn() };
+        const adapter = new CLIStorageEventManagerAdapter(
+            "/base",
+            undefined,
+            true,
+            undefined,
+            undefined,
+            undefined,
+            source as unknown as CLIFileNameSource
+        );
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        expect(source.beginWatch).toHaveBeenCalledWith(handlers);
+        expect(chokidar.watch).not.toHaveBeenCalled();
+        await adapter.close();
+        expect(source.close).toHaveBeenCalledTimes(1);
     });
 
     it("add event produces NodeFile with correct relative path via onCreate", async () => {

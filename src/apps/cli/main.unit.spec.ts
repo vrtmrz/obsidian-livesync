@@ -72,7 +72,23 @@ describe("CLI parseArgs", () => {
         expect(combined).toContain("Usage:");
         expect(combined).toContain("livesync-cli <database-path> [options] <command> [command-args]");
         expect(combined).toContain("--compat-remote-admin-exit-zero");
+        expect(combined).toContain("--include-db-like-dirs");
         expect(combined).toContain("journal-skip <journal-key>");
+    });
+
+    it.each([false, true])("parses the DB-like directory compatibility option (%s)", (enabled) => {
+        process.argv = [
+            "node",
+            "livesync-cli",
+            "./databasePath",
+            ...(enabled ? ["--include-db-like-dirs"] : []),
+            "daemon",
+        ];
+        mockProcessExit();
+        const parsed = parseArgs();
+        expect(parsed.includeDbLikeDirs).toBe(enabled);
+        expect(parsed.command).toBe("daemon");
+        expect(parsed.commandArgs).toEqual([]);
     });
 
     it("parses p2p-peers command and timeout", () => {

@@ -77,6 +77,41 @@ npm run test:e2e:docker:mirror --workspace self-hosted-livesync-cli
 
 The expected result is `PASS=7 FAIL=0`. These mirror suites use temporary local databases and need no CouchDB service. The complete `test:e2e:docker:all` command also runs the other Docker CLI suites and manages a disposable CouchDB fixture; use it to check the full Docker CI gate. Keep the ordinary-edit and unknown-provenance scenarios aligned between the Node.js and Bash suites.
 
+## CLI daemon watcher path regression
+
+Build the CLI, then run the focused task with Node.js 26 or later and Docker
+available:
+
+```bash
+NODE_OPTIONS=--max-old-space-size=3072 npm run build --workspace self-hosted-livesync-cli
+node test/e2e-cli/run-task.ts test:daemon-watch-paths
+```
+
+The task starts the disposable `couchdb-test` container, creates a unique
+database, and removes the container during teardown. Docker, the `couchdb-test`
+container name, and host port `5989` must be available. The CLI `.test.env` file supplies
+the same CouchDB connection variables used by the other CLI CouchDB tests;
+local test defaults apply when they are absent.
+
+The test seeds two revisions for a baseline, runs `fetch` into a Vault under a
+hidden `.obsidian` parent through a visible symlink, and starts the actual CLI
+daemon. An independent CLI client confirms exact remote file bytes and deletion
+after create, modify, and delete events. The current baseline Metadata revision
+and bytes are checked on the fetched client and observer; its original revision
+remains readable on the source and is checked in CouchDB's revision history. The
+test also checks the default hidden-entry and `.livesync/ignore` exclusions,
+then restarts the daemon with the physical Vault path and verifies the saved
+database suffix, runtime scope, and further monitoring.
+
+All three CLI clients use the same encrypted CouchDB profile and explicit test
+passphrase. Chunk retrieval is configured to permit remote reads.
+
+The test also creates an ordinary nested `archive-livesync-v2` directory. It
+checks that the default policy keeps its file out of the independently
+replicated database, then restarts both daemons with `--include-db-like-dirs`
+and verifies its initial bytes, later modifications, and deletion. Local
+database inspection occurs only after the corresponding daemon has stopped.
+
 ## CLI Fetch with on-demand chunks
 
 Build the CLI, then run `node test/e2e-cli/run-task.ts test:fetch-on-demand-chunks`
