@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
 import { fs, os, path } from "@vrtmrz/livesync-commonlib/node";
 import { runtimeScopeDirectory } from "../runtimeState";
@@ -147,6 +148,25 @@ describe("CLIStorageEventManagerAdapter", () => {
 
         expect(chokidar.watch).toHaveBeenCalledTimes(1);
         expect(chokidar.watch).toHaveBeenCalledWith("/base", expect.objectContaining({ ignoreInitial: true }));
+    });
+
+    it("borrows the prepared name source without starting a second watcher", async () => {
+        const source = { beginWatch: vi.fn(), close: vi.fn() };
+        const adapter = new CLIStorageEventManagerAdapter(
+            "/base",
+            undefined,
+            true,
+            undefined,
+            undefined,
+            undefined,
+            source as unknown as CLIFileNameSource
+        );
+        const handlers = makeHandlers();
+        await adapter.watch.beginWatch(handlers);
+        expect(source.beginWatch).toHaveBeenCalledWith(handlers);
+        expect(chokidar.watch).not.toHaveBeenCalled();
+        await adapter.close();
+        expect(source.close).toHaveBeenCalledTimes(1);
     });
 
     it("add event produces NodeFile with correct relative path via onCreate", async () => {

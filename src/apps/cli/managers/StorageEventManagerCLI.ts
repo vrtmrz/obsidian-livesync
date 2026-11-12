@@ -5,6 +5,7 @@ import {
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
 import type { IMinimumLiveSyncCommands, LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import type { CLIPathFilterOptions } from "@/apps/cli/cliPathFilter";
 import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
@@ -21,7 +22,8 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
         dependencies: StorageEventManagerBaseDependencies,
         ignoreRules?: IgnoreRules,
         watchEnabled?: boolean,
-        pathFilterOptions?: CLIPathFilterOptions
+        pathFilterOptions?: CLIPathFilterOptions,
+        nameSource?: CLIFileNameSource
     ) {
         const context = core.services.context as NodeServiceContext;
         const adapter = new CLIStorageEventManagerAdapter(
@@ -41,7 +43,8 @@ export class StorageEventManagerCLI extends StorageEventManagerBase<CLIStorageEv
                     runtimeScopeDirectory(context.databasePath, dependencies.vaultService.getVaultName(), basePath),
                     "storage-events.json"
                 ),
-            pathFilterOptions
+            pathFilterOptions,
+            nameSource
         );
         super(adapter, dependencies);
         this.core = core;

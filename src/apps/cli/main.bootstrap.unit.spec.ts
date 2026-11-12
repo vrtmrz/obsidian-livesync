@@ -18,6 +18,8 @@ import {
 import { ReplicateResultProcessor } from "@/serviceFeatures/replication/ReplicateResultProcessor";
 import { ServiceFileHandler } from "@/serviceModules/FileHandler";
 import { ServiceFileAccessCLI } from "./serviceModules/ServiceFileAccessImpl";
+import { StorageEventManagerCLI } from "./managers/StorageEventManagerCLI";
+import type { NodeFile, NodeFolder } from "./adapters/NodeTypes";
 import { runCommand } from "./commands/runCommand";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
@@ -31,6 +33,10 @@ vi.mock("@vrtmrz/livesync-commonlib/node", async (importOriginal) => {
 
 vi.mock("chokidar", { spy: true });
 vi.mock("@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner", { spy: true });
+
+type StorageEventDeliveryObserver = {
+    watchVaultCreate(file: NodeFile | NodeFolder): void;
+};
 
 function createStandardIoMock() {
     return {
@@ -362,22 +368,33 @@ describe("CLI database preparation", () => {
     );
 
     it.each([false, true])(
-        "uses the same database-directory exclusions for scans and watching (include: %s)",
+        "uses the same database-directory exclusions for scans and delivery (include: %s)",
         async (includeDbLikeDirs) => {
             const databaseEntry = parseFilePath("notes/archive-livesync-v2/state");
             await mkdir(join(vaultPath, "notes/archive-livesync-v2"));
             await writeFile(join(vaultPath, databaseEntry), "database-directory fixture");
             const storedPaths: string[] = [];
+            const deliveredPaths: string[] = [];
+            let inventoryPaths: readonly string[] = [];
             let isTarget: boolean | undefined;
-            let watcherIgnored: boolean | undefined;
+            let nativeIgnored: boolean | undefined;
+            // Observe accepted source delivery before the protected callback can queue writes.
+            const delivery = StorageEventManagerCLI.prototype as unknown as StorageEventDeliveryObserver;
+            vi.spyOn(delivery, "watchVaultCreate").mockImplementation((file) => {
+                deliveredPaths.push(file.path);
+            });
             const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
                 isTarget = await core.services.vault.isTargetFile(databaseEntry);
-                const watcherCalls = vi.mocked(chokidar.watch).mock.calls;
-                const ignored = watcherCalls[watcherCalls.length - 1]?.[1]?.ignored;
-                if (typeof ignored !== "function") {
-                    throw new Error("Expected the CLI watcher path policy");
+                const watch = vi.mocked(chokidar.watch);
+                const ignored = watch.mock.calls[watch.mock.calls.length - 1]?.[1]?.ignored;
+                const result = watch.mock.results[watch.mock.results.length - 1];
+                if (typeof ignored !== "function" || result?.type !== "return") {
+                    throw new Error("Expected the shared CLI source's native watcher");
                 }
-                watcherIgnored = ignored(join(vaultPath, databaseEntry));
+                nativeIgnored = ignored(join(vaultPath, databaseEntry));
+                result.value.emit("add", join(vaultPath, "notes/local.md"));
+                result.value.emit("add", join(vaultPath, databaseEntry));
+                inventoryPaths = await core.serviceModules.storageAccess.getFileNames({ fresh: true });
                 for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
                     storedPaths.push(doc.path);
                 }
@@ -387,7 +404,10 @@ describe("CLI database preparation", () => {
             await start("daemon", runner, 1, false, false, includeDbLikeDirs ? ["--include-db-like-dirs"] : []);
 
             expect(runner).toHaveBeenCalledOnce();
-            expect(watcherIgnored).toBe(!includeDbLikeDirs);
+            expect(nativeIgnored).toBe(false);
+            expect(inventoryPaths).toContain(databaseEntry);
+            expect(deliveredPaths).toContain("notes/local.md");
+            expect(deliveredPaths.includes(databaseEntry)).toBe(includeDbLikeDirs);
             expect(isTarget).toBe(includeDbLikeDirs);
             expect(storedPaths.sort()).toEqual(
                 includeDbLikeDirs ? [databaseEntry, "notes/local.md"] : ["notes/local.md"]
@@ -403,9 +423,16 @@ describe("CLI database preparation", () => {
             await mkdir(join(databaseRoot, entry), { recursive: true });
             await writeFile(join(databaseRoot, entry, "CURRENT"), "retained database fixture");
         }
-        const protectedEntries: { path: string; isTarget: boolean; ignored: boolean }[] = [];
+        const protectedEntries: { path: string; isTarget: boolean; nativeIgnored: boolean }[] = [];
         const storedPaths: string[] = [];
+        const deliveredPaths: string[] = [];
+        let inventoryPaths: readonly string[] = [];
         let hasDerivedDatabase = false;
+        // Record real source delivery without passing synthetic events into database writes.
+        const delivery = StorageEventManagerCLI.prototype as unknown as StorageEventDeliveryObserver;
+        vi.spyOn(delivery, "watchVaultCreate").mockImplementation((file) => {
+            deliveredPaths.push(file.path);
+        });
         const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
             const database = core.services.database.localDatabase.localDatabase;
             await database.createIndex({ index: { fields: ["path"], ddoc: "path-protection", name: "by-path" } });
@@ -413,19 +440,23 @@ describe("CLI database preparation", () => {
             hasDerivedDatabase = entries.some(
                 (entry) => entry.includes("-mrview-") && entry !== "previous-livesync-v2-mrview-index"
             );
-            const watcherCalls = vi.mocked(chokidar.watch).mock.calls;
-            const ignored = watcherCalls[watcherCalls.length - 1]?.[1]?.ignored;
-            if (typeof ignored !== "function") {
-                throw new Error("Expected the CLI watcher path policy");
+            const watch = vi.mocked(chokidar.watch);
+            const ignored = watch.mock.calls[watch.mock.calls.length - 1]?.[1]?.ignored;
+            const result = watch.mock.results[watch.mock.results.length - 1];
+            if (typeof ignored !== "function" || result?.type !== "return") {
+                throw new Error("Expected the shared CLI source's native watcher");
             }
+            result.value.emit("add", join(vaultPath, "notes/local.md"));
             for (const entry of entries) {
                 const candidate = parseFilePath(`state/${entry}/CURRENT`);
                 protectedEntries.push({
                     path: candidate,
                     isTarget: await core.services.vault.isTargetFile(candidate),
-                    ignored: ignored(join(vaultPath, candidate)),
+                    nativeIgnored: ignored(join(vaultPath, candidate)),
                 });
+                result.value.emit("add", join(vaultPath, candidate));
             }
+            inventoryPaths = await core.serviceModules.storageAccess.getFileNames({ fresh: true });
             for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
                 storedPaths.push(doc.path);
             }
@@ -449,11 +480,14 @@ describe("CLI database preparation", () => {
         expect(hasDerivedDatabase).toBe(true);
         expect(protectedEntries).toEqual(
             expect.arrayContaining([
-                { path: "state/previous-livesync-v2/CURRENT", isTarget: false, ignored: true },
-                { path: "state/previous-livesync-v2-mrview-index/CURRENT", isTarget: false, ignored: true },
+                { path: "state/previous-livesync-v2/CURRENT", isTarget: false, nativeIgnored: false },
+                { path: "state/previous-livesync-v2-mrview-index/CURRENT", isTarget: false, nativeIgnored: false },
             ])
         );
-        expect(protectedEntries.every((entry) => !entry.isTarget && entry.ignored)).toBe(true);
+        expect(protectedEntries.every((entry) => !entry.isTarget && !entry.nativeIgnored)).toBe(true);
+        expect(inventoryPaths).toEqual(expect.arrayContaining(protectedEntries.map((entry) => entry.path)));
+        expect(deliveredPaths).toContain("notes/local.md");
+        expect(protectedEntries.every((entry) => !deliveredPaths.includes(entry.path))).toBe(true);
         expect(storedPaths).toEqual(["notes/local.md"]);
     });
 

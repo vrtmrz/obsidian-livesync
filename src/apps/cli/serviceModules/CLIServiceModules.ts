@@ -33,13 +33,28 @@ export function initialiseServiceModulesCLI(
     const storageAccessManager = new StorageAccessManager();
 
     // CLI-specific file access using Node.js FileSystemAdapter
-    const vaultAccess = new FileAccessCLI(basePath, {
-        storageAccessManager: storageAccessManager,
-        vaultService: services.vault,
-        settingService: services.setting,
-        APIService: services.API,
-        pathService: services.path,
-    });
+    const vaultAccess = new FileAccessCLI(
+        basePath,
+        {
+            storageAccessManager: storageAccessManager,
+            vaultService: services.vault,
+            settingService: services.setting,
+            APIService: services.API,
+            pathService: services.path,
+        },
+        watchEnabled ? { ignoreRules, pathFilterOptions } : undefined
+    );
+    const nameSource = vaultAccess.fileNameSource;
+    if (nameSource) {
+        services.appLifecycle.onLoaded.addHandler(async () => {
+            await nameSource.prepare();
+            return true;
+        });
+        services.appLifecycle.onBeforeUnload.addHandler(async () => {
+            nameSource.stopDelivery();
+            return true;
+        });
+    }
 
     // Live monitoring receives the same runtime policy as the core target checks.
     const storageEventManager = new StorageEventManagerCLI(
@@ -54,7 +69,8 @@ export function initialiseServiceModulesCLI(
         },
         ignoreRules,
         watchEnabled,
-        pathFilterOptions
+        pathFilterOptions,
+        nameSource
     );
 
     // Close the file watcher during graceful shutdown so the process can exit cleanly.

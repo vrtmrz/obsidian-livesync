@@ -294,7 +294,10 @@ export function createConflictResolutionOperations(
     const resolveAllConflictedFilesByNewerOnes = async (): Promise<void> => {
         dependencies.log(`Resolving conflicts by newer ones`, LOG_LEVEL_NOTICE);
 
-        const files = await dependencies.storageAccess.getFileNames();
+        // This explicit bulk action deletes older revisions. Read the host's
+        // supported listing anew before choosing its workset; a listing failure
+        // must abort before any revision is removed.
+        const files = await dependencies.storageAccess.getFileNames({ fresh: true });
 
         let i = 0;
         for (const file of files) {

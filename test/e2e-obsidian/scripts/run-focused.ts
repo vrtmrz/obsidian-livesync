@@ -45,6 +45,7 @@ const focusedScenarios = new Set([
     "deletion-recovery",
     "local-file-retry",
     "folder-batch",
+    "file-name-source",
     "setup-uri-workflow",
     "two-vault-sync",
     "security-seed-reconnect",

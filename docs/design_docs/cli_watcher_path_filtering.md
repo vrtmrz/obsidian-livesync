@@ -13,6 +13,13 @@ has not been released. The reviewed baseline remains Self-hosted LiveSync
 Self-hosted LiveSync `71893f2e` (`1.0.47`) with Commonlib `0.4.1` and Chokidar `6.0.0`.
 Reporter confirmation remains pending.
 
+Integration note: daemon monitoring now borrows delivery from the shared
+[file-name source](file_path_index.md). The source observes supported names
+before applying `isIgnoredFilePath` to synchronisation delivery, using the same
+`CLIPathFilterOptions` as logical target checks. Ignore rules and database
+protection must not narrow its collision inventory. The original dates and
+baseline above, and the historical verification below, remain unchanged.
+
 ## Problem and required behaviour
 
 [#1340](https://github.com/vrtmrz/obsidian-livesync/issues/1340) reports that new
@@ -37,8 +44,9 @@ root used by [CLI database continuity](cli_database_continuity.md).
 The implementation uses one CLI-local refinement, `VaultRelativePath`, and one
 conversion boundary. It shares the watcher and logical target exclusion policy and adds a runtime
 compatibility option, while retaining `main.ts` path resolution, database
-selection, runtime scopes, Commonlib APIs, and the existing symlink-following
-policy.
+selection, runtime scopes, and Commonlib APIs. The integrated shared source
+uses the supported storage scope: the selected root is still canonicalised, and
+descendant symlinks are not followed because storage operations reject them.
 
 The type expresses a checked lexical path relative to the supplied Vault root.
 It does not establish filesystem existence, Unicode or case resolution,
@@ -161,8 +169,8 @@ directories in the Vault can be admitted at any depth by the option.
 The option is runtime-only and must be supplied on each invocation that needs
 it. It adds no stored setting, migration, or ownership ledger. The policy cannot
 identify an unrelated database merely from its contents; an opt-in can admit
-such directories outside the configured storage namespace. Existing descendant
-symlink behaviour and its physical-containment limits remain unchanged.
+such directories outside the configured storage namespace. The option does not
+add support for descendant symlinks.
 
 Reuse `isHiddenPath` and `IgnoreRules.shouldIgnore`; a hidden parent outside the
 selected Vault must not affect these decisions. A user rule can exclude every
@@ -170,8 +178,8 @@ entry while the watcher root remains watchable.
 
 ## Watcher integration and rejected candidates
 
-The Chokidar `ignored` callback converts its candidate before calling the typed
-policy. If conversion returns `undefined`, the candidate is excluded without
+For the standalone adapter fallback, the Chokidar `ignored` callback converts
+its candidate before calling the typed policy. If conversion returns `undefined`, the candidate is excluded without
 throwing or reporting an error. Chokidar may evaluate ancestors of its root;
 version `6.0.0` separately keeps root ancestors watchable. Do not manufacture a
 Vault-relative value for those paths.
@@ -191,9 +199,16 @@ Expected ancestor candidates in the `ignored` callback are not diagnostics.
 Diagnostics must describe the rejected path and the selected root without
 claiming that all monitoring has stopped.
 
-The adapter uses the typed policy rather than calling its string-based
-exclusion helpers directly. Do not add assertions at callback call sites to
-bypass conversion.
+The standalone adapter uses the typed policy rather than calling its
+string-based exclusion helpers directly. Do not add assertions at callback call
+sites to bypass conversion.
+
+In the daemon composition, the shared source owns the native watcher. Its
+observation exclusions follow the supported name-listing scope. The event-manager
+adapter borrows delivery from that source, and `isIgnoredFilePath` applies only
+after name observation. `CLIServiceModules` passes the runtime options through
+`FileAccessCLI` into the source, so initial logical checks and subsequent delivery
+retain the same database protection and compatibility option.
 
 ## Compatibility and bounded alternatives
 
@@ -233,7 +248,7 @@ Acceptance requires the following evidence:
   internal database directories must report create, modify, and delete events
   with correct relative paths.
 - Dot-prefixed entries, internal databases, custom ignore patterns, and existing
-  symlink behaviour must retain their exclusions. Exercise Chokidar's ancestor
+  supported storage scope must retain their exclusions. Exercise Chokidar's ancestor
   candidates as well as the root itself.
 - Cover invalid or relative inputs, `..`, sibling prefixes, platform-native
   separators, and different drives where supported. Rejected emitted events
@@ -260,7 +275,9 @@ correction, including the CouchDB test, is recorded below.
 
 The current-main regression first failed for hidden roots and parents and for
 roots or parents matching the internal-database exclusion. Normal roots and
-descendant symlinks remained operational. After the correction, the same
+descendant symlinks remained observable through the standalone watcher. That
+result did not establish supported synchronisation through descendant symlinks:
+the existing storage adapter already rejected those paths. After the correction, the same
 real-filesystem cases pass for creation, modification, and deletion. Hidden
 entries, internal databases, and user patterns remain excluded.
 
@@ -301,3 +318,19 @@ view databases remain excluded with the option.
 The two skipped unit cases are platform-dependent: a Windows different-drive
 case and an existing host-filesystem alias case. Windows runtime behaviour and
 reporter confirmation remain unverified. The correction remains unreleased.
+
+### Shared file-name source integration
+
+Real-filesystem root, create/modify/delete, exclusion, and burst scenarios now
+exercise the shared source borrowed by the event-manager adapter. Root symlinks
+are canonicalised before composition. A descendant-symlink fixture checks both
+its absence from delivered child events and name listings and the existing
+storage rejection.
+
+A service-composition regression first demonstrated that the shared source lost
+`CLIPathFilterOptions`: an opted-in ordinary directory remained excluded, while
+PouchDB view directories reached event delivery. The correction reuses
+`isIgnoredFilePath` after observation. Tests cover the default policy, the runtime
+option, separate and shared database roots, and collision candidates retained
+from ignored names. This focused evidence does not replace the required packed
+dependency, broad, or real-runtime validation for the combined change.

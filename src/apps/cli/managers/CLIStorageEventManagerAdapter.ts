@@ -15,6 +15,7 @@ import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import { writeFileAtomically } from "@/apps/cli/runtimeState";
 import {
     isIgnoredVaultPath,
@@ -100,7 +101,8 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false,
         private reportDiagnostic: CliDiagnosticReporter = () => undefined,
-        private readonly pathFilterOptions: CLIPathFilterOptions = {}
+        private readonly pathFilterOptions: CLIPathFilterOptions = {},
+        private nameSource?: CLIFileNameSource
     ) {}
 
     // Bind conversion to the selected root; event callbacks cannot substitute a different root.
@@ -154,6 +156,10 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         if (!this.watchEnabled) return;
+        if (this.nameSource) {
+            await this.nameSource.beginWatch(handlers);
+            return;
+        }
         // Chokidar may probe ancestors of the root; exclude those candidates quietly.
         // Entry exclusions see only the rebased path, preserving Vaults beneath hidden parents.
         const ignored = (candidatePath: string): boolean => {
@@ -223,6 +229,9 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
     }
 
     close(): Promise<void> {
+        if (this.nameSource) {
+            return this.nameSource.close();
+        }
         if (this._watcher) {
             return this._watcher.close();
         }
@@ -246,11 +255,19 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
         watchEnabled: boolean = false,
         reportDiagnostic: CliDiagnosticReporter = () => undefined,
         snapshotPath?: () => string,
-        pathFilterOptions?: CLIPathFilterOptions
+        pathFilterOptions?: CLIPathFilterOptions,
+        nameSource?: CLIFileNameSource
     ) {
         this.typeGuard = new NodeTypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic, snapshotPath);
-        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic, pathFilterOptions);
+        this.watch = new CLIWatchAdapter(
+            basePath,
+            ignoreRules,
+            watchEnabled,
+            reportDiagnostic,
+            pathFilterOptions,
+            nameSource
+        );
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
     }

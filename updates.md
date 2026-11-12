@@ -12,9 +12,21 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- File-name collision checks no longer rebuild the whole path map after content-only edits.
+
+#### P2P synchronisation
+
+- Later P2P changes can continue to reach following devices when an earlier change notification was ignored before the peer was accepted. (#1247)
+    - Change notifications no longer wait for a reply from the receiving device. A missed final notification still requires a later change or explicit synchronisation.
+
 ### CLI
 
 #### Fixed
+
+- CLI daemon collision checks no longer enumerate every file and its metadata after each content edit. (#1346)
+    - The daemon maintains file names from filesystem observations and checks current directory names before accepting a path.
 
 - We can synchronise CLI Vaults whose root or parent directories have dot-prefixed names, including through symlinks that resolve to those locations. (#1340)
     - Watch exclusions now apply within the selected Vault. Startup scans and live monitoring share the same exclusions, including PouchDB view indexes.

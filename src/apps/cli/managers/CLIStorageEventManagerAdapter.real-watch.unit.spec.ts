@@ -3,9 +3,12 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, unlin
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import { UnicodeResolvingNodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
@@ -32,6 +35,28 @@ function makeHandlers(events: WatchEvent[], onRename: () => void = () => undefin
         onDelete: (file) => record("delete", file),
         onRename,
         onRaw: () => undefined,
+    };
+}
+
+function makeIndexedAdapter(root: string, ignoreRules?: IgnoreRules, reportDiagnostic?: CliDiagnosticReporter) {
+    const storage = new UnicodeResolvingNodeStorageAdapter(root);
+    const source = new CLIFileNameSource(
+        storage,
+        () => ({ pathNormalizationVersion: 0, handleFilenameCaseSensitive: true }),
+        { basePath: root, ignoreRules, reportDiagnostic }
+    );
+    return {
+        source,
+        storage,
+        adapter: new CLIStorageEventManagerAdapter(
+            root,
+            ignoreRules,
+            true,
+            reportDiagnostic,
+            undefined,
+            undefined,
+            source
+        ),
     };
 }
 
@@ -67,53 +92,41 @@ for (let directoryIndex = 0; directoryIndex < 40; directoryIndex++) {
 
 describe("CLI filesystem watcher with a real filesystem", () => {
     it.each([
-        { name: "an ordinary Vault", parent: "notes", vault: "vault", alias: false, resolveAlias: true },
+        { name: "an ordinary Vault", parent: "notes", vault: "vault", alias: false },
         {
             name: "an ordinary Vault through a symlink",
             parent: "notes",
             vault: "vault",
             alias: true,
-            resolveAlias: true,
-        },
-        {
-            name: "a hidden-parent Vault through a preserved symlink",
-            parent: ".obsidian",
-            vault: "vault",
-            alias: true,
-            resolveAlias: false,
         },
         {
             name: "a hidden-parent Vault by physical path",
             parent: ".obsidian",
             vault: "vault",
             alias: false,
-            resolveAlias: true,
         },
         {
             name: "a hidden-parent Vault through a resolved symlink",
             parent: ".obsidian",
             vault: "vault",
             alias: true,
-            resolveAlias: true,
         },
-        { name: "a dot-prefixed Vault root", parent: "notes", vault: ".vault", alias: false, resolveAlias: true },
+        { name: "a dot-prefixed Vault root", parent: "notes", vault: ".vault", alias: false },
         {
             name: "a Vault below a database-like parent",
             parent: "archive-livesync-v2",
             vault: "vault",
             alias: false,
-            resolveAlias: true,
         },
         {
             name: "a database-like Vault root",
             parent: "notes",
             vault: "vault-livesync-v2",
             alias: false,
-            resolveAlias: true,
         },
     ])(
         "keeps monitoring files in $name",
-        async ({ parent, vault, alias, resolveAlias }) => {
+        async ({ parent, vault, alias }) => {
             const fixture = await mkdtemp(join(tmpdir(), "livesync-watch-root-"));
             const physicalVault = join(fixture, parent, vault);
             const aliasPath = join(fixture, "livesync-vault");
@@ -122,12 +135,13 @@ describe("CLI filesystem watcher with a real filesystem", () => {
             await mkdir(physicalVault, { recursive: true });
             await symlink(physicalVault, aliasPath, "dir");
             const suppliedPath = alias ? aliasPath : physicalVault;
-            const watchRoot = resolveAlias ? await realpath(suppliedPath) : suppliedPath;
-            const adapter = new CLIStorageEventManagerAdapter(watchRoot, undefined, true, (message, detail) =>
+            const watchRoot = await realpath(suppliedPath);
+            const { source, adapter } = makeIndexedAdapter(watchRoot, undefined, (message, detail) =>
                 diagnostics.push({ message, detail })
             );
 
             try {
+                await source.prepare();
                 await adapter.watch.beginWatch(makeHandlers(events));
                 const noteName = "new-note.md";
                 const notePath = join(physicalVault, noteName);
@@ -155,7 +169,7 @@ describe("CLI filesystem watcher with a real filesystem", () => {
         20_000
     );
 
-    it("preserves monitoring through a descendant symlink to another directory", async () => {
+    it("keeps descendant symlinks outside the shared source's supported storage scope", async () => {
         const fixture = await mkdtemp(join(tmpdir(), "livesync-watch-child-link-"));
         const root = join(fixture, "vault");
         const target = join(fixture, "external");
@@ -163,15 +177,21 @@ describe("CLI filesystem watcher with a real filesystem", () => {
         await mkdir(target);
         await symlink(target, join(root, "linked"), "dir");
         const events: WatchEvent[] = [];
-        const adapter = new CLIStorageEventManagerAdapter(root, undefined, true);
+        const { source, storage, adapter } = makeIndexedAdapter(root);
         try {
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events));
             await writeFile(join(target, "linked-note.md"), "written through the physical target");
+            await writeFile(join(root, "ordinary.md"), "supported storage");
             expect(
-                await waitFor(() =>
-                    events.some((event) => event.type === "create" && event.path === "linked/linked-note.md")
-                )
+                await waitFor(() => events.some((event) => event.type === "create" && event.path === "ordinary.md"))
             ).toBe(true);
+            await delay(700);
+            expect(events.some((event) => event.path.startsWith("linked/"))).toBe(false);
+            expect(await source.getFileNames({ fresh: true })).not.toContain("linked/linked-note.md");
+            await expect(storage.stat("linked/linked-note.md")).rejects.toThrow(
+                "Storage paths must not contain symbolic links"
+            );
         } finally {
             await adapter.close();
             await rm(fixture, { recursive: true, force: true });
@@ -181,13 +201,14 @@ describe("CLI filesystem watcher with a real filesystem", () => {
     it("reports all 400 files when another process creates directories before dot-temp renames", async () => {
         const root = await mkdtemp(join(tmpdir(), "livesync-issue1328-burst-"));
         const events: WatchEvent[] = [];
-        const adapter = new CLIStorageEventManagerAdapter(root, undefined, true);
+        const { source, adapter } = makeIndexedAdapter(root);
         const expectedPaths = Array.from({ length: 40 }, (_, directoryIndex) =>
             Array.from({ length: 10 }, (_, fileIndex) => `book-${directoryIndex}/image-${fileIndex}.png`)
         ).flat();
 
         try {
             await writeFile(join(root, "present-before-watch.md"), "initial file");
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events));
 
             await run(process.execPath, ["-e", directoryFirstWriter, root], { timeout: 15_000 });
@@ -239,9 +260,10 @@ describe("CLI filesystem watcher with a real filesystem", () => {
             await mkdir(join(root, "local-livesync-v2"));
             await writeFile(join(root, "present-before-watch.md"), "initial file");
             await writeFile(join(root, ".hidden-before-watch.md"), "initial hidden file");
-            const adapter = new CLIStorageEventManagerAdapter(root, ignoreRules, true);
+            const { source, adapter } = makeIndexedAdapter(root, ignoreRules);
 
             try {
+                await source.prepare();
                 await adapter.watch.beginWatch(makeHandlers(events));
                 await writeFile(join(root, "visible-after-watch.md"), "visible");
                 await writeFile(join(root, ".hidden-after-watch.md"), "hidden");
@@ -269,11 +291,12 @@ describe("CLI filesystem watcher with a real filesystem", () => {
     it("reports changes, deletions, rename paths, and stops after close", async () => {
         const root = await mkdtemp(join(tmpdir(), "livesync-real-watch-lifecycle-"));
         const events: WatchEvent[] = [];
-        const adapter = new CLIStorageEventManagerAdapter(root, undefined, true);
+        const { source, adapter } = makeIndexedAdapter(root);
         let closed = false;
         let renameCalls = 0;
 
         try {
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events, () => renameCalls++));
 
             const originalPath = join(root, "original.md");
