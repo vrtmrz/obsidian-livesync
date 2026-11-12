@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.50
+
+12th November, 2026
+
 ### Fixed
 
 - File-name collision checks no longer rebuild the whole path map after content-only edits.
