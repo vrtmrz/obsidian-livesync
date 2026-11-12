@@ -7,8 +7,9 @@ status: accepted
 
 # CLI watcher path filtering
 
-Implementation note: the correction is implemented and locally validated, but
-has not been released. The reviewed baseline remains Self-hosted LiveSync
+Implementation note: the correction is included in Self-hosted LiveSync
+`1.0.50` and has been validated locally and in CI. The reviewed baseline remains
+Self-hosted LiveSync
 `78ebc2d2` and Commonlib `0.4.3`. The original failure was reproduced against
 Self-hosted LiveSync `71893f2e` (`1.0.47`) with Commonlib `0.4.1` and Chokidar `6.0.0`.
 Reporter confirmation remains pending.
@@ -317,7 +318,7 @@ view databases remain excluded with the option.
 
 The two skipped unit cases are platform-dependent: a Windows different-drive
 case and an existing host-filesystem alias case. Windows runtime behaviour and
-reporter confirmation remain unverified. The correction remains unreleased.
+reporter confirmation remain unverified. The correction is included in `1.0.50`.
 
 ### Shared file-name source integration
 
