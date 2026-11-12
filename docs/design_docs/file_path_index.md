@@ -9,7 +9,9 @@ status: implemented-unreleased
 
 ## Status and purpose
 
-This is an implementation design for [#1346](https://github.com/vrtmrz/obsidian-livesync/issues/1346), reviewed against Self-hosted LiveSync `78ebc2d298c39df0ce2be3a4e62059cd74be86a0`, Commonlib `0.4.3`, and the CLI's resolved `chokidar` `6.0.0`. An unreleased implementation follows this design. Commonlib publication and adoption of its exact package version remain prerequisites for releasing the consumer change. The version fields identify the reviewed baseline, not a release containing this change.
+This is an implementation design for [#1346](https://github.com/vrtmrz/obsidian-livesync/issues/1346), reviewed against Self-hosted LiveSync `78ebc2d298c39df0ce2be3a4e62059cd74be86a0`, Commonlib `0.4.3`, and the CLI's resolved `chokidar` `6.0.0`. An unreleased Self-hosted LiveSync implementation follows this design. The version fields identify the reviewed baseline, not a release containing this change.
+
+The Commonlib portion is published in [0.5.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.5.0), and the consumer pins that exact registry version. Clean-install checks, unit tests, and plug-in and application builds have passed against that artefact. The consumer change remains unreleased.
 
 The CLI should maintain its file-name inventory while running as a daemon. A shared in-memory `FilePathIndex` should group equivalent paths and accept incremental membership changes. Ordinary content edits should neither enumerate the whole Vault nor rebuild its identity map.
 
