@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { appendFile, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
 import { path } from "@vrtmrz/livesync-commonlib/node";
+import { parseFilePath } from "@vrtmrz/livesync-commonlib/storage";
 import * as offlineScanner from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { ReplicatorService } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
@@ -85,7 +86,8 @@ describe("CLI database preparation", () => {
         runner: CliCommandRunner,
         exitCode = 1,
         force = false,
-        writeSettings = false
+        writeSettings = false,
+        extraArgs: readonly string[] = []
     ) {
         process.exitCode = undefined;
         process.argv = [
@@ -98,6 +100,7 @@ describe("CLI database preparation", () => {
             vaultPath,
             "--settings",
             settingsPath,
+            ...extraArgs,
             command,
         ];
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
@@ -114,28 +117,31 @@ describe("CLI database preparation", () => {
         expect(restore).not.toHaveBeenCalled();
     });
 
-    it.each(["fetch", "rebuild"] as const)("invalidates old reflection work after the %s database reset", async (command) => {
-        const snapshotKey = "replicationResultProcessorSnapshot";
-        const oldSnapshot = { queued: [{ _id: "old", _rev: "1-old" }], processing: [] };
-        let retainedBeforeReset: unknown;
-        let retainedAfterReset: unknown;
-        let reset: boolean | undefined;
-        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
-            await core.services.keyValueDB.kvDB.set(snapshotKey, oldSnapshot);
-            retainedBeforeReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
-            reset = await core.services.database.resetDatabase();
-            retainedAfterReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
-            return false;
-        });
+    it.each(["fetch", "rebuild"] as const)(
+        "invalidates old reflection work after the %s database reset",
+        async (command) => {
+            const snapshotKey = "replicationResultProcessorSnapshot";
+            const oldSnapshot = { queued: [{ _id: "old", _rev: "1-old" }], processing: [] };
+            let retainedBeforeReset: unknown;
+            let retainedAfterReset: unknown;
+            let reset: boolean | undefined;
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                await core.services.keyValueDB.kvDB.set(snapshotKey, oldSnapshot);
+                retainedBeforeReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+                reset = await core.services.database.resetDatabase();
+                retainedAfterReset = await core.services.keyValueDB.kvDB.get(snapshotKey);
+                return false;
+            });
 
-        await start(command, runner, 1, true);
+            await start(command, runner, 1, true);
 
-        expect(runner).toHaveBeenCalledOnce();
-        expect(reset).toBe(true);
-        expect(retainedBeforeReset).toEqual(oldSnapshot);
-        expect(retainedAfterReset).toEqual({ queued: [], processing: [] });
-        expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
-    });
+            expect(runner).toHaveBeenCalledOnce();
+            expect(reset).toBe(true);
+            expect(retainedBeforeReset).toEqual(oldSnapshot);
+            expect(retainedAfterReset).toEqual({ queued: [], processing: [] });
+            expect(await readFile(join(vaultPath, "notes/local.md"), "utf8")).toBe("local content");
+        }
+    );
 
     it.each([
         { handleFilenameCaseSensitive: true, pathNormalizationVersion: 0 as const },
@@ -354,6 +360,102 @@ describe("CLI database preparation", () => {
             expect(await readFile(join(vaultPath, "notes/local.md"), "utf-8")).toBe("local content");
         }
     );
+
+    it.each([false, true])(
+        "uses the same database-directory exclusions for scans and watching (include: %s)",
+        async (includeDbLikeDirs) => {
+            const databaseEntry = parseFilePath("notes/archive-livesync-v2/state");
+            await mkdir(join(vaultPath, "notes/archive-livesync-v2"));
+            await writeFile(join(vaultPath, databaseEntry), "database-directory fixture");
+            const storedPaths: string[] = [];
+            let isTarget: boolean | undefined;
+            let watcherIgnored: boolean | undefined;
+            const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+                isTarget = await core.services.vault.isTargetFile(databaseEntry);
+                const watcherCalls = vi.mocked(chokidar.watch).mock.calls;
+                const ignored = watcherCalls[watcherCalls.length - 1]?.[1]?.ignored;
+                if (typeof ignored !== "function") {
+                    throw new Error("Expected the CLI watcher path policy");
+                }
+                watcherIgnored = ignored(join(vaultPath, databaseEntry));
+                for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                    storedPaths.push(doc.path);
+                }
+                return false;
+            });
+
+            await start("daemon", runner, 1, false, false, includeDbLikeDirs ? ["--include-db-like-dirs"] : []);
+
+            expect(runner).toHaveBeenCalledOnce();
+            expect(watcherIgnored).toBe(!includeDbLikeDirs);
+            expect(isTarget).toBe(includeDbLikeDirs);
+            expect(storedPaths.sort()).toEqual(
+                includeDbLikeDirs ? [databaseEntry, "notes/local.md"] : ["notes/local.md"]
+            );
+        }
+    );
+
+    it("keeps actual, old, and derived database files excluded with the compatibility option", async () => {
+        const databaseRoot = join(vaultPath, "state");
+        // Retained entries simulate older suffixes; the opt-in must protect them
+        // alongside the active DB and the real view index created below.
+        for (const entry of ["previous-livesync-v2", "previous-livesync-v2-mrview-index"]) {
+            await mkdir(join(databaseRoot, entry), { recursive: true });
+            await writeFile(join(databaseRoot, entry, "CURRENT"), "retained database fixture");
+        }
+        const protectedEntries: { path: string; isTarget: boolean; ignored: boolean }[] = [];
+        const storedPaths: string[] = [];
+        let hasDerivedDatabase = false;
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            const database = core.services.database.localDatabase.localDatabase;
+            await database.createIndex({ index: { fields: ["path"], ddoc: "path-protection", name: "by-path" } });
+            const entries = (await readdir(databaseRoot)).filter((entry) => entry !== ".livesync");
+            hasDerivedDatabase = entries.some(
+                (entry) => entry.includes("-mrview-") && entry !== "previous-livesync-v2-mrview-index"
+            );
+            const watcherCalls = vi.mocked(chokidar.watch).mock.calls;
+            const ignored = watcherCalls[watcherCalls.length - 1]?.[1]?.ignored;
+            if (typeof ignored !== "function") {
+                throw new Error("Expected the CLI watcher path policy");
+            }
+            for (const entry of entries) {
+                const candidate = parseFilePath(`state/${entry}/CURRENT`);
+                protectedEntries.push({
+                    path: candidate,
+                    isTarget: await core.services.vault.isTargetFile(candidate),
+                    ignored: ignored(join(vaultPath, candidate)),
+                });
+            }
+            for await (const doc of core.services.database.localDatabase.findAllNormalDocs()) {
+                storedPaths.push(doc.path);
+            }
+            return false;
+        });
+        process.argv = [
+            "node",
+            "livesync-cli",
+            databaseRoot,
+            "--vault",
+            vaultPath,
+            "--settings",
+            settingsPath,
+            "--include-db-like-dirs",
+            "daemon",
+        ];
+
+        await expect(main(standardIo, runner)).rejects.toThrow("__EXIT__:1");
+
+        expect(runner).toHaveBeenCalledOnce();
+        expect(hasDerivedDatabase).toBe(true);
+        expect(protectedEntries).toEqual(
+            expect.arrayContaining([
+                { path: "state/previous-livesync-v2/CURRENT", isTarget: false, ignored: true },
+                { path: "state/previous-livesync-v2-mrview-index/CURRENT", isTarget: false, ignored: true },
+            ])
+        );
+        expect(protectedEntries.every((entry) => !entry.isTarget && entry.ignored)).toBe(true);
+        expect(storedPaths).toEqual(["notes/local.md"]);
+    });
 
     it("retains filesystem creation time in database Metadata after an in-place edit", async (context) => {
         const note = join(vaultPath, "notes/local.md");

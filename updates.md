@@ -12,6 +12,18 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### CLI
+
+#### Fixed
+
+- We can synchronise CLI Vaults whose root or parent directories have dot-prefixed names, including through symlinks that resolve to those locations. (#1340)
+    - Watch exclusions now apply within the selected Vault. Startup scans and live monitoring share the same exclusions, including PouchDB view indexes.
+    - Hidden entries, the configured database storage entries, and `.livesync/ignore` rules remain excluded.
+
+#### Added
+
+- We can include ordinary directories with database-like names by specifying `--include-db-like-dirs` on each invocation. The CLI's database storage entries, hidden entries, and user ignore rules remain excluded.
+
 ## 1.0.49
 
 11th November, 2026
