@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
+import { UnicodeResolvingNodeStorageAdapter } from "@vrtmrz/livesync-commonlib/node";
+import { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
@@ -32,6 +34,18 @@ function makeHandlers(events: WatchEvent[], onRename: () => void = () => undefin
         onDelete: (file) => record("delete", file),
         onRename,
         onRaw: () => undefined,
+    };
+}
+
+function makeIndexedAdapter(root: string, ignoreRules?: IgnoreRules) {
+    const source = new CLIFileNameSource(
+        new UnicodeResolvingNodeStorageAdapter(root),
+        () => ({ pathNormalizationVersion: 0, handleFilenameCaseSensitive: true }),
+        { basePath: root, ignoreRules }
+    );
+    return {
+        source,
+        adapter: new CLIStorageEventManagerAdapter(root, ignoreRules, true, undefined, undefined, source),
     };
 }
 
@@ -69,13 +83,14 @@ describe("CLI filesystem watcher with a real filesystem", () => {
     it("reports all 400 files when another process creates directories before dot-temp renames", async () => {
         const root = await mkdtemp(join(tmpdir(), "livesync-issue1328-burst-"));
         const events: WatchEvent[] = [];
-        const adapter = new CLIStorageEventManagerAdapter(root, undefined, true);
+        const { source, adapter } = makeIndexedAdapter(root);
         const expectedPaths = Array.from({ length: 40 }, (_, directoryIndex) =>
             Array.from({ length: 10 }, (_, fileIndex) => `book-${directoryIndex}/image-${fileIndex}.png`)
         ).flat();
 
         try {
             await writeFile(join(root, "present-before-watch.md"), "initial file");
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events));
 
             await run(process.execPath, ["-e", directoryFirstWriter, root], { timeout: 15_000 });
@@ -122,9 +137,10 @@ describe("CLI filesystem watcher with a real filesystem", () => {
         await mkdir(join(root, "private"));
         await writeFile(join(root, "present-before-watch.md"), "initial file");
         await writeFile(join(root, ".hidden-before-watch.md"), "initial hidden file");
-        const adapter = new CLIStorageEventManagerAdapter(root, ignoreRules, true);
+        const { source, adapter } = makeIndexedAdapter(root, ignoreRules);
 
         try {
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events));
             await writeFile(join(root, "visible-after-watch.md"), "visible");
             await writeFile(join(root, ".hidden-after-watch.md"), "hidden");
@@ -149,11 +165,12 @@ describe("CLI filesystem watcher with a real filesystem", () => {
     it("reports changes, deletions, rename paths, and stops after close", async () => {
         const root = await mkdtemp(join(tmpdir(), "livesync-real-watch-lifecycle-"));
         const events: WatchEvent[] = [];
-        const adapter = new CLIStorageEventManagerAdapter(root, undefined, true);
+        const { source, adapter } = makeIndexedAdapter(root);
         let closed = false;
         let renameCalls = 0;
 
         try {
+            await source.prepare();
             await adapter.watch.beginWatch(makeHandlers(events, () => renameCalls++));
 
             const originalPath = join(root, "original.md");

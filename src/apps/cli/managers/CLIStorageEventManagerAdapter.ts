@@ -15,6 +15,7 @@ import type { IgnoreRules } from "@/apps/cli/serviceModules/IgnoreRules";
 import { fsPromises as fs, getNodeFileCreationTime, path, type Stats } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
 import { NodeTypeGuardAdapter } from "@/apps/cli/adapters/NodeTypeGuardAdapter";
+import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import { writeFileAtomically } from "@/apps/cli/runtimeState";
 
 /**
@@ -92,7 +93,8 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
         private basePath: string,
         private ignoreRules?: IgnoreRules,
         private watchEnabled: boolean = false,
-        private reportDiagnostic: CliDiagnosticReporter = () => undefined
+        private reportDiagnostic: CliDiagnosticReporter = () => undefined,
+        private nameSource?: CLIFileNameSource
     ) {}
 
     private _toNodeFile(filePath: string, stats: Stats | undefined): NodeFile {
@@ -118,6 +120,10 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
 
     async beginWatch(handlers: IStorageEventWatchHandlers): Promise<void> {
         if (!this.watchEnabled) return;
+        if (this.nameSource) {
+            await this.nameSource.beginWatch(handlers);
+            return;
+        }
         const baseIgnored: Array<RegExp | string | ((p: string) => boolean)> = [
             /(^|[/\\])\./,
             /(^|[/\\])[^/\\]*-livesync-v2([/\\]|$)/,
@@ -178,6 +184,9 @@ class CLIWatchAdapter implements IStorageEventWatchAdapter {
     }
 
     close(): Promise<void> {
+        if (this.nameSource) {
+            return this.nameSource.close();
+        }
         if (this._watcher) {
             return this._watcher.close();
         }
@@ -200,11 +209,12 @@ export class CLIStorageEventManagerAdapter implements IStorageEventManagerAdapte
         ignoreRules?: IgnoreRules,
         watchEnabled: boolean = false,
         reportDiagnostic: CliDiagnosticReporter = () => undefined,
-        snapshotPath?: () => string
+        snapshotPath?: () => string,
+        nameSource?: CLIFileNameSource
     ) {
         this.typeGuard = new NodeTypeGuardAdapter();
         this.persistence = new CLIPersistenceAdapter(basePath, reportDiagnostic, snapshotPath);
-        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic);
+        this.watch = new CLIWatchAdapter(basePath, ignoreRules, watchEnabled, reportDiagnostic, nameSource);
         this.status = new CLIStatusAdapter();
         this.converter = new CLIConverterAdapter();
     }

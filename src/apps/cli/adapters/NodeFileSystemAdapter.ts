@@ -4,6 +4,7 @@ import { NodePathAdapter } from "./NodePathAdapter";
 import { NodeTypeGuardAdapter } from "./NodeTypeGuardAdapter";
 import { NodeConversionAdapter } from "./NodeConversionAdapter";
 import { AmbiguousNormalisedPathError, UnicodeResolvingNodeStorageAdapter } from "./UnicodeResolvingNodeStorageAdapter";
+import { ObservedNodeStorageAdapter } from "@/apps/cli/storage/ObservedNodeStorageAdapter";
 import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { path } from "@vrtmrz/livesync-commonlib/node";
@@ -15,6 +16,7 @@ import {
     parseFilePath,
     type StoragePath,
     type StoragePathResolver,
+    type FileNameLookup,
 } from "@vrtmrz/livesync-commonlib/storage";
 
 /**
@@ -26,7 +28,11 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     readonly conversion: NodeConversionAdapter;
     readonly storage: UnicodeResolvingNodeStorageAdapter;
     readonly vault: NodeVaultAdapter;
+    /** Optional watched name capability; single-run CLI commands retain physical listing. */
+    fileNameLookup?: FileNameLookup;
 
+    // Previously accessed objects are not a complete name inventory. Full getFiles
+    // enumeration still reads current metadata rather than treating this cache as a snapshot.
     private fileCache = new Map<string, NodeFile>();
     private readonly isCaseInsensitiveSetting: () => boolean;
 
@@ -34,13 +40,19 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         private basePath: string,
         private reportDiagnostic: CliDiagnosticReporter = () => undefined,
         getPathNormalizationVersion: () => number = () => 0,
-        isCaseInsensitive: () => boolean = () => false
+        isCaseInsensitive: () => boolean = () => false,
+        onMutation?: (paths: readonly string[]) => () => void
     ) {
         this.path = new NodePathAdapter();
         this.typeGuard = new NodeTypeGuardAdapter();
         this.conversion = new NodeConversionAdapter();
         this.isCaseInsensitiveSetting = isCaseInsensitive;
-        this.storage = new UnicodeResolvingNodeStorageAdapter(basePath, getPathNormalizationVersion, isCaseInsensitive);
+        this.storage = new ObservedNodeStorageAdapter(
+            basePath,
+            getPathNormalizationVersion,
+            isCaseInsensitive,
+            onMutation
+        );
         this.vault = new NodeVaultAdapter(this.storage);
     }
 

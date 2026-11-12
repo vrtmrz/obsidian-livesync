@@ -77,6 +77,10 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             APIService: services.API,
             pathService: services.path,
         });
+        services.appLifecycle.onUnload.addHandler(() => {
+            vaultAccess.dispose();
+            return Promise.resolve(true);
+        });
         const storageEventManager = new StorageEventManagerObsidian(this, core, {
             fileProcessing: services.fileProcessing,
             setting: services.setting,

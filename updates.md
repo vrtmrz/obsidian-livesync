@@ -12,6 +12,15 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- File-name collision checks no longer rebuild the whole path map after content-only edits.
+
+#### CLI
+
+- CLI daemon collision checks no longer enumerate every file and its metadata after each content edit. (#1346)
+    - The daemon maintains file names from filesystem observations and checks current directory names before accepting a path.
+
 ## 1.0.49
 
 11th November, 2026

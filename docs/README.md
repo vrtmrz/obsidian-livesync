@@ -65,6 +65,7 @@ These records are useful for design work. Their proposed representation or behav
 
 | Document | Recorded state |
 |---|---|
+| [File path index and watched CLI file names](design_docs/file_path_index.md) | Unreleased implementation design for #1346; shared name index and collision queries; Commonlib package adoption pending |
 | [Tiered Chunk Storage with Live Compaction](design_docs/tired_chunk_pack.md) | In design |
 | [Tiered Chunk Storage for Bucket Sync](design_docs/tired_chunk_pack_bucket.md) | In design |
 | [Design intent for Metadata and Chunks](design_docs/intention_of_chunks.md) | Incomplete explanation; use the data-structure reference for current representations |
