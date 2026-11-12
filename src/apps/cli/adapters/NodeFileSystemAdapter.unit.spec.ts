@@ -212,9 +212,8 @@ describe("NodeFileSystemAdapter case-insensitive path lookup", () => {
         expect(scanDirectory).not.toHaveBeenCalled();
     });
 
-    it("returns a cached case-insensitive match without rescanning", async () => {
+    it("returns a case-insensitive match without scanning the vault", async () => {
         const { adapter } = await createVault(["Calculus.md"]);
-        await adapter.scanDirectory();
         const scanDirectory = vi.spyOn(adapter, "scanDirectory");
 
         await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toMatchObject({
@@ -222,42 +221,57 @@ describe("NodeFileSystemAdapter case-insensitive path lookup", () => {
         });
 
         expect(scanDirectory).not.toHaveBeenCalled();
-    });
-
-    it("rescans once and returns a newly cached case-insensitive match", async () => {
-        const { adapter } = await createVault(["Calculus.md"]);
-        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
-
-        await expect(adapter.getAbstractFileByPathInsensitive("calculus.md")).resolves.toMatchObject({
-            path: "Calculus.md",
-        });
-
-        expect(scanDirectory).toHaveBeenCalledOnce();
         await expect(adapter.getAbstractFileByPath("Calculus.md")).resolves.toMatchObject({ path: "Calculus.md" });
     });
 
-    it("returns null after one scan when no cached path matches", async () => {
-        const { adapter } = await createVault(["other.md"]);
-        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+    it("resolves differently cased folders along a nested path", async () => {
+        const { adapter } = await createVault(["Notes/Maths/Calculus.md", "Notes/Physics/Optics.md"]);
 
-        await expect(adapter.getAbstractFileByPathInsensitive("missing.md")).resolves.toBeNull();
-
-        expect(scanDirectory).toHaveBeenCalledOnce();
+        await expect(adapter.getAbstractFileByPathInsensitive("notes/MATHS/calculus.md")).resolves.toMatchObject({
+            path: "Notes/Maths/Calculus.md",
+        });
     });
 
-    it("returns null and reports a directory scan failure", async () => {
-        const missingDirectory = path.join(os.tmpdir(), `livesync-cli-insensitive-missing-${Date.now()}`);
-        const reportDiagnostic = vi.fn();
-        const adapter = new NodeFileSystemAdapter(missingDirectory, reportDiagnostic);
+    it("prefers the exactly cased entry when several entries differ only by case", async () => {
+        const { directory, adapter } = await createVault(["Notes/a.md", "notes/b.md"]);
+        const entries = await fs.readdir(directory);
+        // Case-insensitive file systems merge the two folders; the exact-match rule only applies when both exist.
+        if (!entries.includes("Notes") || !entries.includes("notes")) return;
+
+        await expect(adapter.getAbstractFileByPathInsensitive("NOTES/b.md")).resolves.toMatchObject({
+            path: "notes/b.md",
+        });
+        await expect(adapter.getAbstractFileByPathInsensitive("Notes/A.md")).resolves.toMatchObject({
+            path: "Notes/a.md",
+        });
+    });
+
+    it("returns null for a missing file without scanning the vault", async () => {
+        const { adapter } = await createVault(["other.md", "Deep/Folder/file.md"]);
         const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+        const list = vi.spyOn(adapter.storage, "list");
 
         await expect(adapter.getAbstractFileByPathInsensitive("missing.md")).resolves.toBeNull();
+        await expect(adapter.getAbstractFileByPathInsensitive("deep/folder/missing.md")).resolves.toBeNull();
+        await expect(adapter.getAbstractFileByPathInsensitive("nowhere/missing.md")).resolves.toBeNull();
 
-        expect(scanDirectory).toHaveBeenCalledOnce();
-        expect(reportDiagnostic).toHaveBeenCalledWith(
-            expect.stringContaining("Error scanning directory"),
-            expect.any(Error)
-        );
+        expect(scanDirectory).not.toHaveBeenCalled();
+        // Only the folders along each requested path are listed, never the rest of the vault.
+        const listedFolders = new Set(list.mock.calls.map(([folder]) => folder));
+        expect([...listedFolders].sort()).toEqual(["", "Deep", "Deep/Folder"]);
+    });
+
+    it("does not resolve a differently cased path into a hidden directory", async () => {
+        const { adapter } = await createVault([".Private/Note.md"]);
+
+        await expect(adapter.getAbstractFileByPathInsensitive(".private/note.md")).resolves.toBeNull();
+    });
+
+    it("returns null when the vault directory does not exist", async () => {
+        const missingDirectory = path.join(os.tmpdir(), `livesync-cli-insensitive-missing-${Date.now()}`);
+        const adapter = new NodeFileSystemAdapter(missingDirectory);
+
+        await expect(adapter.getAbstractFileByPathInsensitive("missing.md")).resolves.toBeNull();
     });
 });
 
@@ -331,7 +345,7 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
         const knownPath = "Known.md";
         const initialContent = "initial content";
         await fs.writeFile(path.join(directory, knownPath), initialContent);
-        let normalizationVersion = 1;
+        const normalizationVersion = 1;
         const adapter = new NodeFileSystemAdapter(directory, undefined, () => normalizationVersion, () => true);
         await adapter.scanDirectory();
 
@@ -357,16 +371,13 @@ describe("NodeFileSystemAdapter Unicode path resolution", () => {
             readDirectorySpy.mockRestore();
         }
 
-        // Compatibility-mode case-insensitive lookup exposes the cache without
-        // triggering another scan, so it can verify that the failed NFC scan did
-        // not publish its already-enumerated file metadata.
-        normalizationVersion = 0;
-        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
-        await expect(adapter.getAbstractFileByPathInsensitive("known.md")).resolves.toMatchObject({
+        // The cache still holds the metadata from the successful first scan: the
+        // failed NFC scan did not publish its already-enumerated file metadata.
+        expect(adapter["fileCache"].get(knownPath)).toMatchObject({
             path: knownPath,
             stat: { size: initialContent.length },
         });
-        expect(scanDirectory).not.toHaveBeenCalled();
+        expect(adapter["fileCache"].has("late-directory/later.md")).toBe(false);
     });
 
     it("uses one comparison policy snapshot for the whole NFC scan", async () => {
