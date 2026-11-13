@@ -2,7 +2,7 @@ import {
     hasManagedTurnSettings,
     omitManagedTurnProfilesFromMarkdown,
     preserveManagedTurnProfilesOnMarkdownImport,
-} from "@/common/turnSettingsPrivacy";
+} from "@/common/core/settings/turnPrivacy";
 // import { PouchDB } from "../../lib/src/pouchdb/pouchdb-browser";
 import { isObjectDifferent } from "octagonal-wheels/object";
 import { EVENT_SETTING_SAVED, eventHub } from "@/common/events";

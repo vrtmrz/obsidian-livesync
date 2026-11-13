@@ -16,7 +16,7 @@ import {
     omitManagedTurnProfilesFromMarkdown,
     preserveManagedTurnProfilesOnMarkdownImport,
     redactTurnSettingsForReport,
-} from "./turnSettingsPrivacy";
+} from "./turnPrivacy";
 
 class MemorySettingService extends SettingService {
     saved?: ObsidianLiveSyncSettings;

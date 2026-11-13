@@ -19,7 +19,7 @@ vi.mock("@vrtmrz/obsidian-plugin-kit", () => ({
     promptText: mocks.promptText,
 }));
 
-vi.mock("@/modules/coreObsidian/UILib/dialogs", () => ({
+vi.mock("@/modules/coreObsidian/UI/dialogs", () => ({
     askSelectString: mocks.legacyAskSelectString,
     askString: mocks.legacyAskString,
     askYesNo: mocks.legacyAskYesNo,

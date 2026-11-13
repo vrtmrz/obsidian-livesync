@@ -91,7 +91,7 @@ import {
     createObjectStorageJoinedDevicesResourceFactory,
     createObjectStoragePreferredTweakProbeFactory,
     createObjectStorageSecuritySeedResourceFactory,
-} from "./replicatorResources";
+} from "./resources";
 
 function createSettings(overrides: Partial<ObsidianLiveSyncSettings> = {}): ObsidianLiveSyncSettings {
     return Object.assign(createNewVaultSettings(), {

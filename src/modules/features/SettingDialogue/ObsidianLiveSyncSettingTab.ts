@@ -54,7 +54,7 @@ import {
 } from "./SettingPane.ts";
 import { JournalSyncCore } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncCore";
 import { MinioStorageAdapter } from "@vrtmrz/livesync-commonlib/compat/replication/journal/objectstore/MinioStorageAdapter";
-import { closeObsidianSettings } from "@/common/obsidianSettings.ts";
+import { closeObsidianSettings } from "@/modules/coreObsidian/UI/obsidianSettings.ts";
 import {
     createAdvancedSettingDefinitionGroups,
     createExtraMenuSettingDefinitions,
@@ -75,8 +75,8 @@ import type {
 } from "obsidian";
 import { createExtraMenuSettingSpecGroup, createGeneralSettingSpecGroups } from "./GeneralSettingSpecs.ts";
 import { SetupManager } from "@/modules/features/SetupManager.ts";
-import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
-import { withOwnedRemoteResource } from "@/common/ownedRemoteResource.ts";
+import { isP2PMainRemote } from "@/common/core/settings/remoteConfiguration.ts";
+import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource.ts";
 import {
     getSyncGuardSettings,
     isSyncGuardSettingKey,

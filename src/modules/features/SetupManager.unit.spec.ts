@@ -9,7 +9,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { SettingService } from "@vrtmrz/livesync-commonlib/compat/services/base/SettingService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { createNewVaultSettings } from "@/common/newVaultSettings";
+import { createNewVaultSettings } from "@/common/core/settings/newVaultSettings";
 import type {
     P2PConnectionProbeAdmission,
     P2PConnectionProbeAdmissionResult,

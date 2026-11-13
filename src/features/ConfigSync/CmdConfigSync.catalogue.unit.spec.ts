@@ -26,7 +26,7 @@ vi.mock("@/common/events.ts", () => ({
     eventHub: { onEvent: vi.fn() },
 }));
 vi.mock("@/common/translation", () => ({ $msg: (message: string) => message }));
-vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({ getObsidianCommunityPluginManager: vi.fn() }));
+vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({ getObsidianCommunityPluginManager: vi.fn() }));
 
 import type { FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createOptionalFileSyncDatabase, optionalFileEntry } from "../../../test/fixtures/optionalFileSyncDatabase";

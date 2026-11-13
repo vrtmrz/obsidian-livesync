@@ -1,5 +1,5 @@
 import type { RemoteConnectionProbe, RemoteConnectionProbeResult } from "@vrtmrz/livesync-commonlib/replication";
-import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
 
 /** Run the selected CouchDB setup mode within one owned probe lifetime. */
 export async function probeCouchDBConnection(

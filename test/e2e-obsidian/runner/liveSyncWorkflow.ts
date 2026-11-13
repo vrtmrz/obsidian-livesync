@@ -1,6 +1,6 @@
 import { evalObsidianJson } from "./cli.ts";
 import { SERVICE_CONTEXT_MEMBERS } from "../../contracts/serviceContext.ts";
-import { DATABASE_COMPATIBILITY_VERSION_KEY } from "../../../src/common/databaseCompatibility.ts";
+import { DATABASE_COMPATIBILITY_VERSION_KEY } from "../../../src/serviceFeatures/compatibilityReview.evaluation.ts";
 import { CURRENT_SETTING_VERSION } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { type ObsidianLiveSyncSettings, VER } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";

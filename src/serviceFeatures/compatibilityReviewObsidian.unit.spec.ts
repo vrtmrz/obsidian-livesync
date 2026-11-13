@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
+import type { CompatibilityPause } from "./compatibilityReview.evaluation.ts";
 import { compatibilityReviewDetailsMarkdown } from "./compatibilityReviewMarkdown.ts";
 import { ObsidianCompatibilityReviewUi } from "./compatibilityReviewObsidian.ts";
 
