@@ -9,7 +9,6 @@ import { NodeVaultAdapter } from "./NodeVaultAdapter";
 import type { NodeFile, NodeFolder, NodeStat } from "./NodeTypes";
 import { path } from "@vrtmrz/livesync-commonlib/node";
 import type { CliDiagnosticReporter } from "@/apps/cli/cliOutput";
-import { findCaseInsensitiveFile } from "@/apps/caseInsensitiveFileLookup";
 import { isHiddenPath } from "@/apps/cli/cliPathFilter";
 import {
     createStoragePathResolver,
@@ -109,12 +108,41 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
             return await this.refreshResolvedFile(resolvedPath);
         }
 
-        return await findCaseInsensitiveFile(
-            pathStr,
-            () => this.getAbstractFileByPath(pathStr),
-            this.fileCache,
-            () => this.scanDirectory()
-        );
+        const exact = await this.getAbstractFileByPath(pathStr);
+        if (exact) return exact;
+        const actualPath = await this.findPathCaseInsensitive(pathStr);
+        if (actualPath === null) return null;
+        return await this.refreshFile(actualPath);
+    }
+
+    /**
+     * Resolves `pathStr` to the on-disk spelling of a file by listing only the
+     * directories along the path, independent of vault size. At each level the
+     * exactly cased entry is tried first; folders that differ only by case are
+     * each tried in turn, so `NOTES/b.md` finds `notes/b.md` beside `Notes/`.
+     */
+    private async findPathCaseInsensitive(pathStr: string): Promise<string | null> {
+        const segments = pathStr.split("/").filter((segment) => segment !== "");
+        if (segments.length === 0) return null;
+        return await this.findSegmentsCaseInsensitive("", segments);
+    }
+
+    private async findSegmentsCaseInsensitive(parent: string, segments: string[]): Promise<string | null> {
+        const [segment, ...rest] = segments;
+        const isLast = rest.length === 0;
+        const entries = await this.storage.list(parent);
+        const candidates = isLast ? entries.files : entries.folders;
+        const wanted = parent === "" ? segment : `${parent}/${segment}`;
+        const wantedLower = wanted.toLowerCase();
+        // Hidden entries are excluded, as they are from vault scans.
+        const matches = candidates
+            .filter((candidate) => !isHiddenPath(candidate) && candidate.toLowerCase() === wantedLower)
+            .sort((left, right) => Number(right === wanted) - Number(left === wanted));
+        for (const match of matches) {
+            const found = isLast ? match : await this.findSegmentsCaseInsensitive(match, rest);
+            if (found !== null) return found;
+        }
+        return null;
     }
 
     async getFiles(): Promise<NodeFile[]> {
