@@ -2,20 +2,20 @@
 date: 2026-11-12
 commonlib-version: "0.4.3"
 self-hosted-livesync-version: "1.0.49"
-status: implemented-unreleased
+status: implemented
 ---
 
 # File path index and watched CLI file names
 
 ## Status and purpose
 
-This is an implementation design for [#1346](https://github.com/vrtmrz/obsidian-livesync/issues/1346), reviewed against Self-hosted LiveSync `78ebc2d298c39df0ce2be3a4e62059cd74be86a0`, Commonlib `0.4.3`, and the CLI's resolved `chokidar` `6.0.0`. An unreleased Self-hosted LiveSync implementation follows this design. The version fields identify the reviewed baseline, not a release containing this change.
+This is an implementation design for [#1346](https://github.com/vrtmrz/obsidian-livesync/issues/1346), reviewed against Self-hosted LiveSync `78ebc2d298c39df0ce2be3a4e62059cd74be86a0`, Commonlib `0.4.3`, and the CLI's resolved `chokidar` `6.0.0`. This implementation is included in Self-hosted LiveSync `1.0.50`. The version fields identify the reviewed baseline, not a release containing this change.
 
-The Commonlib portion is published in [0.5.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.5.0), and the consumer pins that exact registry version. Clean-install checks, unit tests, and plug-in and application builds have passed against that artefact. The consumer change remains unreleased.
+The Commonlib portion is published in [0.5.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.5.0), and the consumer pins that exact registry version. Clean-install checks, unit tests, and plug-in and application builds have passed against that artefact.
 
 The CLI should maintain its file-name inventory while running as a daemon. A shared in-memory `FilePathIndex` should group equivalent paths and accept incremental membership changes. Ordinary content edits should neither enumerate the whole Vault nor rebuild its identity map.
 
-Commonlib currently caches the collision map by `totalStorageFileEventCount`, path-normalisation version, and effective case policy. A changed event count makes `targetFilter` obtain and sort all names again. `ServiceFileAccessBase.getFileNames()` obtains those names through `getFiles()`, which performs a recursive directory scan and metadata reads in the CLI. Obsidian supplies its in-memory Vault listing instead. The issue is the cost of maintaining the lookup, while collision rejection remains required.
+In the reviewed baseline, Commonlib caches the collision map by `totalStorageFileEventCount`, path-normalisation version, and effective case policy. A changed event count makes `targetFilter` obtain and sort all names again. `ServiceFileAccessBase.getFileNames()` obtains those names through `getFiles()`, which performs a recursive directory scan and metadata reads in the CLI. Obsidian supplies its in-memory Vault listing instead. The issue is the cost of maintaining the lookup, while collision rejection remains required.
 
 A baseline experiment with 40 files and five directories, including the root, found one full enumeration and 45 adapter `stat` or `statResolved` calls after a content-only event. Repeated checks at the same event count reused the map. All four Legacy/NFC and case-policy combinations took this path. These are adapter-operation counts, not OS syscall counts or an end-to-end daemon benchmark. The issue's reported syscall reduction combines the reporter's local collision-check change with [#1347](https://github.com/vrtmrz/obsidian-livesync/pull/1347); it does not measure either change separately.
 
@@ -49,7 +49,7 @@ The index expresses LiveSync path identity and belongs in Commonlib under the [p
 
 ## Shared index
 
-The proposed public operations are:
+The shared public operations are:
 
 ```ts
 interface FilePathDelta {
@@ -68,7 +68,7 @@ declare class FilePathIndex {
 }
 ```
 
-These signatures describe the unreleased API; they are not available from the reviewed published baseline. The class performs no I/O, subscribes to no events, and owns no promises or settings service. An empty instance is a valid empty *data structure*; its host owner determines whether it is ready to answer storage queries.
+These signatures describe the API introduced in Commonlib `0.5.0`; they are not available from the reviewed `0.4.3` baseline. The class performs no I/O, subscribes to no events, and owns no promises or settings service. An empty instance is a valid empty *data structure*; its host owner determines whether it is ready to answer storage queries.
 
 Retain a `Set<FilePath>` of original paths. Lazily construct identity buckets for an explicit comparison policy. There are at most four supported policies: Legacy/NFC crossed with case-sensitive/case-insensitive handling. Cache only those four possibilities, and update every materialised policy map when membership changes. Reject unsupported policy values before modifying or querying state.
 
