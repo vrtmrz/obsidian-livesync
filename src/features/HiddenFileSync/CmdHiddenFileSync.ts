@@ -59,7 +59,7 @@ import type { OptionalFileEventOptions } from "@vrtmrz/livesync-commonlib/compat
 import { configureHiddenFileSyncMode, type ConfigureHiddenFileSyncResult } from "./configureHiddenFileSyncMode.ts";
 import { performBatchWithProgress } from "./performBatchWithProgress.ts";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
-import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import { getObsidianCommunityPluginManager } from "@/features/HiddenFileCommon/obsidianCommunityPlugins.ts";
 import { $msg } from "@/common/translation";
 type SyncDirection = "push" | "pull" | "safe" | "pullForce" | "pushForce";
 

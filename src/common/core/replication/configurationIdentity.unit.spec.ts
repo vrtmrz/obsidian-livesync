@@ -4,7 +4,7 @@ import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 import {
     getCouchDBReplicatorConfigurationIdentity,
     getObjectStorageReplicatorConfigurationIdentity,
-} from "./replicatorConfigurationIdentity";
+} from "./configurationIdentity";
 
 describe("active Replicator configuration identity", () => {
     it("treats an absent headers-only CouchDB cache switch as off and leaves Object Storage unaffected", () => {

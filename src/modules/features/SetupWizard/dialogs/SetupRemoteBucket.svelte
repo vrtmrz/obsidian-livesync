@@ -20,7 +20,7 @@
     import { copyTo, pickBucketSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/utils";
     import { TYPE_CANCELLED, type SetupRemoteBucketResultType } from "./setupDialogTypes";
     import { $msg as translateMessage } from "@/common/translation";
-    import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+    import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
     import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 
     const default_setting = pickBucketSyncSettings(DEFAULT_SETTINGS);

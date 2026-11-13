@@ -67,7 +67,7 @@ import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/ser
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import type { OptionalSyncFeatureMode } from "@/features/optionalSyncFeatures.ts";
-import { getObsidianCommunityPluginManager } from "@/common/obsidianCommunityPlugins.ts";
+import { getObsidianCommunityPluginManager } from "@/features/HiddenFileCommon/obsidianCommunityPlugins.ts";
 import { createModificationHandler } from "octagonal-wheels/modification";
 
 import type { HandlerOutcome } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";

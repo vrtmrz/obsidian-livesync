@@ -1,6 +1,6 @@
 import { type TFile } from "@/deps.ts";
 import { eventHub } from "@/common/events.ts";
-import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
+import { EVENT_REQUEST_SHOW_HISTORY } from "./DocumentHistory/events.ts";
 import type { FilePathWithPrefix, LoadedEntry, DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { AbstractObsidianModule } from "@/modules/AbstractObsidianModule.ts";
 import { DocumentHistoryModal } from "./DocumentHistory/DocumentHistoryModal.ts";

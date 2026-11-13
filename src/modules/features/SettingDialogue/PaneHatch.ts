@@ -23,7 +23,7 @@ import {
     eventHub,
 } from "@/common/events.ts";
 import { HiddenFileSync } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
-import { EVENT_REQUEST_SHOW_HISTORY } from "@/common/obsidianEvents.ts";
+import { EVENT_REQUEST_SHOW_HISTORY } from "@/modules/features/DocumentHistory/events.ts";
 import type { ObsidianLiveSyncSettingTab } from "./ObsidianLiveSyncSettingTab.ts";
 import type { PageFunctions } from "./SettingPane.ts";
 import { setButtonDestructiveState } from "./settingComponentStyles.ts";

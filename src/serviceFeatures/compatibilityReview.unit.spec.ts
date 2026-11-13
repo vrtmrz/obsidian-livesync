@@ -7,7 +7,7 @@ import {
     COMPATIBILITY_PAUSE_SETTING_MESSAGE,
     DATABASE_COMPATIBILITY_VERSION_KEY,
     legacyDatabaseCompatibilityVersionKey,
-} from "@/common/databaseCompatibility.ts";
+} from "./compatibilityReview.evaluation.ts";
 import {
     CompatibilityReviewController,
     type CompatibilityReviewUi,

@@ -4,7 +4,7 @@ import {
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { RemoteConnectionProbe } from "@vrtmrz/livesync-commonlib/replication";
-import { resolveInitialPathIdentity } from "@/common/initialPathIdentity";
+import { resolveInitialPathIdentity } from "@/common/core/replication/initialPathIdentity";
 
 /** Adopt an existing central remote only for the first explicit Fetch. */
 export async function resolveInitialFetchPathIdentity(

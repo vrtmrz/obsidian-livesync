@@ -7,7 +7,7 @@ import {
     type ObsidianLiveSyncSettings,
     LOG_LEVEL_VERBOSE,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { OPEN_JOINED_DEVICES } from "@/serviceFeatures/joinedDevicesCommand";
+import { OPEN_JOINED_DEVICES } from "@/serviceFeatures/joinedDevices/command";
 import { Menu, type ButtonComponent } from "@/deps.ts";
 import { $msg } from "@/common/translation";
 import { LiveSyncSetting as Setting } from "./LiveSyncSetting.ts";

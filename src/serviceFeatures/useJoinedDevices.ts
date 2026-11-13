@@ -8,16 +8,16 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_RESOURCE_KINDS, type JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
 import type { ObsidianNoticeGroups } from "@/modules/services/ObsidianNoticeGroups";
-import JoinedDevicesDialog from "@/modules/services/LiveSyncUI/dialogues/JoinedDevicesDialog.svelte";
-import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import JoinedDevicesDialog from "./joinedDevices/JoinedDevicesDialog.svelte";
+import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
 import {
     getCouchDBReplicatorConfigurationIdentity,
     getObjectStorageReplicatorConfigurationIdentity,
-} from "@/common/replicatorConfigurationIdentity";
+} from "@/common/core/replication/configurationIdentity";
 import { $msg } from "@/common/translation";
-import { OPEN_JOINED_DEVICES } from "./joinedDevicesCommand";
-import { differentDeviceVersions, joinedDevicesView } from "./joinedDevices";
-import type { JoinedDevicesDialogOptions } from "./joinedDevicesDialogTypes";
+import { OPEN_JOINED_DEVICES } from "./joinedDevices/command";
+import { differentDeviceVersions, joinedDevicesView } from "./joinedDevices/view";
+import type { JoinedDevicesDialogOptions } from "./joinedDevices/types";
 
 type JoinedDevicesHost = NecessaryServices<
     "API" | "UI" | "setting" | "database" | "replicator" | "replication" | "appLifecycle",

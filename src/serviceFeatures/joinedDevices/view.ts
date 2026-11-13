@@ -1,5 +1,5 @@
 import type { JoinedDevice, JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
-import type { JoinedDevicesView } from "./joinedDevicesDialogTypes";
+import type { JoinedDevicesView } from "./types";
 
 /** Compare recognised SemVer values; unknown development labels have no ordering. */
 export function comparePluginVersions(left: string, right: string): number | undefined {

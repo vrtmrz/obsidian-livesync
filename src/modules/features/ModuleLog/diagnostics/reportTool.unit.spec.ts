@@ -4,7 +4,7 @@ import { REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { generateReport } from "./reportTool";
 
-vi.mock("./utils", () => ({ requestToCouchDBWithCredentials: vi.fn() }));
+vi.mock("../../../../common/utils", () => ({ requestToCouchDBWithCredentials: vi.fn() }));
 vi.mock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
     compatGlobal: { origin: "test", navigator: { userAgent: "test" } },
 }));

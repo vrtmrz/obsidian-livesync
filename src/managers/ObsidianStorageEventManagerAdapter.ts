@@ -14,7 +14,7 @@ import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/ma
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { LiveSyncCore } from "@/main";
 import type { FileProcessingService } from "@vrtmrz/livesync-commonlib/compat/services/base/FileProcessingService";
-import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/coreObsidian/storageLib/utilObsidian";
+import { InternalFileToUXFileInfoStub, TFileToUXFileInfoStub } from "@/modules/coreObsidian/storage/utilObsidian";
 
 /**
  * Obsidian-specific type guard adapter

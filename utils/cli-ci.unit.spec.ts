@@ -92,7 +92,7 @@ describe("CLI CI selection", () => {
             "src/apps/cli/main.ts",
             "src/LiveSyncBaseCore.ts",
             "src/serviceFeatures/replicationScheduling.ts",
-            "src/common/replicatorProviders.ts",
+            "src/common/core/replication/providers.ts",
             "src/common/messages/en.ts",
             "src/modules/AbstractModule.ts",
             "src/modules/main/ModuleLiveSyncMain.ts",

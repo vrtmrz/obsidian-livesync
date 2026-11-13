@@ -26,7 +26,7 @@ import { LiveSyncJournalReplicator } from "@vrtmrz/livesync-commonlib/compat/rep
 import {
     getCouchDBReplicatorConfigurationIdentity,
     getObjectStorageReplicatorConfigurationIdentity,
-} from "./replicatorConfigurationIdentity";
+} from "./configurationIdentity";
 import {
     createCouchDBJoinedDevicesResourceFactory,
     createObjectStorageJoinedDevicesResourceFactory,
@@ -38,7 +38,7 @@ import {
     createObjectStorageConnectionProbeFactory,
     createObjectStoragePreferredTweakProbeFactory,
     createObjectStorageSecuritySeedResourceFactory,
-} from "./replicatorResources";
+} from "./resources";
 import {
     COUCHDB_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,
     OBJECT_STORAGE_CENTRAL_REMOTE_ADMINISTRATION_CAPABILITY,

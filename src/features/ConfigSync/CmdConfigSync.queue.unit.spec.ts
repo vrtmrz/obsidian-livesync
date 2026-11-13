@@ -30,7 +30,7 @@ vi.mock("@/common/events.ts", () => ({
     eventHub: { onEvent: vi.fn() },
 }));
 vi.mock("@/common/translation", () => ({ $msg: (message: string) => message }));
-vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({ getObsidianCommunityPluginManager: vi.fn() }));
+vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({ getObsidianCommunityPluginManager: vi.fn() }));
 
 import { get } from "svelte/store";
 import { getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
