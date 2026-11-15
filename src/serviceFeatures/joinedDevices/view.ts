@@ -37,7 +37,8 @@ export function comparePluginVersions(left: string, right: string): number | und
 
 export function joinedDevicesView(
     snapshot: JoinedDevicesSnapshot,
-    self: Omit<JoinedDevice, "accepted">
+    self: Omit<JoinedDevice, "accepted">,
+    hiddenVersionNoticeDeviceIds: readonly string[] = []
 ): JoinedDevicesView {
     const ownRecord = snapshot.devices.find((device) => device.id === self.id);
     const ownDevice: JoinedDevice = { ...ownRecord, ...self, accepted: ownRecord?.accepted ?? false };
@@ -46,16 +47,24 @@ export function joinedDevicesView(
         devices: [ownDevice, ...snapshot.devices.filter((device) => device.id !== self.id)].map((device) => ({
             ...device,
             self: device.id === self.id,
+            versionNoticesHidden: hiddenVersionNoticeDeviceIds.includes(device.id),
             lockedOut: snapshot.locked && !device.accepted,
         })),
     };
 }
 
-export function differentDeviceVersions(snapshot: JoinedDevicesSnapshot, ownId: string, ownVersion: string) {
+export function differentDeviceVersions(
+    snapshot: JoinedDevicesSnapshot,
+    ownId: string,
+    ownVersion: string,
+    hiddenDeviceIds: readonly string[] = []
+) {
     const newer = new Set<string>();
     const older = new Set<string>();
     for (const device of snapshot.devices) {
-        if (device.id === ownId || !device.pluginVersion) continue;
+        if (device.id === ownId || !device.pluginVersion || hiddenDeviceIds.includes(device.id)) {
+            continue;
+        }
         const comparison = comparePluginVersions(device.pluginVersion, ownVersion);
         if (comparison !== undefined && comparison > 0) newer.add(device.pluginVersion);
         if (comparison !== undefined && comparison < 0) older.add(device.pluginVersion);

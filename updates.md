@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Improved
+
+- We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. The choices are retained for this Vault on this device and can be reversed with **Unmute version notices**; synchronisation compatibility checks remain enabled. Device removal is available under **… → Forget device record…**. (#1349)
+
 ## 1.0.50
 
 12th November, 2026
