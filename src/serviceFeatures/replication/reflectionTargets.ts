@@ -1,4 +1,4 @@
-import { isTransientContentReadFailure, type ContentReadFailure } from "@vrtmrz/livesync-commonlib/replication";
+import type { ContentReadFailure } from "@vrtmrz/livesync-commonlib/replication";
 import { isInternalMetadata } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 
 export interface PendingReflection {
@@ -7,6 +7,8 @@ export interface PendingReflection {
     source: "scan" | "received";
     state: "waiting" | "review";
     automaticAttempted: boolean;
+    /** Resources which must become usable before an automatic retry is eligible. */
+    resources: readonly RecoveryResource[];
     reason: string;
     running: boolean;
 }
@@ -18,7 +20,7 @@ export interface ReflectionRecoveryView {
     onChanged(listener: () => void): () => void;
 }
 
-type MutablePendingReflection = Omit<PendingReflection, "running">;
+type MutablePendingReflection = Omit<PendingReflection, "running" | "resources"> & { resources: RecoveryResource[] };
 export type PendingReflectionRecord = Readonly<MutablePendingReflection>;
 export type RecoveryResource = "remote" | "local-database";
 type MutableRecoveryAttempt = {
@@ -36,7 +38,8 @@ export type ReflectionSnapshot = {
 };
 
 interface ReflectionTargetsContext {
-    canDeferFailure(reason: ContentReadFailure["reason"]): boolean;
+    canRetainFailures(): boolean;
+    canRetryResource(resource: RecoveryResource): boolean;
     isApplicationReady(): boolean;
     isWaitingForReset(): boolean;
     onListenerError(error: unknown): void;
@@ -83,6 +86,29 @@ function isPendingReflectionRecord(value: unknown): value is PendingReflectionRe
         "reason" in value &&
         typeof value.reason === "string"
     );
+}
+
+function isRecoveryResource(value: unknown): value is RecoveryResource {
+    return value === "local-database" || value === "remote";
+}
+
+function legacyResources(reason: string): RecoveryResource[] {
+    if (reason === "local-database") {
+        return ["local-database"];
+    }
+    if (reason === "offline" || reason === "transport") {
+        return ["remote"];
+    }
+    return [];
+}
+
+function describeResources(resources: readonly RecoveryResource[]): string {
+    return resources.length === 0 ? "unavailable" : [...new Set(resources)].sort().join(",");
+}
+
+function failureResources(failure: ContentReadFailure): RecoveryResource[] {
+    const resources: unknown = failure.resources;
+    return Array.isArray(resources) && resources.every(isRecoveryResource) ? [...new Set(resources)].sort() : [];
 }
 
 function targetScope(isCurrent: () => boolean): ReflectionTargetScope {
@@ -202,9 +228,10 @@ export class ReflectionTargets {
     acceptsFailure(failure: ContentReadFailure): boolean {
         return (
             !!failure.revision &&
+            this.context.canRetainFailures() &&
             !this.context.isWaitingForReset() &&
             !this.stopped &&
-            !(failure.reason === "local-database" && isInternalMetadata(failure.documentId))
+            !isInternalMetadata(failure.documentId)
         );
     }
 
@@ -214,6 +241,7 @@ export class ReflectionTargets {
         observation: FailureObservation
     ) {
         const revision = failure.revision;
+        const failedResources = failureResources(failure);
         if (!revision || !this.acceptsFailure(failure) || observation.generation !== this.generation) {
             return;
         }
@@ -225,7 +253,10 @@ export class ReflectionTargets {
         }
         if (
             (observation.currentRevision && observation.currentRevision !== revision) ||
-            (previous && !sameTarget && failure.reason === "local-database" && observation.currentRevision !== revision)
+            (previous &&
+                !sameTarget &&
+                failedResources.includes("local-database") &&
+                observation.currentRevision !== revision)
         ) {
             return;
         }
@@ -233,31 +264,31 @@ export class ReflectionTargets {
         if (attempt && previous !== attempt.target) {
             return;
         }
-        if (
-            !sameTarget &&
-            (!this.context.canDeferFailure(failure.reason) ||
-                !isTransientContentReadFailure(failure) ||
-                (source === "received" && !this.context.isApplicationReady()))
-        ) {
+        if (!sameTarget && source === "received" && !this.context.isApplicationReady()) {
             return;
         }
-        const target =
+        const resources = [...new Set([...(sameTarget ? (previous?.resources ?? []) : []), ...failedResources])].sort();
+        const target: MutablePendingReflection =
             sameTarget && previous
                 ? previous
                 : {
                       documentId: failure.documentId,
                       revision,
                       source,
-                      state: "waiting" as const,
+                      state: resources.length > 0 ? "waiting" : "review",
                       automaticAttempted: false,
-                      reason: failure.reason,
+                      resources,
+                      reason: describeResources(resources),
                   };
-        target.reason = failure.reason;
-        if (!isTransientContentReadFailure(failure)) {
+        target.resources = resources;
+        target.reason = failedResources.length === 0 ? "unavailable" : describeResources(resources);
+        if (failedResources.length === 0) {
             target.state = "review";
+        } else if (!target.automaticAttempted && !attempt) {
+            target.state = "waiting";
         }
         if (attempt) {
-            attempt.failureReason = failure.reason;
+            attempt.failureReason = target.reason;
         }
         this.pending.set(target.documentId, target);
         this.notifyChanged();
@@ -281,35 +312,40 @@ export class ReflectionTargets {
         this.notifyChanged();
     }
 
-    private automaticEligible(target: PendingReflectionRecord, resource: RecoveryResource): boolean {
-        const reason = target.reason;
-        if (reason !== "local-database" && reason !== "offline" && reason !== "transport") {
-            return false;
-        }
-        return (
-            target.state === "waiting" &&
-            !target.automaticAttempted &&
-            (reason === "local-database") === (resource === "local-database") &&
-            this.context.canDeferFailure(reason)
-        );
+    private automaticEligible(target: PendingReflectionRecord): boolean {
+        return target.state === "waiting" && !target.automaticAttempted && target.resources.length === 0;
     }
 
-    canAdmit(target: PendingReflectionRecord, kind: RecoveryAttempt["kind"], resource: RecoveryResource): boolean {
+    /** Mark one dependency as recovered before checking whether a retry can be admitted. */
+    resourceRecovered(resource: RecoveryResource): boolean {
+        if (!this.context.canRetryResource(resource) || this.stopped) {
+            return false;
+        }
+        let changed = false;
+        for (const target of this.pending.values()) {
+            if (target.state !== "waiting" || target.automaticAttempted || !target.resources.includes(resource)) {
+                continue;
+            }
+            target.resources = target.resources.filter((required) => required !== resource);
+            target.reason = describeResources(target.resources);
+            changed = true;
+        }
+        if (changed) this.notifyChanged();
+        return changed;
+    }
+
+    canAdmit(target: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): boolean {
         return (
             this.pending.get(target.documentId) === target &&
             !this.attempt(target.documentId, target.revision) &&
-            (kind !== "automatic" || this.automaticEligible(target, resource))
+            (kind !== "automatic" || this.automaticEligible(target))
         );
     }
 
     /** Reserve synchronously after Metadata inspection; the caller persists before enqueueing. */
-    admit(
-        target: PendingReflectionRecord,
-        kind: RecoveryAttempt["kind"],
-        resource: RecoveryResource
-    ): RecoveryAttempt | undefined {
+    admit(target: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): RecoveryAttempt | undefined {
         const current = this.pending.get(target.documentId);
-        if (!current || !this.canAdmit(target, kind, resource)) {
+        if (!current || !this.canAdmit(target, kind)) {
             return;
         }
         if (kind === "automatic") {
@@ -360,7 +396,12 @@ export class ReflectionTargets {
     snapshot(): ReflectionSnapshot {
         return {
             ...(this.pending.size > 0
-                ? { pendingReflections: this.candidates().map((target) => ({ ...target })) }
+                ? {
+                      pendingReflections: this.candidates().map((target) => ({
+                          ...target,
+                          resources: [...target.resources],
+                      })),
+                  }
                 : {}),
             ...(this.attempts.size > 0
                 ? {
@@ -383,12 +424,30 @@ export class ReflectionTargets {
             if (!isPendingReflectionRecord(stored)) {
                 continue;
             }
-            const target = { ...stored };
+            const storedResourcesField = (stored as Partial<PendingReflectionRecord>).resources as unknown;
+            const validResources =
+                Array.isArray(storedResourcesField) && storedResourcesField.every(isRecoveryResource);
+            const storedResources = validResources
+                ? storedResourcesField
+                : storedResourcesField === undefined
+                  ? legacyResources(stored.reason)
+                  : [];
+            const target: MutablePendingReflection = {
+                ...stored,
+                resources: [...new Set(storedResources)].sort(),
+            };
+            if (!validResources && storedResourcesField !== undefined) {
+                target.reason = "unavailable";
+            }
             if (interrupted.has(recoveryKey(target.documentId, target.revision))) {
                 target.state = "review";
                 target.reason = "interrupted";
             } else if (target.automaticAttempted) {
                 target.state = "review";
+            } else if (target.reason === "unavailable" || target.resources.length === 0) {
+                target.state = "review";
+            } else {
+                target.state = "waiting";
             }
             const existing = this.pending.get(target.documentId);
             if (!existing) {

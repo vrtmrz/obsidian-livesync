@@ -3,7 +3,10 @@ import {
     createDatabaseProbeFixture,
     observeDatabaseProbeBrowserEvents,
 } from "../../../src/features/ReviewHarness/reviewHarnessDatabaseProbeRuntime";
-import type { DatabaseProbeEvent } from "../../../src/features/ReviewHarness/reviewHarnessDatabaseProbe";
+import type {
+    DatabaseProbeEvent,
+    DatabaseProbeFixture,
+} from "../../../src/features/ReviewHarness/reviewHarnessDatabaseProbe";
 
 declare global {
     interface Window {
@@ -22,21 +25,24 @@ window.runDatabaseProbeSmoke = async () => {
     const events: DatabaseProbeEvent[] = [];
     const aborter = new AbortController();
     const controlName = `database-probe-control-${crypto.randomUUID()}`;
-    const control = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open(controlName, 1);
-        request.onupgradeneeded = () => request.result.createObjectStore("control");
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(new Error("The independent control database could not open"));
-    });
-    const unobserve = observeDatabaseProbeBrowserEvents(document, window, (event) => events.push(event));
-    const fixture = await createDatabaseProbeFixture({
-        factory: indexedDB,
-        PouchDB,
-        token: crypto.randomUUID(),
-        emit: (event) => events.push(event),
-        signal: aborter.signal,
-    });
+    let control: IDBDatabase | undefined;
+    let unobserve: (() => void) | undefined;
+    let fixture: DatabaseProbeFixture | undefined;
     try {
+        control = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open(controlName, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore("control");
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(new Error("The independent control database could not open"));
+        });
+        unobserve = observeDatabaseProbeBrowserEvents(document, window, (event) => events.push(event));
+        fixture = await createDatabaseProbeFixture({
+            factory: indexedDB,
+            PouchDB,
+            token: crypto.randomUUID(),
+            emit: (event) => events.push(event),
+            signal: aborter.signal,
+        });
         requireCondition(
             indexedDB.open === originalOpen,
             "Native open capture was not restored before user observation"
@@ -77,6 +83,7 @@ window.runDatabaseProbeSmoke = async () => {
         );
         requireCondition(indexedDB.open === originalOpen, "Reopen left the native capture installed");
         await fixture.cleanup();
+        fixture = undefined;
         requireCondition(
             events.some((event) => event.name === "fixture-deleted"),
             "The disposable fixture was not deleted"
@@ -87,9 +94,18 @@ window.runDatabaseProbeSmoke = async () => {
         );
         return { before: before.observations, closed: closed.observations, reopened: reopened.observations, events };
     } finally {
-        unobserve();
-        await fixture.cleanup();
-        control.close();
-        indexedDB.deleteDatabase(controlName);
+        try {
+            unobserve?.();
+        } finally {
+            try {
+                await fixture?.cleanup();
+            } finally {
+                try {
+                    control?.close();
+                } finally {
+                    indexedDB.deleteDatabase(controlName);
+                }
+            }
+        }
     }
 };

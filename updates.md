@@ -14,10 +14,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Recovery work in progress
 
-- A lost local database connection can be reopened before synchronisation resumes, after an existing-connection check confirms `InvalidStateError`. Local file dispatch is held during replacement; failed completion requests an Obsidian restart. (#1360)
-    - This candidate requires the combined Commonlib update. Controlled Linux Obsidian tests verify recovery after an injected connection loss; recovery on a physical iPhone remains unverified.
+- An unavailable local database can be reopened before synchronisation resumes, after a read of its current connection fails. Local file dispatch is held during replacement; failed completion requests an Obsidian restart. (#1360)
+    - This candidate requires the combined Commonlib update. Controlled Linux Obsidian recovery tests pass; recovery on a physical iPhone remains unverified.
 
-- Ordinary files which could not be reflected after a transport or local database connection failure are retained for one automatic retry when the corresponding resource recovers. Remaining failures are available through 'Review files which could not be reflected', including the Hatch action. (#1224, #1360)
+- Ordinary files which could not be reflected are retained. Failures at known local database or remote content-read boundaries are eligible for one automatic retry after the required resources recover. Failures without an established retry condition and remaining failed attempts are available through 'Review files which could not be reflected', including the Hatch action. (#1224, #1360)
     - Native request failures carry their origin without relying on their message text. Reopening the same local database preserves retained work and consumed retry allowances.
 
 ### Developer tools

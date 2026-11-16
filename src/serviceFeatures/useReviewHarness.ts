@@ -23,6 +23,7 @@ import {
     ReviewHarnessDatabaseProbeController,
     type DatabaseProbeEvent,
 } from "@/features/ReviewHarness/reviewHarnessDatabaseProbe";
+import type { DatabaseProbeStage } from "@/features/ReviewHarness/reviewHarnessDatabaseProbeTypes";
 import {
     awaitDatabaseProbeOperation,
     createDatabaseProbeFixture,
@@ -34,8 +35,9 @@ import commonlibPackage from "@vrtmrz/livesync-commonlib/package.json";
 function createDatabaseProbe(core: LiveSyncCore): ReviewHarnessDatabaseProbeController {
     const services = core.services;
     const withLog = (emit: (event: DatabaseProbeEvent) => void) => (event: DatabaseProbeEvent) => {
+        const kind = event.registration ? `registration=${event.registration}` : "event=received";
         services.API.addLog(
-            `[Review Harness: IndexedDB] ${event.source}.${event.name}${event.registration ? ` listener=${event.registration}` : ""}${event.detail ? ` ${event.detail}` : ""}`,
+            `[Review Harness: IndexedDB] ${event.source}.${event.name} stage=${event.stage ?? "baseline"} ${kind}${event.detail ? ` ${event.detail}` : ""}`,
             LOG_LEVEL_INFO
         );
         emit(event);
@@ -66,46 +68,68 @@ function createDatabaseProbe(core: LiveSyncCore): ReviewHarnessDatabaseProbeCont
         },
         observeLifecycle: (emit) => {
             const record = withLog(emit);
-            const removers = [observeDatabaseProbeBrowserEvents(activeDocument, activeWindow, record)];
+            const removers = [
+                observeDatabaseProbeBrowserEvents(activeDocument, activeWindow, (event) =>
+                    record({
+                        ...event,
+                        stage:
+                            event.stage ??
+                            (event.registration || event.name === "initial-state"
+                                ? "baseline"
+                                : "background-transition"),
+                    })
+                ),
+            ];
             for (const name of ["onSuspending", "onResuming", "onResumed", "onBeforeUnload", "onUnload"] as const) {
                 removers.push(
                     services.appLifecycle[name].addHandler(() => {
-                        record({ source: "host", name });
+                        record({ source: "host", name, stage: "background-transition" });
                         return Promise.resolve(true);
                     })
                 );
-                record({ source: "host", name, registration: "registered" });
+                record({ source: "host", name, registration: "registered", stage: "baseline" });
             }
             const database = services.database.localDatabaseDirect?.localDatabase;
             if (database) {
                 for (const name of ["close", "closed"] as const) {
-                    const handler = () => record({ source: "active-local-pouch", name });
+                    const handler = () =>
+                        record({ source: "active-local-pouch", name, stage: "background-transition" });
                     database.on(name, handler);
                     removers.push(() => {
                         database.removeListener(name, handler);
                     });
-                    record({ source: "active-local-pouch", name, registration: "registered" });
+                    record({ source: "active-local-pouch", name, registration: "registered", stage: "baseline" });
                 }
             }
             record({
                 source: "active-local-native",
                 name: "close",
                 registration: "unavailable",
+                stage: "baseline",
                 detail: "The active database's native handle is not exposed; only the fixture native handle is observed.",
             });
             return () => {
                 for (const remove of removers) remove();
             };
         },
-        inspectActiveDatabase: async (signal) => {
+        inspectActiveDatabase: async (signal, stage: DatabaseProbeStage) => {
             const ready = services.database.isDatabaseReady();
             const database = services.database.localDatabaseDirect?.localDatabase;
             const observations = [
                 `active-local.ready=${String(ready)}`,
                 `application.ready=${String(services.appLifecycle.isReady())}`,
             ];
-            if (!database)
-                return { observations: [...observations, "active-local.info=unavailable"], connectionFailure: false };
+            if (!database) {
+                observations.push("active-local.info=unavailable");
+                const sampledAt = new Date().toISOString();
+                for (const detail of observations) {
+                    services.API.addLog(
+                        `[Review Harness: IndexedDB] active sample; stage=${stage}; sampledAt=${sampledAt}; ${detail}`,
+                        LOG_LEVEL_INFO
+                    );
+                }
+                return { observations, connectionFailure: false };
+            }
             let connectionFailure = false;
             try {
                 const info = await awaitDatabaseProbeOperation(database.info(), signal);
@@ -122,8 +146,13 @@ function createDatabaseProbe(core: LiveSyncCore): ReviewHarnessDatabaseProbeCont
                 connectionFailure = name === "InvalidStateError" || name === "UnknownError";
                 observations.push(`active-local.info=error; name=${name}`);
             }
-            for (const detail of observations)
-                services.API.addLog(`[Review Harness: IndexedDB] ${detail}`, LOG_LEVEL_INFO);
+            const sampledAt = new Date().toISOString();
+            for (const detail of observations) {
+                services.API.addLog(
+                    `[Review Harness: IndexedDB] active sample; stage=${stage}; sampledAt=${sampledAt}; ${detail}`,
+                    LOG_LEVEL_INFO
+                );
+            }
             return { observations, connectionFailure };
         },
     });

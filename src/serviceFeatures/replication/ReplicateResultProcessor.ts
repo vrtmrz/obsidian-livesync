@@ -3,7 +3,7 @@ import {
     describeRemoteFeatureRejection,
     NFC_PATH_IDENTITY_FEATURE,
     type ContentReadFailure,
-    type ContentReadFailureHandler,
+    ContentReadError,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { getPathNormalizationVersion } from "@vrtmrz/livesync-commonlib/settings";
 import {
@@ -36,7 +36,8 @@ import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.
 import type PouchDB from "pouchdb-core";
 import { promiseWithResolvers, type PromiseWithResolvers } from "octagonal-wheels/promises";
 import { $msg } from "@/common/translation";
-import { isInvalidStateError } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
+import { withScope, type Scope } from "octagonal-wheels/resource/scope";
+import type { ReflectionOperationContext } from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
 import {
     applyReplicatedDocument,
     checkDocumentRevision,
@@ -79,12 +80,13 @@ type ReplicateResultProcessorServices = Pick<
  */
 interface ReplicateResultProcessorContext {
     readonly onVaultReflectionFailure?: () => void;
-    readonly canDeferContentReadFailure?: (reason?: ContentReadFailure["reason"]) => boolean;
+    readonly canRetainFailedReflection?: () => boolean;
+    readonly canRetryResource?: (resource: RecoveryResource) => boolean;
     readonly inspectReflection?: (
         entry: LoadedEntry,
         source: PendingReflectionRecord["source"]
     ) => Promise<"reflected" | "policy" | "pending">;
-    readonly reconcileScannedDocument?: (entry: LoadedEntry, onFailure: ContentReadFailureHandler) => Promise<unknown>;
+    readonly reconcileScannedDocument?: (entry: LoadedEntry, operation: ReflectionOperationContext) => Promise<unknown>;
     readonly currentSettings: () => ReplicateResultProcessorSettings;
     readonly getKeyValueDB: () => LiveSyncBaseCore["kvDB"];
     readonly getLocalDatabase: () => LiveSyncBaseCore["localDatabase"];
@@ -111,7 +113,8 @@ function shortenRev(rev: string | undefined): string {
 }
 export class ReplicateResultProcessor {
     private readonly reflectionTargets = new ReflectionTargets({
-        canDeferFailure: (reason) => this.context.canDeferContentReadFailure?.(reason) === true,
+        canRetainFailures: () => this.context.canRetainFailedReflection?.() === true,
+        canRetryResource: (resource) => this.context.canRetryResource?.(resource) === true,
         isApplicationReady: () => this.services.appLifecycle.isReady(),
         isWaitingForReset: () => this.waitingForDatabaseReset,
         onListenerError: (error) => this.logError(error),
@@ -129,16 +132,26 @@ export class ReplicateResultProcessor {
     };
 
     /**
-     * Register startup-scan failures while readiness still holds receiver dispatch and recovery admission.
+     * Register initialisation-scan failures while readiness holds receiver dispatch and recovery admission.
      * The scanner awaits this callback before releasing that hold. Received operations instead capture
      * their target identity before reading, so their late failures cannot replace newer pending work.
      */
-    public async registerContentReadFailure(
-        failure: ContentReadFailure,
+    public async registerReflectionFailure(
+        target: ReflectionOperationContext["target"],
+        error: unknown,
         source: PendingReflectionRecord["source"]
     ): Promise<void> {
-        const scope = this.reflectionTargets.issue(failure.documentId, undefined, source);
-        await this.retainContentReadFailure(failure, scope);
+        const scope = this.reflectionTargets.issue(target.documentId, undefined, source);
+        await this.retainReflectionFailure(target, error, scope);
+    }
+
+    private async retainReflectionFailure(
+        target: ReflectionOperationContext["target"],
+        error: unknown,
+        scope: ReflectionApplicationScope
+    ): Promise<void> {
+        const resources = error instanceof ContentReadError ? error.failure.resources : [];
+        await this.retainContentReadFailure({ ...target, resources, cause: error }, scope);
     }
 
     private async retainContentReadFailure(
@@ -156,14 +169,12 @@ export class ReplicateResultProcessor {
         }
     }
 
-    private async saveRecoveryState(target?: PendingReflectionRecord): Promise<boolean> {
+    private async saveRecoveryState(target?: PendingReflectionRecord): Promise<void> {
         try {
             await this._takeSnapshot();
-            return true;
         } catch (error) {
-            this.logError(error);
             this.reflectionTargets.markForReview(target, "snapshot-save-failed");
-            return false;
+            throw error;
         }
     }
 
@@ -175,7 +186,7 @@ export class ReplicateResultProcessor {
             this.reflectionTargets.remove(target);
         } else {
             this.logError(error);
-            this.reflectionTargets.markForReview(target, isInvalidStateError(error) ? "local-database" : "unavailable");
+            this.reflectionTargets.markForReview(target, "unavailable");
         }
     }
 
@@ -185,15 +196,33 @@ export class ReplicateResultProcessor {
         return scope
             .run(async () => {
                 scope.checkpoint();
-                const current = await this.localDatabase.getRaw<LoadedEntry>(target.documentId as DocumentID, {
-                    conflicts: true,
-                });
+                const selected = this.services.database.localDatabaseDirect;
+                let current;
+                try {
+                    current = await this.localDatabase.getRaw<LoadedEntry>(target.documentId as DocumentID, {
+                        conflicts: true,
+                    });
+                } catch (error) {
+                    if (isNotFoundError(error)) {
+                        throw error;
+                    }
+                    if (this.reflectionTargets.isCurrent(target)) {
+                        this.logError(error);
+                        this.reflectionTargets.issue(target.documentId, undefined, target.source).retainFailure({
+                            documentId: target.documentId as DocumentID,
+                            revision: target.revision,
+                            resources: ["local-database"],
+                            cause: error,
+                        });
+                        // The caller persists the changed target; recovery must not wait on this inspection.
+                        if (selected) {
+                            fireAndForget(() => this.services.database.onLocalDatabaseError(selected, error));
+                        }
+                    }
+                    return;
+                }
                 scope.checkpoint();
-                if (
-                    current._rev !== target.revision ||
-                    !isAnyNote(current) ||
-                    ((current.deleted || current._deleted) && target.reason !== "local-database")
-                ) {
+                if (current._rev !== target.revision || !isAnyNote(current)) {
                     this.reflectionTargets.remove(target);
                     return;
                 }
@@ -287,15 +316,14 @@ export class ReplicateResultProcessor {
 
     /** Flush retained work before the host closes its key-value database. */
     public async stop(): Promise<void> {
-        this.reflectionTargets.stop();
         this.suspend();
+        await Promise.allSettled([...this.pendingApplications]);
+        this.reflectionTargets.stop();
         try {
-            await this._restoreFromSnapshot;
-        } catch (error) {
-            this.logError(error);
+            await this._takeSnapshot();
+        } finally {
+            this.reflectionTargets.clearListeners();
         }
-        await this.saveRecoveryState();
-        this.reflectionTargets.clearListeners();
     }
 
     private async scheduleRecovery(
@@ -314,17 +342,20 @@ export class ReplicateResultProcessor {
                 return;
             }
             const before = this.reflectionTargets.version;
-            const admitted = await this.admitRecoveryCandidates(candidates, kind, resource, selected);
+            if (kind === "automatic") this.reflectionTargets.resourceRecovered(resource);
+            const admitted = await this.admitRecoveryCandidates(candidates, kind, selected);
             if (admitted.length === 0 && this.reflectionTargets.version === before) {
                 return;
             }
             this.reflectionTargets.notifyChanged();
             // Persist all consumed allowances together before any of this batch can execute.
-            if (!(await this.saveRecoveryState())) {
+            try {
+                await this.saveRecoveryState();
+            } catch (error) {
                 for (const { attempt } of admitted) {
                     this.reflectionTargets.finishAttempt(attempt, "snapshot-save-failed");
                 }
-                return;
+                throw error;
             }
             await this.enqueueRecoveryAttempts(admitted);
         });
@@ -333,22 +364,18 @@ export class ReplicateResultProcessor {
     private async admitRecoveryCandidates(
         candidates: readonly PendingReflectionRecord[],
         kind: RecoveryAttempt["kind"],
-        resource: RecoveryResource,
         selected?: ReadonlySet<string>
     ): Promise<{ attempt: RecoveryAttempt; entry: LoadedEntry }[]> {
         const admitted: { attempt: RecoveryAttempt; entry: LoadedEntry }[] = [];
         for (const target of candidates) {
-            if (
-                (selected && !selected.has(target.documentId)) ||
-                !this.reflectionTargets.canAdmit(target, kind, resource)
-            ) {
+            if ((selected && !selected.has(target.documentId)) || !this.reflectionTargets.canAdmit(target, kind)) {
                 continue;
             }
             const entry = await this.readPendingMetadata(target);
             if (!entry || this.isSuspended) {
                 continue;
             }
-            const attempt = this.reflectionTargets.admit(target, kind, resource);
+            const attempt = this.reflectionTargets.admit(target, kind);
             if (attempt) {
                 admitted.push({ attempt, entry });
             }
@@ -506,6 +533,8 @@ export class ReplicateResultProcessor {
         const write = this.snapshotWrites
             .catch((): void => {})
             .then(async () => {
+                // An unread snapshot may contain unfinished work absent from this instance.
+                await this.restoreFromSnapshotOnce();
                 if (this.savedSnapshotVersion >= requested) {
                     return;
                 }
@@ -807,7 +836,7 @@ export class ReplicateResultProcessor {
                 const doc = this._queuedChanges.shift();
                 if (doc) {
                     this._processingChanges.push(doc);
-                    void this.parseDocumentChange(doc);
+                    void this.parseDocumentChange(doc).catch((error) => this.logError(error));
                 }
                 // Take snapshot (to be restored on next startup if needed)
                 this.triggerTakeSnapshot();
@@ -824,7 +853,7 @@ export class ReplicateResultProcessor {
      * @returns
      */
     async parseDocumentChange(change: PouchDB.Core.ExistingDocument<EntryDoc>) {
-        const operation = this.parseDocumentChangeAndSaveSnapshot(change);
+        const operation = withScope(change, (resources) => this.parseDocumentChangeAndSaveSnapshot(change, resources));
         this.pendingApplications.add(operation);
         try {
             return await operation;
@@ -833,53 +862,39 @@ export class ReplicateResultProcessor {
         }
     }
 
-    private async parseDocumentChangeAndSaveSnapshot(change: PouchDB.Core.ExistingDocument<EntryDoc>) {
+    private async parseDocumentChangeAndSaveSnapshot(
+        change: PouchDB.Core.ExistingDocument<EntryDoc>,
+        resources: Scope<unknown>
+    ) {
         const queuedChange = change;
         const recoveryAttempt = this.reflectionTargets.startAttempt(change._id, change._rev);
+        const targetScope = this.reflectionTargets.issue(change._id, recoveryAttempt);
+        const selectedDatabase = this.services.database.localDatabaseDirect;
         try {
-            if (recoveryAttempt) {
-                const current = await this.currentPendingEntry(recoveryAttempt.target);
-                if (!current) {
-                    return;
-                }
-                change = current as PouchDB.Core.ExistingDocument<EntryDoc>;
-            }
-            if (isAnyNote(change)) {
-                const docMtime = change.mtime ?? 0;
-                const maxMTime = this.context.currentSettings().maxMTimeForReflectEvents;
-                if (maxMTime > 0 && docMtime > maxMTime) {
-                    const docPath = this.getPath(change);
-                    this.log(
-                        `Processing ${docPath} has been skipped due to modification time (${new Date(
-                            docMtime * 1000
-                        ).toISOString()}) exceeding the limit`,
-                        LOG_LEVEL_INFO
+            await targetScope.run(() =>
+                this.applyCurrentDocumentChange(change, targetScope, resources, recoveryAttempt)
+            );
+        } catch (error) {
+            // The input target owns retention, even if reading a historical revision failed.
+            // Save first; recovery can drain this attempt and must not be awaited here.
+            try {
+                if (isAnyNote(change)) {
+                    await this.retainReflectionFailure(
+                        { documentId: change._id, revision: change._rev },
+                        error,
+                        targetScope
                     );
-                    return;
                 }
+            } finally {
+                if (
+                    selectedDatabase &&
+                    error instanceof ContentReadError &&
+                    (error.failure.resources.includes("local-database") || error.failure.resources.length === 0)
+                ) {
+                    fireAndForget(() => this.services.database.onLocalDatabaseError(selectedDatabase, error));
+                }
+                this.reportVaultReflectionFailure(change as MetaEntry, error);
             }
-            // If the document is a virtual document, process it in the virtual document processor.
-            if (await this.services.replication.processVirtualDocument(change)) return;
-            // If the document is version info, check compatibility and return.
-            if (isAnyNote(change)) {
-                const docPath = this.getPath(change);
-                if (!(await this.services.vault.isTargetFile(docPath))) {
-                    this.log(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
-                    return;
-                }
-                const size = change.size;
-                // Note that this size check depends size that in metadata, not the actual content size.
-                if (this.services.vault.isFileSizeTooLarge(size)) {
-                    this.log(
-                        `Processing ${docPath} has been skipped due to file size exceeding the limit`,
-                        LOG_LEVEL_NOTICE
-                    );
-                    return;
-                }
-                return await this.applyToDatabase(change, recoveryAttempt);
-            }
-            this.log(`Skipped unexpected non-note document: ${change._id}`, LOG_LEVEL_INFO);
-            return;
         } finally {
             if (recoveryAttempt) {
                 this.reflectionTargets.finishAttempt(recoveryAttempt);
@@ -905,40 +920,76 @@ export class ReplicateResultProcessor {
         }
     }
 
-    // Phase 2: apply the document to database
-    protected applyToDatabase(doc: PouchDB.Core.ExistingDocument<AnyEntry>, recoveryAttempt?: RecoveryAttempt) {
-        return this.withCounting(async () => {
-            let releaser: Awaited<ReturnType<typeof this._semaphore.acquire>> | undefined = undefined;
-            try {
-                releaser = await this._semaphore.acquire();
-                await this._applyToDatabase(doc, recoveryAttempt);
-            } catch (e) {
-                // An exception during application must not be mistaken for a fully reflected Vault.
-                this.context.onVaultReflectionFailure?.();
-                this.log(`Error while processing replication result`, LOG_LEVEL_NOTICE);
-                this.logError(e);
-            } finally {
-                // Remove from processing queue (To remove from "in-progress" list, and snapshot will not include it)
-                if (releaser) {
-                    releaser();
-                }
+    private async applyCurrentDocumentChange(
+        change: PouchDB.Core.ExistingDocument<EntryDoc>,
+        scope: ReflectionApplicationScope,
+        resources: Scope<unknown>,
+        recoveryAttempt?: RecoveryAttempt
+    ): Promise<void> {
+        scope.checkpoint();
+        if (recoveryAttempt) {
+            const current = await this.currentPendingEntry(recoveryAttempt.target);
+            if (!current) {
+                return;
             }
+            change = current as PouchDB.Core.ExistingDocument<EntryDoc>;
+        }
+        if (isAnyNote(change)) {
+            const docMtime = change.mtime ?? 0;
+            const maxMTime = this.context.currentSettings().maxMTimeForReflectEvents;
+            if (maxMTime > 0 && docMtime > maxMTime) {
+                const docPath = this.getPath(change);
+                this.log(
+                    `Processing ${docPath} has been skipped due to modification time (${new Date(
+                        docMtime * 1000
+                    ).toISOString()}) exceeding the limit`,
+                    LOG_LEVEL_INFO
+                );
+                return;
+            }
+        }
+        // If the document is a virtual document, process it in the virtual document processor.
+        if (await this.services.replication.processVirtualDocument(change)) {
+            return;
+        }
+        // If the document is version info, check compatibility and return.
+        if (isAnyNote(change)) {
+            const docPath = this.getPath(change);
+            if (!(await this.services.vault.isTargetFile(docPath))) {
+                this.log(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
+                return;
+            }
+            const size = change.size;
+            // Note that this size check depends size that in metadata, not the actual content size.
+            if (this.services.vault.isFileSizeTooLarge(size)) {
+                this.log(
+                    `Processing ${docPath} has been skipped due to file size exceeding the limit`,
+                    LOG_LEVEL_NOTICE
+                );
+                return;
+            }
+            return await this.applyToDatabase(change, resources, recoveryAttempt, scope);
+        }
+        this.log(`Skipped unexpected non-note document: ${change._id}`, LOG_LEVEL_INFO);
+    }
+
+    // Phase 2: apply the document to database
+    protected applyToDatabase(
+        doc: PouchDB.Core.ExistingDocument<AnyEntry>,
+        resources: Scope<unknown>,
+        recoveryAttempt?: RecoveryAttempt,
+        targetScope = this.reflectionTargets.issue(doc._id, recoveryAttempt)
+    ) {
+        return this.withCounting(async () => {
+            resources.defer(await this._semaphore.acquire());
+            await this._applyToDatabase(doc, targetScope, recoveryAttempt);
         }, this.services.replication.databaseQueueCount);
     }
     private readonly documentApplication: ReplicatedDocumentApplicationContext = {
         getLocalDatabase: () => this.localDatabase,
-        canObserveFailure: (id) =>
-            !!(
-                this.context.canDeferContentReadFailure?.("local-database") ||
-                this.context.canDeferContentReadFailure?.("transport") ||
-                this.reflectionTargets.get(id)
-            ),
         isValidPath: (entry) => this.services.vault.isValidPath(this.getPath(entry)),
         processOptional: (entry) => this.services.replication.processOptionalSynchroniseResult(entry),
-        applyToStorage: (entry, onFailure) => this.applyToStorage(entry, onFailure),
-        retainFailure: (failure, scope, revision) => this.retainContentReadFailure(failure, scope, revision),
-        onReadFailure: () => this.context.onVaultReflectionFailure?.(),
-        onReflectionFailure: (entry, cause) => this.reportVaultReflectionFailure(entry, cause),
+        applyToStorage: (entry, operation) => this.applyToStorage(entry, operation),
         onReflected: async (id) => {
             const pending = this.reflectionTargets.get(id);
             if (pending) {
@@ -946,13 +997,15 @@ export class ReplicateResultProcessor {
             }
         },
         log: (message, level) => this.log(message, level),
-        logError: (error) => this.logError(error),
     };
 
     // Capture the target before waiting for the per-document lock.
-    private _applyToDatabase(doc: PouchDB.Core.ExistingDocument<AnyEntry>, recoveryAttempt?: RecoveryAttempt) {
+    private _applyToDatabase(
+        doc: PouchDB.Core.ExistingDocument<AnyEntry>,
+        scope: ReflectionApplicationScope,
+        recoveryAttempt?: RecoveryAttempt
+    ) {
         const entry = doc as LoadedEntry;
-        const scope = this.reflectionTargets.issue(entry._id, recoveryAttempt);
         const description = `${this.getPath(entry)} (${shortenId(entry._id)}, ${shortenRev(entry._rev)})`;
         return scope.run(() =>
             withLock(`replication-process:${entry._id}`, async () => {
@@ -963,13 +1016,14 @@ export class ReplicateResultProcessor {
                 }
                 scope.checkpoint();
                 if (recoveryAttempt?.target.source === "scan" && this.context.reconcileScannedDocument) {
-                    let failure: ContentReadFailure | undefined;
-                    await this.context.reconcileScannedDocument(entry, (value) => {
-                        failure = value;
+                    await this.context.reconcileScannedDocument(entry, {
+                        target: { documentId: entry._id, revision: entry._rev! },
+                        source: "scan",
+                        checkpoint: () => {
+                            scope.checkpoint();
+                            return true;
+                        },
                     });
-                    if (failure) {
-                        await this.retainContentReadFailure(failure, scope);
-                    }
                     await this.currentPendingEntry(recoveryAttempt.target);
                     return;
                 }
@@ -983,12 +1037,9 @@ export class ReplicateResultProcessor {
      * @param entry
      * @returns
      */
-    protected applyToStorage(entry: MetaEntry, onFailure?: ContentReadFailureHandler) {
+    protected applyToStorage(entry: MetaEntry, operation: ReflectionOperationContext) {
         return this.withCounting(
-            () =>
-                onFailure
-                    ? this.services.replication.processSynchroniseResult(entry, onFailure)
-                    : this.services.replication.processSynchroniseResult(entry),
+            () => this.services.replication.processSynchroniseResult(entry, operation),
             this.services.replication.storageApplyingCount
         );
     }
@@ -1002,7 +1053,6 @@ export class ReplicateResultProcessor {
         dbDoc: LoadedEntry,
         scope = this.reflectionTargets.issue(dbDoc._id)
     ): Promise<boolean> {
-        const description = `${this.getPath(dbDoc)} (${shortenId(dbDoc._id)}, ${shortenRev(dbDoc._rev)})`;
-        return checkDocumentRevision(this.documentApplication, dbDoc, scope, description);
+        return checkDocumentRevision(this.documentApplication, dbDoc, scope);
     }
 }

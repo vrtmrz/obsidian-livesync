@@ -2,6 +2,12 @@ import type { ReviewHarnessScenarioResult } from "./reviewHarnessTypes";
 
 export type DatabaseProbeMode = "controlled" | "background";
 export type DatabaseProbeAction = "close-native" | "check" | "reopen" | "finish" | "cancel";
+export type DatabaseProbeStage =
+    | "baseline"
+    | "manual-check"
+    | "after-native-close"
+    | "after-explicit-reopen"
+    | "background-transition";
 
 export interface DatabaseProbeSnapshot {
     readonly mode: DatabaseProbeMode | null;

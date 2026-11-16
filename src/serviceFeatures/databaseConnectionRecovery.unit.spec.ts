@@ -11,14 +11,14 @@ function setup() {
     const selected = { isReady: true };
     const database = {
         localDatabaseDirect: selected,
-        checkDatabaseConnection: vi.fn(async () => true),
+        canReadCurrentDatabaseInfo: vi.fn(async () => true),
         reopenDatabase: vi.fn(async () => {
             database.localDatabaseDirect = { isReady: true };
             return true;
         }),
         onLocalDatabaseError: event("error"),
     };
-    database.checkDatabaseConnection.mockImplementation(async () => database.localDatabaseDirect.isReady);
+    database.canReadCurrentDatabaseInfo.mockImplementation(async () => database.localDatabaseDirect.isReady);
     const services = {
         API: { addLog: vi.fn() },
         database,
@@ -50,7 +50,7 @@ describe("local database connection recovery", () => {
     it("only checks the existing connection when healthy", async () => {
         const { callbacks, database, dispatch } = setup();
         await expect(callbacks.foreground()).resolves.toBe(true);
-        expect(database.checkDatabaseConnection).toHaveBeenCalledOnce();
+        expect(database.canReadCurrentDatabaseInfo).toHaveBeenCalledOnce();
         expect(database.reopenDatabase).not.toHaveBeenCalled();
         expect(dispatch.pauseDispatch).not.toHaveBeenCalled();
     });
@@ -62,9 +62,25 @@ describe("local database connection recovery", () => {
         expect(selected.isReady).toBe(true);
     });
 
+    it("probes an owned operation failure without inferring its cause and reopens after info rejects", async () => {
+        const { callbacks, selected, database } = setup();
+        const failure = new Error("read failed");
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(failure);
+        await expect(callbacks.error(selected, failure)).resolves.toBe(true);
+        expect(database.canReadCurrentDatabaseInfo).toHaveBeenCalledOnce();
+        expect(database.reopenDatabase).toHaveBeenCalledOnce();
+    });
+
+    it("reopens after a foreground info failure regardless of error name", async () => {
+        const { callbacks, database } = setup();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(new Error("connection unavailable"));
+        await expect(callbacks.foreground()).resolves.toBe(true);
+        expect(database.reopenDatabase).toHaveBeenCalledOnce();
+    });
+
     it("waits for accepted file work and retires replication before reopening once", async () => {
         const { callbacks, selected, database, dispatch, services } = setup();
-        database.checkDatabaseConnection.mockRejectedValue(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
         let finish!: () => void;
         dispatch.pauseDispatch.mockReturnValueOnce(
             new Promise<void>((resolve) => {
@@ -88,7 +104,7 @@ describe("local database connection recovery", () => {
     it("holds a background failure and reopens on the next foreground boundary", async () => {
         const { callbacks, selected, database, dispatch, visible } = setup();
         visible.mockReturnValue(false);
-        database.checkDatabaseConnection.mockRejectedValue(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
         await expect(callbacks.error(selected, closing())).resolves.toBe(false);
         expect(database.reopenDatabase).not.toHaveBeenCalled();
         expect(dispatch.resumeDispatch).not.toHaveBeenCalled();
@@ -97,18 +113,18 @@ describe("local database connection recovery", () => {
         expect(database.reopenDatabase).toHaveBeenCalledOnce();
     });
 
-    it("does not recover old instances or remote and unrelated failures", async () => {
+    it("ignores retired owners and probes current owned failures without reopening a readable DB", async () => {
         const { callbacks, selected, database } = setup();
         await callbacks.error({ isReady: true }, closing());
         await callbacks.error(selected, { status: 401 });
         await callbacks.error(selected, { name: "UnknownError" });
-        expect(database.checkDatabaseConnection).not.toHaveBeenCalled();
+        expect(database.canReadCurrentDatabaseInfo).toHaveBeenCalledTimes(2);
         expect(database.reopenDatabase).not.toHaveBeenCalled();
     });
 
     it("does not retry repeatedly within one foreground lifetime", async () => {
         const { callbacks, selected, database } = setup();
-        database.checkDatabaseConnection.mockRejectedValue(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
         await callbacks.error(selected, closing());
         await expect(callbacks.error(database.localDatabaseDirect, closing())).resolves.toBe(false);
         expect(database.reopenDatabase).toHaveBeenCalledOnce();
@@ -116,7 +132,7 @@ describe("local database connection recovery", () => {
 
     it("releases its hold when an explicit open replaces the failed connection first", async () => {
         const { callbacks, selected, database, dispatch, services } = setup();
-        database.checkDatabaseConnection.mockRejectedValueOnce(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
         database.reopenDatabase.mockImplementation(async () => {
             database.localDatabaseDirect = { isReady: true };
             return false;
@@ -130,7 +146,7 @@ describe("local database connection recovery", () => {
 
     it("reconciles a replacement which finishes opening at a later foreground boundary", async () => {
         const { callbacks, selected, database, dispatch } = setup();
-        database.checkDatabaseConnection.mockRejectedValueOnce(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
         database.reopenDatabase.mockImplementation(async () => {
             database.localDatabaseDirect = { isReady: false };
             return false;
@@ -145,7 +161,7 @@ describe("local database connection recovery", () => {
 
     it("does not resume sync when pending local edits fail to reconcile", async () => {
         const { callbacks, selected, database, services } = setup();
-        database.checkDatabaseConnection.mockRejectedValue(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
         services.fileProcessing.commitPendingFileEvents.mockResolvedValue(false);
         await expect(callbacks.error(selected, closing())).resolves.toBe(false);
         expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
@@ -155,7 +171,7 @@ describe("local database connection recovery", () => {
 
     it("allows shutdown flushing and rejects a recovery still waiting for file work", async () => {
         const { callbacks, selected, database, dispatch, services } = setup();
-        database.checkDatabaseConnection.mockRejectedValue(closing());
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
         let finish!: () => void;
         dispatch.pauseDispatch.mockReturnValueOnce(
             new Promise<void>((resolve) => {

@@ -234,7 +234,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 });
                 useReviewHarness(core, this, compatibilityReview);
             },
-            { recoverChunkTransportFailures: true }
+            { recoverFileReflectionFailures: true }
         );
     }
 

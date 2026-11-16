@@ -2,6 +2,7 @@ import type {
     DatabaseProbeAction,
     DatabaseProbeMode,
     DatabaseProbeSnapshot,
+    DatabaseProbeStage,
     ReviewHarnessDatabaseProbe,
 } from "./reviewHarnessDatabaseProbeTypes";
 import type { ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";
@@ -11,6 +12,7 @@ export interface DatabaseProbeEvent {
     readonly name: string;
     readonly detail?: string;
     readonly registration?: "registered" | "unavailable";
+    readonly stage?: DatabaseProbeStage;
 }
 
 export interface DatabaseProbeCheck {
@@ -30,13 +32,14 @@ export interface DatabaseProbeRuntime {
     confirmStart(mode: DatabaseProbeMode): Promise<boolean>;
     createFixture(emit: (event: DatabaseProbeEvent) => void, signal: AbortSignal): Promise<DatabaseProbeFixture>;
     observeLifecycle(emit: (event: DatabaseProbeEvent) => void): () => void;
-    inspectActiveDatabase(signal: AbortSignal): Promise<DatabaseProbeCheck>;
+    inspectActiveDatabase(signal: AbortSignal, stage: DatabaseProbeStage): Promise<DatabaseProbeCheck>;
 }
 
 interface EventObservation {
     registration: "registered" | "unavailable" | "not-applicable";
     count: number;
     last: string;
+    lastStage?: DatabaseProbeStage;
     detail?: string;
 }
 
@@ -50,12 +53,16 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
     private readonly events = new Map<string, EventObservation>();
     private readonly transcript: string[] = [];
     private readonly observations: string[] = [];
+    private currentStage: DatabaseProbeStage = "baseline";
     private fixture: DatabaseProbeFixture | undefined;
     private unobserve: (() => void) | undefined;
     private aborter: AbortController | undefined;
     private pending: Promise<void> | undefined;
     private stopping: Promise<void> | undefined;
-    private failureObserved = false;
+    private activeFailureObserved = false;
+    private fixtureFailureObserved = false;
+    private controlledFixtureFailureObserved = false;
+    private controlledClosePerformed = false;
     private nativeClosed = false;
     private fixtureUnsupported = false;
     private disposed = false;
@@ -76,6 +83,7 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
 
     private readonly emit = (event: DatabaseProbeEvent): void => {
         const at = this.runtime.now().toISOString();
+        const stage = event.stage ?? this.currentStage;
         const key = `${event.source}.${event.name}`;
         const previous = this.events.get(key);
         if (event.registration) {
@@ -83,6 +91,7 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
                 registration: event.registration,
                 count: previous?.count ?? 0,
                 last: previous?.last ?? "none",
+                ...(previous?.lastStage ? { lastStage: previous.lastStage } : {}),
                 detail: event.detail,
             });
         } else {
@@ -90,10 +99,12 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
                 registration: previous?.registration ?? "not-applicable",
                 count: (previous?.count ?? 0) + 1,
                 last: at,
+                lastStage: stage,
                 detail: previous?.detail,
             });
         }
-        this.transcript.push(`${at} ${key}${event.detail ? `: ${event.detail}` : ""}`);
+        const kind = event.registration ? `registration=${event.registration}` : "event=received";
+        this.transcript.push(`${at} stage=${stage} ${kind} ${key}${event.detail ? `: ${event.detail}` : ""}`);
         if (this.transcript.length > 100) {
             this.transcript.shift();
         }
@@ -121,12 +132,12 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
             mode: this.mode,
             phase: this.phase,
             instruction: this.fixtureUnsupported
-                ? "Native capture is unavailable. Switch apps to observe browser and host events, choose Check connections, then finish and copy the report."
+                ? "Native fixture capture is unavailable. Switch apps to observe browser and host events, choose Check connections, then finish and copy the report. Active database errors remain separate from fixture evidence."
                 : this.mode === "background"
                   ? "Switch to another app, use it briefly, return to Obsidian, and choose Check connections. Finish with the evidence collected even if no failure occurs."
                   : "Close only the disposable database's native connection, check the retained handles, then optionally try an explicit reopen of the same database.",
             expected:
-                "Listener registration, zero-event counts, and received timestamps are useful evidence. Native close() does not emit a native close event. This tool does not verify automatic LiveSync recovery.",
+                "Baseline active-database errors are recorded separately. Only a fixture failure after this diagnostic closes its native connection counts as the controlled reproduction. Listener registration, zero-event counts, and received timestamps are useful evidence. Native close() does not emit a native close event. An explicit fixture reopen does not verify automatic LiveSync recovery.",
             availableActions,
             result: {
                 status: this.status,
@@ -135,7 +146,7 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
                     ...this.observations,
                     ...[...this.events].map(
                         ([key, value]) =>
-                            `${key}: listener=${value.registration}; received=${value.count}; last=${value.last}${value.detail ? `; ${value.detail}` : ""}`
+                            `${key}: listener=${value.registration}; received=${value.count}; last=${value.last}${value.lastStage ? `; lastStage=${value.lastStage}` : ""}${value.detail ? `; ${value.detail}` : ""}`
                     ),
                     ...this.transcript,
                 ],
@@ -154,7 +165,11 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
         this.events.clear();
         this.transcript.length = 0;
         this.observations.length = 0;
-        this.failureObserved = false;
+        this.activeFailureObserved = false;
+        this.fixtureFailureObserved = false;
+        this.controlledFixtureFailureObserved = false;
+        this.controlledClosePerformed = false;
+        this.currentStage = "baseline";
         this.nativeClosed = false;
         this.fixtureUnsupported = false;
         const aborter = new AbortController();
@@ -176,9 +191,16 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
             if (aborter.signal.aborted) {
                 return;
             }
-            this.unobserve = this.runtime.observeLifecycle(emit);
+            this.unobserve = this.runtime.observeLifecycle((event) =>
+                emit({
+                    ...event,
+                    stage: event.stage ?? (event.registration ? "baseline" : "background-transition"),
+                })
+            );
             try {
-                this.fixture = await this.runtime.createFixture(emit, aborter.signal);
+                const emitFixtureEvent = (event: DatabaseProbeEvent) =>
+                    emit({ ...event, stage: event.stage ?? this.currentStage });
+                this.fixture = await this.runtime.createFixture(emitFixtureEvent, aborter.signal);
             } catch (error) {
                 if (aborter.signal.aborted) {
                     throw error;
@@ -192,12 +214,10 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
             if (aborter.signal.aborted) {
                 return;
             }
-            await this.checkConnections(aborter.signal);
+            await this.checkConnections(aborter.signal, "baseline");
             this.phase = "observing";
             this.status = "waiting-for-user";
-            this.detail = this.fixtureUnsupported
-                ? "Native fixture capture is unavailable. Browser and host events are still being observed; switch apps, check, and copy the evidence."
-                : "Event observation is active. Follow the guide; a connection failure is not required.";
+            this.detail = this.waitingDetail();
         });
     }
 
@@ -224,18 +244,82 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
         }
     }
 
-    private async checkConnections(signal: AbortSignal): Promise<void> {
-        if (this.fixture) {
-            const result = await this.fixture.check(signal);
-            this.failureObserved ||= result.connectionFailure;
-            this.observations.push(...result.observations);
+    private recordSample(source: "fixture" | "active", stage: DatabaseProbeStage, result: DatabaseProbeCheck): void {
+        const sampledAt = this.runtime.now().toISOString();
+        if (source === "fixture") {
+            this.fixtureFailureObserved ||= result.connectionFailure;
+            if (
+                this.mode === "controlled" &&
+                this.nativeClosed &&
+                (stage === "after-native-close" || stage === "manual-check")
+            ) {
+                this.controlledFixtureFailureObserved ||= result.connectionFailure;
+            }
+        } else {
+            this.activeFailureObserved ||= result.connectionFailure;
         }
-        const active = await this.runtime.inspectActiveDatabase(signal);
-        this.failureObserved ||= active.connectionFailure;
-        this.observations.push(...active.observations);
+        this.observations.push(
+            ...result.observations.map(
+                (observation) => `${source} sample; stage=${stage}; sampledAt=${sampledAt}; ${observation}`
+            )
+        );
         if (this.observations.length > 60) {
             this.observations.splice(0, this.observations.length - 60);
         }
+    }
+
+    private async checkConnections(signal: AbortSignal, stage: DatabaseProbeStage): Promise<void> {
+        this.currentStage = stage;
+        if (this.fixture) {
+            const result = await this.fixture.check(signal);
+            this.recordSample("fixture", stage, result);
+        }
+        const active = await this.runtime.inspectActiveDatabase(signal, stage);
+        this.recordSample("active", stage, active);
+    }
+
+    private waitingDetail(): string {
+        if (this.fixtureUnsupported) {
+            return "Native fixture capture is unavailable. Browser and host events remain observable; active database samples do not replace fixture evidence.";
+        }
+        if (this.mode === "controlled") {
+            if (this.controlledFixtureFailureObserved) {
+                return "The disposable fixture failed after the controlled native close. Keep collecting events, try an explicit fixture reopen, or finish.";
+            }
+            if (this.activeFailureObserved) {
+                return "An active database check failed. This does not establish the controlled fixture result; keep collecting evidence or finish.";
+            }
+            if (this.fixtureFailureObserved) {
+                return "A fixture check failed before the controlled native close. This does not establish the controlled reproduction; keep collecting evidence or finish.";
+            }
+            return "No controlled fixture connection failure has been observed. Follow the guide; a connection failure is not required.";
+        }
+        if (this.activeFailureObserved || this.fixtureFailureObserved) {
+            return "A connection failure was observed during background monitoring. Keep collecting events or finish.";
+        }
+        return "Event observation is active. Follow the guide; a connection failure is not required.";
+    }
+
+    private completionDetail(cancelled: boolean): string {
+        if (cancelled) {
+            return "Observation was cancelled; the collected event evidence is retained.";
+        }
+        if (this.fixtureUnsupported) {
+            return "Native fixture capture is unavailable. Active database samples and event evidence are retained, but they do not establish the controlled fixture result.";
+        }
+        if (this.mode === "controlled" && this.controlledFixtureFailureObserved) {
+            return "A connection failure was observed in the disposable fixture after its controlled native close. Explicit reopen results are diagnostic, not automatic recovery.";
+        }
+        if (this.mode === "controlled") {
+            if (!this.controlledClosePerformed) {
+                return "No controlled native close was performed. Active database samples and event evidence are retained separately.";
+            }
+            return "No fixture connection failure followed the controlled native close. Active database samples and event evidence are retained separately.";
+        }
+        if (this.activeFailureObserved || this.fixtureFailureObserved) {
+            return "A connection failure was observed during background monitoring. The event and database samples are retained; this does not verify automatic LiveSync recovery.";
+        }
+        return "No connection failure was observed. Event registrations, zero counts, and received events are retained.";
     }
 
     async perform(action: DatabaseProbeAction): Promise<void> {
@@ -257,25 +341,25 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
         this.notify();
         await this.track(async () => {
             if (action === "close-native") {
+                this.currentStage = "after-native-close";
                 this.fixture!.closeNative();
                 this.nativeClosed = true;
-                await this.checkConnections(signal);
+                this.controlledClosePerformed = true;
+                await this.checkConnections(signal, "after-native-close");
             } else if (action === "reopen") {
+                this.currentStage = "after-explicit-reopen";
                 const result = await this.fixture!.reopen(signal);
-                this.failureObserved ||= result.connectionFailure;
-                this.observations.push(...result.observations);
+                this.recordSample("fixture", "after-explicit-reopen", result);
                 this.nativeClosed = false;
             } else {
-                await this.checkConnections(signal);
+                await this.checkConnections(signal, "manual-check");
             }
             if (signal.aborted) {
                 return;
             }
             this.phase = "observing";
             this.status = "waiting-for-user";
-            this.detail = this.failureObserved
-                ? "A connection failure was observed. Keep collecting events, try an explicit reopen, or finish."
-                : "No connection failure has been observed. Event registration and receipt remain recorded.";
+            this.detail = this.waitingDetail();
         });
     }
 
@@ -307,16 +391,16 @@ export class ReviewHarnessDatabaseProbeController implements ReviewHarnessDataba
             this.notify();
             this.status = cancelled
                 ? "cancelled"
-                : this.failureObserved
-                  ? "passed"
-                  : this.fixtureUnsupported
-                    ? "unsupported"
-                    : "not-observed";
-            this.detail = cancelled
-                ? "Observation was cancelled; the collected event evidence is retained."
-                : this.failureObserved
-                  ? "A connection failure was observed. Explicit reopen results are diagnostic, not automatic recovery."
-                  : "No connection failure was observed. Event registrations, zero counts, and received events are retained.";
+                : this.fixtureUnsupported
+                  ? "unsupported"
+                  : this.mode === "controlled"
+                    ? this.controlledFixtureFailureObserved
+                        ? "passed"
+                        : "not-observed"
+                    : this.activeFailureObserved || this.fixtureFailureObserved
+                      ? "passed"
+                      : "not-observed";
+            this.detail = this.completionDetail(cancelled);
             await this.cleanup();
             this.phase = "complete";
             this.notify();

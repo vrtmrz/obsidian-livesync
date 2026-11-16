@@ -75,10 +75,10 @@ export class ModuleLiveSyncMain extends AbstractModule {
             continueOnFileFailure,
             {
                 strictContentCheck,
-                ...(continueOnFileFailure && this.core.startupDatabaseOptions.recoverChunkTransportFailures
+                ...(continueOnFileFailure && this.core.startupDatabaseOptions.recoverFileReflectionFailures
                     ? {
-                          onContentReadFailure: async (failure) => {
-                              await this.services.replication.onFileReflectionContentReadFailed(failure);
+                          onReflectionFailed: async (target, error) => {
+                              await this.services.replication.onFileReflectionFailed(target, error);
                           },
                       }
                     : {}),

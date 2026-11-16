@@ -62,10 +62,16 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 
 ## Proposals and incomplete explanations
 
-The [local database connection recovery candidate](design_docs/local_database_connection_recovery.md) records the #1360 implementation boundary, controlled runtime verification, and outstanding package adoption and physical iPhone checks.
-- [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): retained ordinary-file failures, one automatic retry, and review after transport or local database recovery.
+The #1360/#1224 design revision is approved and has controlled Linux Obsidian
+verification. Package publication and physical iPhone verification remain
+outstanding. The verification sections distinguish revised-candidate results
+from historical results for earlier candidates.
 
-These records are useful for design work. Their proposed representation or behaviour is not a current runtime contract.
+- [Local database connection recovery](design_docs/local_database_connection_recovery.md): current-owner database probe, bounded same-database recovery, and its diagnostic and verification limits. The combined Commonlib package is unpublished, and physical iPhone recovery remains unverified.
+- [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): retain failures with explicit `resources[]`, use one allowance only after every required resource recovers, and keep unknown failures available for review. Previous standalone and integrated candidate results are labelled as historical evidence.
+
+Use these records as the accepted design reference and read their verification
+sections before making claims about current runtime behaviour.
 
 | Document | Recorded state |
 |---|---|

@@ -521,7 +521,7 @@ export async function main(
                 standardIo,
                 `[Info] Replication result received, but not processed automatically in CLI mode.`
             );
-            return await Promise.resolve(true);
+            return { status: "policy" };
         }, -100);
     }
 

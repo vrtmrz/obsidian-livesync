@@ -37,9 +37,9 @@ The Harness accepts no path, command, code, remote configuration, or credential 
 
 ### Database connection diagnostics
 
-Each diagnostic requests confirmation before attempting to create a dedicated disposable database. It closes only its owned fixture connections; the active LiveSync database is inspected read-only. The interface displays the current instruction and expected result, with live listener registrations, native event-property presence, received counts, timestamps, and connection-check observations. Event observations include `isTrusted`: browser-delivered events report `true`, while synthetic events report `false`. The active LiveSync native handle is not exposed; its database readiness and a read-only information check are recorded instead.
+Each diagnostic requests confirmation before attempting to create a dedicated disposable database. It closes only its owned fixture connections; the active LiveSync database is inspected read-only. Fixture samples and active-database samples remain separate. Each sample records its source, UTC sample time, stage, and observations. The stages are `baseline`, `manual-check`, `after-native-close`, and `after-explicit-reopen`; lifecycle and background transitions are recorded as `background-transition` events. The interface displays the current instruction and expected result, with live listener registrations, native event-property presence, received counts, timestamps, and connection-check observations. Event observations include `isTrusted`: browser-delivered events report `true`, while synthetic events report `false`. The active LiveSync native handle is not exposed; its database readiness and a read-only information check are recorded instead.
 
-If the disposable fixture or native connection cannot be prepared, the Harness keeps available browser and host event observations active. Finish that run to report **Unsupported**; the missing native capture is not a successful database check.
+If the disposable fixture or native connection cannot be prepared, the Harness keeps available browser and host event observations active. Finish that run to report **Unsupported**; active-database errors do not replace missing fixture evidence or change the status. The missing native capture is not a successful database check.
 
 #### A. Controlled connection loss
 
@@ -49,7 +49,7 @@ If the disposable fixture or native connection cannot be prepared, the Harness k
 4. Select **Finish observation** to end and clean up the diagnostic.
 5. Select **Copy Markdown report** separately to copy the collected evidence.
 
-The explicit native `close()` action is controlled test input. It does not emit a native `close` event, so a zero event count after this action is expected and is not evidence of an operating-system disconnect.
+The explicit native `close()` action is controlled test input. A **Passed** controlled result requires a failure from the disposable fixture after this action. A baseline active-database failure, or a fixture failure before the controlled close, cannot satisfy that result. An **Unsupported** fixture remains unsupported even when active-database samples report failures. The explicit native `close()` action does not emit a native `close` event, so a zero event count after this action is expected and is not evidence of an operating-system disconnect.
 
 #### B. Database events after backgrounding on iPhone
 
@@ -58,7 +58,7 @@ The explicit native `close()` action is controlled test input. It does not emit 
 3. Select **Check connections** to record the current connection checks and event counts.
 4. Select **Finish observation**, then select **Copy Markdown report** separately.
 
-The **Finish observation** action ends observation and cleans up the fixture; it does not copy the report. A background run which observes no failure still records listener registration, event-property presence, received counts, and timestamps. No observed failure does not establish that a fix worked, and neither diagnostic attempts automatic LiveSync recovery.
+The **Finish observation** action ends observation and cleans up the fixture; it does not copy the report. A background run which observes no failure retains the **Not observed** result and still records listener registration, event-property presence, received counts, stages, and timestamps. No observed failure does not establish that a fix worked, and neither diagnostic attempts automatic LiveSync recovery. An explicit fixture reopen is recorded as a separate manual intervention; it is not evidence of automatic LiveSync recovery.
 
 ## Restart continuation
 

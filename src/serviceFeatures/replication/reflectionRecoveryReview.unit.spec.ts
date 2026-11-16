@@ -18,6 +18,7 @@ function pending(overrides: Partial<PendingReflection> = {}): PendingReflection 
         source: "scan",
         state: "review",
         automaticAttempted: true,
+        resources: ["remote"],
         reason: "Chunk transport is unavailable",
         running: false,
         ...overrides,
@@ -136,6 +137,32 @@ function fixture(options: { initial?: PendingReflection[]; reconcile?: () => Pro
 }
 
 describe("reflection recovery review UI", () => {
+    it("describes incomplete resources and retains a legacy reason when resources are unavailable", async () => {
+        const context = fixture({
+            initial: [
+                pending({ documentId: "doc-local", resources: ["local-database"], reason: "local-database" }),
+                pending({ documentId: "doc-remote", revision: "4-b", resources: ["remote"], reason: "transport" }),
+                pending({
+                    documentId: "doc-both",
+                    revision: "4-c",
+                    resources: ["local-database", "remote"],
+                    reason: "transport",
+                }),
+                pending({ documentId: "doc-legacy", revision: "4-d", resources: [], reason: "local-database" }),
+            ],
+        });
+        await context.scan();
+
+        await context.commands.invoke(OPEN_REFLECTION_RECOVERY_REVIEW, undefined);
+
+        expect(context.confirm.askSelectString.mock.calls[0]?.[1]).toEqual([
+            "1. notes/doc-local.md — Needs review — A local database operation failed while the file was being reflected.",
+            "2. notes/doc-remote.md — Needs review — Required file content could not be retrieved from the remote while the file was being reflected.",
+            "3. notes/doc-both.md — Needs review — A local database operation failed while the file was being reflected. Required file content could not be retrieved from the remote while the file was being reflected.",
+            "4. notes/doc-legacy.md — Needs review — The local database connection was unavailable when the file was being reflected.",
+        ]);
+    });
+
     it("waits until a running attempt ends before presenting it as needing review", async () => {
         const target = pending({ running: true, reason: "transport" });
         const context = fixture({ initial: [target] });
@@ -172,7 +199,7 @@ describe("reflection recovery review UI", () => {
     it("keeps waiting targets distinct from needs-review targets while exposing both to manual review", async () => {
         const context = fixture({ initial: [pending({ state: "waiting", automaticAttempted: false })] });
         context.confirm.askSelectString.mockResolvedValueOnce(
-            "1. notes/doc-a.md — Waiting — Chunk transport is unavailable"
+            "1. notes/doc-a.md — Waiting — Required file content could not be retrieved from the remote while the file was being reflected."
         );
         context.confirm.askSelectStringDialogue.mockResolvedValueOnce("Close");
 
@@ -183,7 +210,9 @@ describe("reflection recovery review UI", () => {
         expect(context.notices.finish).not.toHaveBeenCalled();
         expect(context.confirm.askSelectString).toHaveBeenCalledWith(
             "Choose a file to review. Each entry shows its state and reason.",
-            ["1. notes/doc-a.md — Waiting — Chunk transport is unavailable"]
+            [
+                "1. notes/doc-a.md — Waiting — Required file content could not be retrieved from the remote while the file was being reflected.",
+            ]
         );
         expect(context.confirm.askSelectStringDialogue.mock.calls[0]?.[0]).toContain("Waiting");
         expect(context.recovery.retry).not.toHaveBeenCalled();
@@ -227,7 +256,9 @@ describe("reflection recovery review UI", () => {
         const original = pending();
         const context = fixture({ initial: [original] });
         context.confirm.askSelectString
-            .mockResolvedValueOnce("1. notes/doc-a.md — Needs review — Chunk transport is unavailable")
+            .mockResolvedValueOnce(
+                "1. notes/doc-a.md — Needs review — Required file content could not be retrieved from the remote while the file was being reflected."
+            )
             .mockResolvedValueOnce("");
         context.confirm.askSelectStringDialogue.mockResolvedValueOnce("Retry this file");
         vi.mocked(context.recovery.retry).mockImplementation(async (documentIds) => {
@@ -256,7 +287,9 @@ describe("reflection recovery review UI", () => {
 
         expect(context.confirm.askSelectString).toHaveBeenCalledWith(
             "Choose a file to review. Each entry shows its state and reason.",
-            ["1. doc-unreadable — Needs review — Chunk transport is unavailable"]
+            [
+                "1. doc-unreadable — Needs review — Required file content could not be retrieved from the remote while the file was being reflected.",
+            ]
         );
         expect(context.recovery.list()).toHaveLength(1);
     });
@@ -292,7 +325,9 @@ describe("reflection recovery review UI", () => {
         await context.unload();
         context.setCurrent([]);
         context.emitChanged();
-        selectTarget("1. notes/doc-a.md — Needs review — Chunk transport is unavailable");
+        selectTarget(
+            "1. notes/doc-a.md — Needs review — Required file content could not be retrieved from the remote while the file was being reflected."
+        );
 
         await expect(invocation).resolves.toMatchObject({ status: "handled", value: "unavailable" });
         expect(context.listenerCount).toBe(0);

@@ -58,6 +58,42 @@ function setup() {
 }
 
 describe("guided database event observation", () => {
+    it("does not count a baseline active database failure as controlled fixture reproduction", async () => {
+        const { probe, runtime } = setup();
+        vi.mocked(runtime.inspectActiveDatabase).mockResolvedValue({
+            observations: ["active-local.info=error; name=InvalidStateError"],
+            connectionFailure: true,
+        });
+
+        await probe.start("controlled");
+        await probe.perform("finish");
+
+        expect(probe.snapshot().result).toMatchObject({ status: "not-observed" });
+        expect(probe.snapshot().result.observations).toContain(
+            "fixture sample; stage=baseline; sampledAt=2026-11-16T00:00:00.000Z; retained.get=ok"
+        );
+        expect(probe.snapshot().result.observations).toContain(
+            "active sample; stage=baseline; sampledAt=2026-11-16T00:00:00.000Z; active-local.info=error; name=InvalidStateError"
+        );
+    });
+
+    it("keeps an unsupported fixture outcome when the active database check fails", async () => {
+        const { probe, runtime } = setup();
+        vi.mocked(runtime.createFixture).mockRejectedValue(new Error("fixture unavailable"));
+        vi.mocked(runtime.inspectActiveDatabase).mockResolvedValue({
+            observations: ["active-local.info=error; name=InvalidStateError"],
+            connectionFailure: true,
+        });
+
+        await probe.start("controlled");
+        await probe.perform("finish");
+
+        expect(probe.snapshot().result.status).toBe("unsupported");
+        expect(probe.snapshot().result.observations).toContain(
+            "active sample; stage=baseline; sampledAt=2026-11-16T00:00:00.000Z; active-local.info=error; name=InvalidStateError"
+        );
+    });
+
     it("retains registration, zero receipt, and unavailable-handle evidence without a reproduced failure", async () => {
         const { probe, unobserve } = setup();
         await probe.start("background");
@@ -80,28 +116,43 @@ describe("guided database event observation", () => {
         emit({ source: "document", name: "visibilitychange", detail: "visibility=hidden" });
         emit({ source: "document", name: "visibilitychange", detail: "visibility=visible" });
         expect(probe.snapshot().result.observations).toContain(
-            "document.visibilitychange: listener=registered; received=2; last=2026-11-16T00:00:00.000Z; handlerProperty=true"
+            "document.visibilitychange: listener=registered; received=2; last=2026-11-16T00:00:00.000Z; lastStage=background-transition; handlerProperty=true"
+        );
+        expect(probe.snapshot().result.observations).toContain(
+            "2026-11-16T00:00:00.000Z stage=background-transition event=received document.visibilitychange: visibility=hidden"
+        );
+        expect(probe.snapshot().result.observations).toContain(
+            "2026-11-16T00:00:00.000Z stage=baseline registration=registered document.visibilitychange: handlerProperty=true"
         );
         expect(probe.snapshot().phase).toBe("observing");
         expect(updated).toHaveBeenCalled();
-        await probe.dispose();
+        await probe.perform("check");
+        await probe.perform("finish");
+        expect(probe.snapshot().result.status).toBe("not-observed");
     });
 
     it("separates controlled reproduction and diagnostic reopen from automatic recovery", async () => {
         const { probe, fixture } = setup();
         await probe.start("controlled");
+        expect(probe.snapshot().result.observations).toContain(
+            "fixture sample; stage=baseline; sampledAt=2026-11-16T00:00:00.000Z; retained.get=ok"
+        );
         await probe.perform("close-native");
         expect(fixture.closeNative).toHaveBeenCalledOnce();
+        expect(probe.snapshot().result.status).toBe("waiting-for-user");
+        expect(probe.snapshot().result.observations).toContain(
+            "fixture sample; stage=after-native-close; sampledAt=2026-11-16T00:00:00.000Z; retained.get=error; name=InvalidStateError"
+        );
         expect(probe.snapshot().availableActions).toContain("reopen");
         await probe.perform("reopen");
+        expect(probe.snapshot().result.observations).toContain(
+            "fixture sample; stage=after-explicit-reopen; sampledAt=2026-11-16T00:00:00.000Z; retained.get=ok; contentMatches=true; revisionMatches=true"
+        );
         await probe.perform("finish");
         expect(probe.snapshot().result).toMatchObject({
             status: "passed",
             detail: expect.stringContaining("not automatic recovery"),
         });
-        expect(probe.snapshot().result.observations).toContain(
-            "retained.get=ok; contentMatches=true; revisionMatches=true"
-        );
         expect(fixture.cleanup).toHaveBeenCalledOnce();
     });
 

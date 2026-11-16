@@ -1,6 +1,12 @@
+import { ContentReadError } from "@vrtmrz/livesync-commonlib/replication";
 import { describe, expect, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { REMOTE_COUCHDB, VERSIONING_DOCID, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    REMOTE_COUCHDB,
+    VERSIONING_DOCID,
+    type EntryDoc,
+    type DocumentID,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { EVENT_APPLICATION_READY } from "@/common/events";
@@ -45,7 +51,7 @@ function setup(options: SetupOptions = {}) {
     const createRemoteResource = vi.fn(async () => ({ read, dispose }));
     const beforeReplicateHandlers = new Map<number, BooleanHandler>();
     const centralRemoteHandlers: BooleanHandler[] = [];
-    const failureHandlers: ((failure: unknown) => Promise<boolean>)[] = [];
+    const failureHandlers: ((target: unknown, error: unknown) => Promise<boolean>)[] = [];
     const finiteSuccessHandlers: (() => Promise<boolean>)[] = [];
     let parseHandler: ParseHandler | undefined;
     const services = {
@@ -78,8 +84,10 @@ function setup(options: SetupOptions = {}) {
                 addHandler: vi.fn((handler: BooleanHandler) => centralRemoteHandlers.push(handler)),
             },
             onReplicationFailed: { addHandler: vi.fn() },
-            onFileReflectionContentReadFailed: {
-                addHandler: vi.fn((handler: (failure: unknown) => Promise<boolean>) => failureHandlers.push(handler)),
+            onFileReflectionFailed: {
+                addHandler: vi.fn((handler: (target: unknown, error: unknown) => Promise<boolean>) =>
+                    failureHandlers.push(handler)
+                ),
             },
             onFiniteReplicationCompleted: {
                 addHandler: vi.fn((handler: () => Promise<boolean>) => finiteSuccessHandlers.push(handler)),
@@ -104,7 +112,7 @@ function setup(options: SetupOptions = {}) {
         },
     };
     const core = {
-        startupDatabaseOptions: { recoverChunkTransportFailures: options.recoveryEnabled === true },
+        startupDatabaseOptions: { recoverFileReflectionFailures: options.recoveryEnabled === true },
         confirm: {},
         get localDatabase() {
             return getLocalDatabase();
@@ -112,7 +120,7 @@ function setup(options: SetupOptions = {}) {
         rebuilder: {},
         services,
         serviceModules: {
-            fileHandler: { hasReflectedRevision: vi.fn(async () => false) },
+            fileHandler: { inspectCurrentFileProvenance: vi.fn(async () => false) },
             storageAccess: { isExists: vi.fn(async () => false) },
         },
     };
@@ -159,7 +167,7 @@ function deletionRecoveryHarness(source: "received" | "scan" = "received") {
                     processing: [],
                     pendingReflections: [
                         {
-                            documentId: entry._id,
+                            documentId: entry._id as DocumentID,
                             revision: entry._rev,
                             source,
                             state: "waiting",
@@ -190,7 +198,7 @@ describe("replication serviceFeature composition", () => {
         await feature.recovery.reconcile();
         expect(feature.recovery.list()).toEqual([]);
         expect(context.core.serviceModules.storageAccess.isExists).toHaveBeenCalledExactlyOnceWith("deleted-target.md");
-        expect(context.core.serviceModules.fileHandler.hasReflectedRevision).not.toHaveBeenCalled();
+        expect(context.core.serviceModules.fileHandler.inspectCurrentFileProvenance).not.toHaveBeenCalled();
     });
 
     it.each(["file", "folder"])("keeps a deletion pending while its path contains a %s", async () => {
@@ -222,7 +230,7 @@ describe("replication serviceFeature composition", () => {
         await feature.recovery.reconcile();
         expect(feature.recovery.list()).toHaveLength(1);
         expect(context.core.serviceModules.storageAccess.isExists).not.toHaveBeenCalled();
-        expect(context.core.serviceModules.fileHandler.hasReflectedRevision).toHaveBeenCalledOnce();
+        expect(context.core.serviceModules.fileHandler.inspectCurrentFileProvenance).toHaveBeenCalledOnce();
     });
 
     it("resumes held application before detached local recovery admission and acknowledges without waiting", async () => {
@@ -263,9 +271,21 @@ describe("replication serviceFeature composition", () => {
         context.services.database.isDatabaseReady.mockReturnValue(false);
         const feature = createReplicationFeature(context.core as never);
         feature.register();
-        await context.failureHandlers[0]({ documentId: entry._id, revision: entry._rev, reason: "local-database" });
+        await context.failureHandlers[0](
+            { documentId: entry._id as DocumentID, revision: entry._rev },
+            new ContentReadError({
+                documentId: entry._id as DocumentID,
+                revision: entry._rev,
+                resources: ["local-database"],
+                cause: undefined,
+            })
+        );
         expect(feature.recovery.list()).toEqual([
-            expect.objectContaining({ documentId: entry._id, reason: "local-database", automaticAttempted: false }),
+            expect.objectContaining({
+                documentId: entry._id as DocumentID,
+                reason: "local-database",
+                automaticAttempted: false,
+            }),
         ]);
     });
 
@@ -285,16 +305,17 @@ describe("replication serviceFeature composition", () => {
 
     it("awaits startup failure retention and schedules recovery only through the finite success port", async () => {
         const register = vi
-            .spyOn(ReplicateResultProcessor.prototype, "registerContentReadFailure")
+            .spyOn(ReplicateResultProcessor.prototype, "registerReflectionFailure")
             .mockResolvedValue(undefined);
         const retry = vi
             .spyOn(ReplicateResultProcessor.prototype, "retryWaitingReflections")
             .mockResolvedValue(undefined);
         try {
             const context = setup({ recoveryEnabled: true });
-            const failure = { documentId: "pending", revision: "1-test", reason: "offline" };
-            await expect(context.failureHandlers[0](failure)).resolves.toBe(true);
-            expect(register).toHaveBeenCalledExactlyOnceWith(failure, "scan");
+            const target = { documentId: "pending", revision: "1-test" };
+            const failure = new Error("Content unavailable");
+            await expect(context.failureHandlers[0](target, failure)).resolves.toBe(true);
+            expect(register).toHaveBeenCalledExactlyOnceWith(target, failure, "scan");
             expect(retry).not.toHaveBeenCalled();
             await expect(context.finiteSuccessHandlers[0]()).resolves.toBe(true);
             expect(retry).toHaveBeenCalledOnce();
@@ -350,7 +371,15 @@ describe("replication serviceFeature composition", () => {
         });
         const feature = createReplicationFeature(context.core as never);
         feature.register();
-        await context.failureHandlers[0]({ documentId: entry._id, revision: entry._rev, reason: "offline" });
+        await context.failureHandlers[0](
+            { documentId: entry._id as DocumentID, revision: entry._rev },
+            new ContentReadError({
+                documentId: entry._id as DocumentID,
+                revision: entry._rev,
+                resources: ["remote"],
+                cause: undefined,
+            })
+        );
         expect(feature.recovery.list()).toHaveLength(1);
         const accepted = promiseWithResolvers<undefined>();
         context.services.conflict.queueCheckForIfOpen.mockImplementation(() => accepted.promise);

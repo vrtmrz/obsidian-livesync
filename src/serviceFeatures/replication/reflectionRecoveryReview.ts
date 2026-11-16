@@ -27,6 +27,17 @@ function stateLabel(target: PendingReflection): string {
 }
 
 function readableReason(target: PendingReflection): string {
+    const resourceDescriptions: Record<PendingReflection["resources"][number], string> = {
+        "local-database": $msg("A local database operation failed while the file was being reflected."),
+        remote: $msg(
+            "Required file content could not be retrieved from the remote while the file was being reflected."
+        ),
+    };
+    const incompleteResources = [...new Set(target.resources)];
+    if (incompleteResources.length > 0) {
+        return incompleteResources.map((resource) => resourceDescriptions[resource]).join(" ");
+    }
+
     const descriptions: Record<string, string> = {
         "local-database": $msg("The local database connection was unavailable when the file was being reflected."),
         offline: $msg("The network was offline when the file content was needed."),

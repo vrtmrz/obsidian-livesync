@@ -1,6 +1,5 @@
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
-import { isInvalidStateError } from "@vrtmrz/livesync-commonlib/compat/services/base/DatabaseService";
 import { LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
@@ -77,15 +76,13 @@ export function useDatabaseConnectionRecovery(
         }
         if (selected !== lostDatabase) {
             try {
-                const healthy = await database.checkDatabaseConnection();
+                const healthy = await database.canReadCurrentDatabaseInfo();
                 return healthy && paused ? await resumePendingWork(resumeReplication) : healthy;
             } catch (error) {
                 if (database.localDatabaseDirect !== selected) {
                     return false;
                 }
-                if (!isInvalidStateError(error)) {
-                    return reportFailure(error);
-                }
+                log(error, LOG_LEVEL_VERBOSE);
                 lostDatabase = selected;
             }
         }
@@ -120,7 +117,7 @@ export function useDatabaseConnectionRecovery(
         }
         if (!reopened) {
             // An explicit lifecycle transition may have won the owner lock. Never close its replacement.
-            if (database.localDatabaseDirect !== selected && (await database.checkDatabaseConnection())) {
+            if (database.localDatabaseDirect !== selected && (await database.canReadCurrentDatabaseInfo())) {
                 return await resumePendingWork(resumeReplication);
             }
             return reportFailure();
@@ -152,8 +149,8 @@ export function useDatabaseConnectionRecovery(
         }
         return requestCheck(false);
     });
-    database.onLocalDatabaseError.addHandler(async (selected, error) => {
-        if (stopping || selected !== database.localDatabaseDirect || !isInvalidStateError(error)) {
+    database.onLocalDatabaseError.addHandler(async (selected) => {
+        if (stopping || selected !== database.localDatabaseDirect) {
             return true;
         }
         return await requestCheck(true);

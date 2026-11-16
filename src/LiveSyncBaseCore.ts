@@ -45,7 +45,7 @@ export interface StartupDatabaseOptions {
     readonly discardReplicationResultSnapshotOnReset?: boolean;
     readonly ignoreSuspending?: boolean;
     readonly continueOnFileFailure?: boolean;
-    readonly recoverChunkTransportFailures?: boolean;
+    readonly recoverFileReflectionFailures?: boolean;
 }
 
 type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;

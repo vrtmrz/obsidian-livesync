@@ -15,7 +15,11 @@ import {
     type LoadedEntry,
     type MetaEntry,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { FullScanModes, processFilePair } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import {
+    FullScanModes,
+    FilePairProcessResults,
+    processFilePair,
+} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import { isAnyNote } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
@@ -41,7 +45,7 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
     core: LiveSyncBaseCore<TContext, TCommands>
 ) {
     const { services } = core;
-    const recoveryEnabled = core.startupDatabaseOptions?.recoverChunkTransportFailures === true;
+    const recoveryEnabled = core.startupDatabaseOptions?.recoverFileReflectionFailures === true;
     // Obsidian adds an application-activity owner to its ReplicatorService.
     // Generic hosts retain the former direct-execution fallback.
     const localApplicationActivityOwner = ownsLocalApplicationActivity(services.replicator)
@@ -51,14 +55,16 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
     const resultProcessor = new ReplicateResultProcessor(
         {
             onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
-            canDeferContentReadFailure: (reason) => {
+            canRetainFailedReflection: () =>
+                recoveryEnabled && services.setting.currentSettings().maxMTimeForReflectEvents <= 0,
+            canRetryResource: (resource) => {
                 if (!recoveryEnabled) {
                     return false;
                 }
                 const settings = services.setting.currentSettings();
                 return (
                     settings.maxMTimeForReflectEvents <= 0 &&
-                    (reason === "local-database" ||
+                    (resource === "local-database" ||
                         (settings.remoteType === REMOTE_COUCHDB && settings.readChunksOnline))
                 );
             },
@@ -86,24 +92,33 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
                         return "pending";
                     }
                 }
-                const confirmed = await core.serviceModules.fileHandler.hasReflectedRevision?.(
+                const confirmed = await core.serviceModules.fileHandler.inspectCurrentFileProvenance?.(
                     services.path.getPath(entry),
                     entry._rev!
                 );
                 return confirmed ? "reflected" : "pending";
             },
-            reconcileScannedDocument: async (entry, onFailure) => {
+            reconcileScannedDocument: async (entry, operation) => {
                 const file = await core.serviceModules.storageAccess.getFileStub(services.path.getPath(entry));
-                return await processFilePair(
+                operation.checkpoint?.();
+                const result = await processFilePair(
                     core,
                     createInstanceLogFunction("SF:ReflectionRecovery", services.API),
                     { file: file ?? undefined, doc: entry as MetaEntry },
                     {
                         mode: FullScanModes.NEWER_WINS,
                         strictContentCheck: true,
-                        onContentReadFailure: onFailure,
+                        reflectionOperation: operation,
+                        onReflectionFailed: (_target, error) => {
+                            throw error;
+                        },
                     }
                 );
+                if (result === FilePairProcessResults.FAILED) {
+                    throw new Error("Scanner reflection did not complete");
+                }
+                operation.checkpoint?.();
+                return result;
             },
             currentSettings: () => services.setting.currentSettings(),
             getKeyValueDB: () => services.keyValueDB.kvDB,
@@ -225,8 +240,8 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
                     }
                 });
             });
-            services.replication.onFileReflectionContentReadFailed.addHandler(async (failure) => {
-                await resultProcessor.registerContentReadFailure(failure, "scan");
+            services.replication.onFileReflectionFailed.addHandler(async (target, error) => {
+                await resultProcessor.registerReflectionFailure(target, error, "scan");
                 return true;
             });
             services.replication.onFiniteReplicationCompleted.addHandler(() => {

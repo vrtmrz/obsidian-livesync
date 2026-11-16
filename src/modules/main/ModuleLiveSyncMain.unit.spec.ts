@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
-import type { ContentReadFailure, ContentReadFailureHandler } from "@vrtmrz/livesync-commonlib/replication";
+import type { ReflectionTarget } from "@vrtmrz/livesync-commonlib/replication";
 
 vi.mock("@/common/events.ts", () => ({
     EVENT_LAYOUT_READY: "layout-ready",
@@ -112,8 +112,9 @@ describe("ModuleLiveSyncMain", () => {
 
     it("awaits startup failure registration before continuing initialisation", async () => {
         const registered = promiseWithResolvers<void>();
-        const failure = { documentId: "pending.md", revision: "1-pending", reason: "offline" } as ContentReadFailure;
-        const onFileReflectionContentReadFailed = vi.fn(() => registered.promise);
+        const target = { documentId: "pending.md", revision: "1-pending" } as ReflectionTarget;
+        const failure = new Error("Content unavailable");
+        const onFileReflectionFailed = vi.fn(() => registered.promise);
         const appLifecycle = {
             onLayoutReady: vi.fn(async () => true),
             onFirstInitialise: vi.fn(async () => true),
@@ -126,16 +127,16 @@ describe("ModuleLiveSyncMain", () => {
                 _ignoreSuspending: boolean,
                 _continueOnFailure: boolean,
                 options: {
-                    onContentReadFailure: ContentReadFailureHandler;
+                    onReflectionFailed: (target: ReflectionTarget, error: unknown) => Promise<void>;
                 }
             ) => {
-                await options.onContentReadFailure(failure);
+                await options.onReflectionFailed(target, failure);
                 return "completed-with-file-failures";
             }
         );
         const host = {
             core: {
-                startupDatabaseOptions: { recoverChunkTransportFailures: true },
+                startupDatabaseOptions: { recoverFileReflectionFailures: true },
                 services: { appLifecycle },
             },
             services: {
@@ -143,13 +144,13 @@ describe("ModuleLiveSyncMain", () => {
                 appLifecycle,
                 control: { applySettings: vi.fn(async () => undefined) },
                 databaseEvents: { initialiseDatabase },
-                replication: { onFileReflectionContentReadFailed },
+                replication: { onFileReflectionFailed },
             },
             settings: { suspendFileWatching: false, suspendParseReplicationResult: false },
             _log: vi.fn(),
         };
         const starting = ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
-        await vi.waitFor(() => expect(onFileReflectionContentReadFailed).toHaveBeenCalledExactlyOnceWith(failure));
+        await vi.waitFor(() => expect(onFileReflectionFailed).toHaveBeenCalledExactlyOnceWith(target, failure));
         expect(appLifecycle.onFirstInitialise).not.toHaveBeenCalled();
         registered.resolve();
         await expect(starting).resolves.toBe(true);

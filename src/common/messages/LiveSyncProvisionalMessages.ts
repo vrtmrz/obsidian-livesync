@@ -42,6 +42,10 @@ export const liveSyncProvisionalEnglishMessages = {
         "Choose a file to review. Each entry shows its state and reason.",
     "Review file": "Review file",
     "The retry could not be started. Try again later.": "The retry could not be started. Try again later.",
+    "A local database operation failed while the file was being reflected.":
+        "A local database operation failed while the file was being reflected.",
+    "Required file content could not be retrieved from the remote while the file was being reflected.":
+        "Required file content could not be retrieved from the remote while the file was being reflected.",
     "The local database connection was unavailable when the file was being reflected.":
         "The local database connection was unavailable when the file was being reflected.",
     "Diagnostic summary": "Diagnostic summary",

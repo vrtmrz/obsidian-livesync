@@ -1,7 +1,11 @@
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { fireAndForget } from "octagonal-wheels/promises";
+import type { FilePath, FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { LiveSyncCore } from "@/main";
-import { StorageEventManagerBase, type StorageEventManagerBaseDependencies } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
+import {
+    StorageEventManagerBase,
+    type StorageEventManagerBaseDependencies,
+} from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
 import { ObsidianStorageEventManagerAdapter } from "./ObsidianStorageEventManagerAdapter";
 
 export class StorageEventManagerObsidian extends StorageEventManagerBase<ObsidianStorageEventManagerAdapter> {
@@ -14,6 +18,20 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
         const adapter = new ObsidianStorageEventManagerAdapter(plugin, core, dependencies.fileProcessing);
         super(adapter, dependencies);
         this.core = core;
+    }
+
+    protected override async handleFileEvent(event: FileEventItem): Promise<void> {
+        const database = this.core.services.database;
+        const selected = database.localDatabaseDirect;
+        try {
+            await super.handleFileEvent(event);
+        } catch (error) {
+            // Recovery drains this event before replacement. Awaiting it here would prevent that drain.
+            if (selected) {
+                fireAndForget(() => database.onLocalDatabaseError(selected, error));
+            }
+            throw error;
+        }
     }
 
     /**

@@ -35,7 +35,7 @@ function setup() {
         syncOnlyRegEx: "",
         useIgnoreFiles: false,
     };
-    const processSynchroniseResult = vi.fn(async () => true);
+    const processSynchroniseResult = vi.fn(async () => ({ status: "completed" as const }));
     const settingLoadedHandlers: (() => Promise<boolean>)[] = [];
     const context = createServiceContext();
     const keyValueDB = {
@@ -47,7 +47,7 @@ function setup() {
             if (id === VERSIONING_DOCID) throw { status: 404 };
             return { _id: id, _rev: "1-received" };
         }),
-        getDBEntryFromMeta: vi.fn(async (entry: object) => ({ ...entry, data: "received content" })),
+        readDBEntryFromMeta: vi.fn(async (entry: object) => ({ ...entry, data: "received content" })),
     };
     let parseHandler: ParseHandler | undefined;
     const services = {
@@ -166,7 +166,11 @@ describe("received change readiness composition", () => {
 
             await vi.waitFor(() => expect(harness.processSynchroniseResult).toHaveBeenCalledTimes(2));
             expect(harness.processSynchroniseResult).toHaveBeenLastCalledWith(
-                expect.objectContaining({ _id: "suspended-note", path: "suspended-note.md" })
+                expect.objectContaining({ _id: "suspended-note", path: "suspended-note.md" }),
+                expect.objectContaining({
+                    target: { documentId: "suspended-note", revision: "1-received" },
+                    source: "received",
+                })
             );
         } finally {
             eventHub.offAll();

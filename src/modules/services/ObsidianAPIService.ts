@@ -198,13 +198,10 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             r = await requestUrl({ ...requestParam, throw: false });
         } catch (error) {
             const signal = opts?.signal ?? (req instanceof Request ? req.signal : undefined);
-            if (
-                signal?.aborted ||
-                (error !== null && typeof error === "object" && "name" in error && error.name === "AbortError")
-            ) {
+            if (signal?.aborted) {
                 throw error;
             }
-            throw RemoteRequestError.fromError(error);
+            throw new RemoteRequestError("Remote request failed", { cause: error });
         }
         return new Response(r.arrayBuffer, {
             headers: r.headers,
