@@ -17,7 +17,7 @@ import type ObsidianLiveSyncPlugin from "@/main.ts";
 import type { App } from "obsidian";
 import type { DocumentID, EntryDoc, FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
-const vault = await createTemporaryVault({ prefix: "livesync-database-recovery-", pluginIds: ["obsidian-livesync"] });
+const vault = await createTemporaryVault({ prefix: "livesync-database-recovery-", pluginIds: [] });
 const port = Number(process.env.E2E_OBSIDIAN_REMOTE_DEBUGGING_PORT ?? 19361);
 const receivedPath = "received-after-connection-recovery.md";
 const receivedContent = "Received ordinary content after local database recovery.\n";
@@ -29,6 +29,7 @@ try {
     await installBuiltPlugin(vault.path, {
         pluginId: "obsidian-livesync",
         artifactRoot: process.env.E2E_OBSIDIAN_ARTIFACT_ROOT?.trim() || process.cwd(),
+        enableOnStartup: false,
         pluginData: {
             isConfigured: true,
             settingVersion: CURRENT_SETTING_VERSION,
@@ -58,25 +59,50 @@ try {
     await waitForObsidianVault(port, vault.path);
     await trustVaultIfPrompted(port);
     await withObsidianPage(port, async (page) => {
+        // tsx preserves names in nested callbacks; evaluate runs in a separate JavaScript realm.
+        await page.evaluate(
+            "globalThis.__name ??= (target, value) => Object.defineProperty(target, 'name', { value, configurable: true })"
+        );
         await page.waitForFunction(() => {
             const host = window as unknown as {
-                app?: { plugins?: { plugins?: Record<string, ObsidianLiveSyncPlugin> } };
+                app?: { plugins?: { manifests?: Record<string, unknown> } };
             };
-            return Boolean(host.app?.plugins?.plugins?.["obsidian-livesync"]);
+            return Boolean(host.app?.plugins?.manifests?.["obsidian-livesync"]);
         });
-        await page.evaluate(() => {
+        await page.evaluate(async () => {
             const host = window as unknown as {
-                app: App & { plugins: { plugins: Record<string, ObsidianLiveSyncPlugin> } };
+                app: App & {
+                    plugins: {
+                        plugins: Record<string, ObsidianLiveSyncPlugin>;
+                        enablePluginAndSave(id: string): Promise<void>;
+                    };
+                };
             };
+            const { app } = host;
             const key = "__livesyncDatabaseRecoveryStartupScan";
             const state: { complete: boolean; remove?: () => void } = { complete: false };
-            state.remove = host.app.plugins.plugins[
-                "obsidian-livesync"
-            ].core.services.appLifecycle.onScanningStartupIssues.addHandler(async () => {
-                state.complete = true;
-                return true;
-            });
-            (window as unknown as Record<string, unknown>)[key] = state;
+            const onLayoutReady = app.workspace.onLayoutReady;
+            const callbacks: Parameters<App["workspace"]["onLayoutReady"]>[0][] = [];
+            // This probe requires a settled startup before injecting database loss.
+            // Subscribe before releasing startup: a handler added after a scan begins misses its registration snapshot.
+            app.workspace.onLayoutReady = (callback) => {
+                callbacks.push(callback);
+            };
+            try {
+                await app.plugins.enablePluginAndSave("obsidian-livesync");
+                state.remove = app.plugins.plugins[
+                    "obsidian-livesync"
+                ].core.services.appLifecycle.onScanningStartupIssues.addHandler(async () => {
+                    state.complete = true;
+                    return true;
+                });
+                (window as unknown as Record<string, unknown>)[key] = state;
+            } finally {
+                app.workspace.onLayoutReady = onLayoutReady;
+                for (const callback of callbacks) {
+                    onLayoutReady.call(app.workspace, callback);
+                }
+            }
         });
         await page.waitForFunction(() => {
             const { app } = window as unknown as {
@@ -94,10 +120,6 @@ try {
             state?.remove?.();
             delete (window as unknown as Record<string, unknown>)[key];
         });
-        // tsx preserves names in nested callbacks; evaluate runs in a separate JavaScript realm.
-        await page.evaluate(
-            "globalThis.__name ??= (target, value) => Object.defineProperty(target, 'name', { value, configurable: true })"
-        );
         const runRecoveryProbe = async ({
             receivedFixturePath,
             content,

@@ -1,12 +1,13 @@
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import type { LoadedEntry, MetaEntry } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { ContentReadError } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    ContentReadError,
+    isReflectionCompleted,
+    type FileReflectionResult,
+    type ReflectionOperationContext,
+} from "@vrtmrz/livesync-commonlib/replication";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_VERBOSE, type LOG_LEVEL } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import type {
-    FileReflectionResult,
-    ReflectionOperationContext,
-} from "@vrtmrz/livesync-commonlib/compat/interfaces/FileHandler";
 import type { ReflectionApplicationScope } from "./reflectionTargets";
 
 export interface ReplicatedDocumentApplicationContext {
@@ -80,7 +81,7 @@ export async function applyReplicatedDocument(
     if (!result) {
         throw new Error("No handler completed the file reflection");
     }
-    if (result.status === "completed") {
+    if (isReflectionCompleted(result)) {
         context.log(`Processed: ${description}`, LOG_LEVEL_DEBUG);
         await context.onReflected(entry._id);
     }

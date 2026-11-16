@@ -32,7 +32,7 @@ import type { ReplicationSchedulingControl } from "@/serviceFeatures/replication
 import { createNodeStandardIo, fsPromises as fs, path } from "@vrtmrz/livesync-commonlib/node";
 import type { StandardIo } from "@vrtmrz/livesync-commonlib/context";
 import { writeStderrLine, writeStdoutLine } from "./cliOutput";
-import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import { FILE_REFLECTION_POLICY, REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 import { resolveInitialFetchPathIdentity } from "./initialFetchPathIdentity";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import {
@@ -521,7 +521,7 @@ export async function main(
                 standardIo,
                 `[Info] Replication result received, but not processed automatically in CLI mode.`
             );
-            return { status: "policy" };
+            return FILE_REFLECTION_POLICY;
         }, -100);
     }
 
