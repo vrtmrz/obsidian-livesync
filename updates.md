@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- Changes to files registered as **Ignore** or **Automatic** no longer create Customisation Sync snapshots during configuration scans. (#1359)
+    - Existing snapshots are retained. Exclusions still depend on each item's recorded file list; this change does not repair empty or outdated lists.
+- Hidden File Sync now respects Customisation Sync's **Ignore** and **Selective** selections for registered paths containing uppercase letters.
+    - While Customisation Sync is enabled, the exclusion check compares both paths in lowercase, restoring the previous matching behaviour.
+
 ## 1.0.50
 
 12th November, 2026
