@@ -12,6 +12,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- CLI file lookups avoid repeated full Vault scans when locating files which have not arrived locally or have already been deleted. (#1347)
+    - Applies to Legacy file identity (`pathNormalizationVersion: 0`) with case-insensitive file-name handling. Matching directory branches are listed instead of scanning unrelated Vault subtrees.
+
 ## 1.0.50
 
 12th November, 2026

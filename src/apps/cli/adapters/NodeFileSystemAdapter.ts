@@ -116,9 +116,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
     }
 
     /**
-     * Resolves `pathStr` to the on-disk spelling of a file by listing only the
-     * directories along the path, independent of vault size. At each level the
-     * exactly cased entry is tried first; folders that differ only by case are
+     * Resolves `pathStr` to the on-disk spelling of a file by listing matching
+     * directory branches instead of scanning unrelated Vault subtrees. At each level,
+     * the exactly cased entry is tried first; folders that differ only by case are
      * each tried in turn, so `NOTES/b.md` finds `notes/b.md` beside `Notes/`.
      */
     private async findPathCaseInsensitive(pathStr: string): Promise<string | null> {
