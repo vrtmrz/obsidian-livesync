@@ -44,7 +44,7 @@
     } from "./setupDialogTypes";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
     import { $msg as translateMessage } from "@/common/translation";
-    import { coordinateP2PSetupConnectionProbe, probeP2PSetupConnection } from "./p2pSetupConnectionProbe";
+    import { coordinateP2PSetupConnectionProbe, probeP2PSetupConnection } from "@/modules/features/SetupWizard/connection/p2pSetupConnectionProbe";
 
     const default_setting = pickP2PSyncSettings(DEFAULT_SETTINGS);
     let syncSetting = $state<P2PConnectionInfo>({ ...default_setting });

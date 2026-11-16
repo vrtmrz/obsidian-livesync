@@ -5,7 +5,7 @@ import { $msg } from "@/common/translation";
 import type { Confirm, ConfirmActionLayout } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { confirmAction, pickOne, promptPassword, promptText } from "@vrtmrz/obsidian-plugin-kit";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import { confirmWithMessageWithWideButton } from "@/modules/coreObsidian/UILib/dialogs";
+import { confirmWithMessageWithWideButton } from "@/modules/coreObsidian/UI/dialogs";
 
 export class ObsidianConfirm<T extends ObsidianServiceContext = ObsidianServiceContext> implements Confirm {
     private _context: T;

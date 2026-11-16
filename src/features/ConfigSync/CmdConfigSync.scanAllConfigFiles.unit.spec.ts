@@ -50,7 +50,7 @@ vi.mock("@/common/events.ts", () => ({
 vi.mock("@/common/translation", () => ({
     $msg: vi.fn((message: string) => message),
 }));
-vi.mock("@/common/obsidianCommunityPlugins.ts", () => ({
+vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 

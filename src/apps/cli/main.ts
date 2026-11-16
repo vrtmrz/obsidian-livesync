@@ -24,7 +24,8 @@ import { getForceRequirementError } from "./commands/utils";
 import { getPathFromUXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 import { IgnoreRules } from "./serviceModules/IgnoreRules";
-import { isHiddenPath } from "./cliPathFilter";
+import { isIgnoredFilePath, toVaultRelativePath, type CLIPathFilterOptions } from "./cliPathFilter";
+import { parseFilePath, type FilePath } from "@vrtmrz/livesync-commonlib/storage";
 import { useP2PReplicatorFeature, type UseP2PReplicatorResult } from "@vrtmrz/livesync-commonlib/p2p";
 import { useOfflineScanner } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
 import type { ReplicationSchedulingControl } from "@/serviceFeatures/replicationScheduling";
@@ -162,6 +163,8 @@ Options:
   --force, -f             Required for rebuild and fetch because they replace databases
   --interval <N>, -i <N>  (daemon only) Poll CouchDB every N seconds instead of using the _changes feed
   --write-settings         Write setting changes after a successful command
+  --include-db-like-dirs    Include user directories whose names resemble database directories
+                           CLI database storage entries, hidden entries, and user ignore rules remain excluded
   --compat-remote-admin-exit-zero
                            Preserve the former zero exit code when remote-administration verification fails
 
@@ -215,6 +218,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
     let force = false;
     let writeSettings = false;
     let compatRemoteAdminExitZero = false;
+    let includeDbLikeDirs = false;
     let interval: number | undefined;
     let command: CLICommand = "daemon";
     const commandArgs: string[] = [];
@@ -277,6 +281,9 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
             case "--compat-remote-admin-exit-zero":
                 compatRemoteAdminExitZero = true;
                 break;
+            case "--include-db-like-dirs":
+                includeDbLikeDirs = true;
+                break;
             default: {
                 if (!databasePath) {
                     if (command === "daemon" && isCLICommand(token)) {
@@ -319,6 +326,7 @@ export function parseArgs(standardIo: StandardIo = createNodeStandardIo()): CLIO
         force,
         writeSettings,
         compatRemoteAdminExitZero,
+        includeDbLikeDirs,
         command,
         commandArgs,
         interval,
@@ -469,6 +477,13 @@ export async function main(
         await ignoreRules.load();
     }
 
+    // Derive protection from the canonical startup paths and share it with both
+    // target checks and watching. The runtime opt-in never changes the protected DB root.
+    const pathFilterOptions: CLIPathFilterOptions = {
+        includeDbLikeDirs: options.includeDbLikeDirs,
+        databaseRoot: toVaultRelativePath(vaultPath, databasePath),
+    };
+
     // Create service context and hub
     const context = new NodeServiceContext(databasePath, standardIo, vaultPath);
     const serviceHubInstance = new NodeServiceHub<NodeServiceContext>(databasePath, context);
@@ -566,7 +581,8 @@ export async function main(
                 core,
                 serviceHub,
                 ignoreRules,
-                vaultSyncMode?.watchFiles ?? false
+                vaultSyncMode?.watchFiles ?? false,
+                pathFilterOptions
             );
         },
         (core) => [],
@@ -580,21 +596,20 @@ export async function main(
             p2pReplicator = useP2PReplicatorFeature(core, undefined, undefined, {
                 prepareP2PSettings: useP2PSettingsPreparation(core.services.API.webCompatFetch.bind(core.services.API)),
             });
-            // Add target filter to prevent internal files are handled
+            // Logical targets are already Vault-relative. Validate without filesystem
+            // resolution, then use the same exclusions as startup scans and live events.
             core.services.vault.isTargetFile.addHandler(async (target) => {
                 const targetPath = stripAllPrefixes(getPathFromUXFileInfo(target));
-                const parts = targetPath.split("/");
-                if (isHiddenPath(targetPath)) {
-                    return await Promise.resolve(false);
+                let relativePath: FilePath;
+                try {
+                    relativePath = parseFilePath(targetPath);
+                } catch {
+                    return false;
                 }
-                // PouchDB LevelDB database directory lives in the vault directory.
-                if (parts[0]?.endsWith("-livesync-v2")) {
-                    return await Promise.resolve(false);
-                }
-                return await Promise.resolve(true);
+                return !isIgnoredFilePath(relativePath, undefined, pathFilterOptions);
             }, -1 /* highest priority */);
 
-            // Apply user-defined ignore rules after the dotfile check.
+            // Keep user rules as a later veto; they cannot re-admit paths rejected by the shared policy.
             if (ignoreRules) {
                 const rules = ignoreRules;
                 core.services.vault.isTargetFile.addHandler(async (target) => {
@@ -602,7 +617,7 @@ export async function main(
                     if (rules.shouldIgnore(targetPath)) {
                         return false;
                     }
-                    // At least this handler think it is a target file, but other handlers may still veto it.
+                    // This handler admits the path, but later handlers may still veto it.
                     return true;
                 }, 0);
             }

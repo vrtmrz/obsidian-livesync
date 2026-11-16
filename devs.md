@@ -180,13 +180,21 @@ Use interaction-based, London School unit tests for the composition boundary. Ve
 
 See [Service feature and legacy Module boundaries](docs/design_docs/service_feature_and_legacy_module_boundaries.md) for the selection criteria, current examples, reasons to avoid new `AbstractModule` subclasses, incremental migration guidance, and test shapes. Commonlib's [service feature composition guide](https://github.com/vrtmrz/livesync-commonlib/blob/main/docs/service-feature-composition.md) defines the shared host-neutral boundary. Fancy Kit's [shared runtime composition guide](https://github.com/vrtmrz/fancy-kit/blob/main/docs/runtime-composition.md) maps content application, cleanup, progress, and host adapters to their owning APIs, with their publication status and consumer responsibilities.
 
-Legacy Modules remain grouped by directory:
+### Source layout
 
-- `core/` contains platform-independent core behaviour;
-- `coreObsidian/` contains Obsidian-specific core behaviour;
-- `essential/` contains required Modules;
-- `features/` contains optional features; and
-- `extras/` contains development and testing tools.
+Place code with the feature or architectural role that owns its behaviour. A caller outside that feature does not make a private helper or dialogue contract common code. Preserve established names and locations when they already express that ownership; naming consistency alone is not a reason to move an existing module.
+
+`src/common/` contains application-wide code and may include host-specific dependencies. Only `src/common/core/` defines a host-independent boundary, currently organised into `replication/` and `settings/`. Code in that subtree must not import Obsidian APIs, host-specific Modules or Views, or files elsewhere in `src/common/`. Keep translation, UI, and lifecycle helpers outside that boundary. Commonlib remains the owner of shared package contracts and implementations.
+
+Keep Managers, ServiceModules, and serviceFeatures aligned with their corresponding Commonlib roles. Their implementations live under `src/managers/`, `src/serviceModules/`, and `src/serviceFeatures/`; host Service and Hub implementations remain under `src/modules/services/`. A helper directory is not a separate feature registration and does not imply that its contents can be enabled or removed independently.
+
+Preserve existing feature entry files when organising their helpers. A small set of new helpers can use dotted names, such as `compatibilityReview.evaluation.ts`; a larger group can use a companion directory. Existing descriptive names, such as `fileRepairPresentation.ts`, remain valid. Keep closely related files at a level where their internal references stay within the same directory or its descendants. For example, the Joined Devices dialogue, view, command, and types share `src/serviceFeatures/joinedDevices/`.
+
+Use relative imports (`./...`) for closely related code in the same directory or below it, and `@/...` for dependencies across feature or architectural boundaries, including dependencies located in ancestor directories. Application source must not use upward relative imports (`../...`); tests and build configuration may use them. If putting a private helper in a subdirectory makes it depend on its owner above, reconsider the grouping instead of using an alias to conceal that relationship. Keeping the files together, or using a dotted helper name, can preserve both ownership and import direction.
+
+`src/features/` contains existing add-ons and feature implementations. Its location does not guarantee host independence: a feature may contain both shared logic and Obsidian adapters. `src/modules/` retains legacy Modules awaiting migration, their bases, Core start-up and lifecycle wiring, and existing host Service implementations. A Module's UI and helpers may stay with it in organised subdirectories even when those files do not inherit from `AbstractModule`. Moving files does not migrate that Module to a serviceFeature.
+
+Within the legacy Module layer, `main/` contains application lifecycle wiring, `coreFeatures/` contains core behaviour, `coreObsidian/` contains Obsidian-specific core helpers, `essentialObsidian/` contains required Obsidian Modules and helpers, `features/` contains feature Modules and supporting code, and `extras/` contains development tools. Keep reusable host UI under `src/modules/services/LiveSyncUI/` and feature-owned dialogues with their feature. For example, SetupWizard dialogue contracts belong in `dialogs/setupDialogTypes.ts`, while connection probes and checks belong in `connection/`.
 
 ### UI commands and dialogue ownership
 

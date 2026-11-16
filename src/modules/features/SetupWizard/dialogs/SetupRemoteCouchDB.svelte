@@ -27,7 +27,7 @@
         type SetupRemoteCouchDBInitialData,
         type SetupRemoteCouchDBResultType,
     } from "./setupDialogTypes";
-    import { isValidCouchDBServerURL, probeCouchDBConnection } from "./couchDBConnectionProbe";
+    import { isValidCouchDBServerURL, probeCouchDBConnection } from "@/modules/features/SetupWizard/connection/couchDBConnectionProbe";
     import { $msg as translateMessage } from "@/common/translation";
     import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
 

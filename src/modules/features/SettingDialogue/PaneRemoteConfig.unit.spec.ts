@@ -111,7 +111,7 @@ vi.mock("./remoteConfigBuffer.ts", () => ({
     syncActivatedRemoteSettings: vi.fn(),
 }));
 
-import { OPEN_JOINED_DEVICES } from "@/serviceFeatures/joinedDevicesCommand";
+import { OPEN_JOINED_DEVICES } from "@/serviceFeatures/joinedDevices/command";
 import { paneRemoteConfig } from "./PaneRemoteConfig.ts";
 
 function createPanelElement(): HTMLElement {

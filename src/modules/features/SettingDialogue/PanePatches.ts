@@ -14,7 +14,7 @@ import { setButtonAdditionalActionState, setSettingAdditionalActionsState } from
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
 import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { migrateDatabases } from "./settingUtils.ts";
-import { usesLegacyIndexedDBAdapter } from "@/common/compatibilitySettings.ts";
+import { usesLegacyIndexedDBAdapter } from "@/common/core/settings/compatibilitySettings.ts";
 import { $msg } from "@/common/translation";
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {

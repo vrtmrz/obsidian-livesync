@@ -8,7 +8,7 @@ import {
     REMOTE_MINIO,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { normaliseAcceptUnencryptedContent } from "@vrtmrz/livesync-commonlib/settings";
-import { createNewVaultSettings } from "@/common/newVaultSettings";
+import { createNewVaultSettings } from "@/common/core/settings/newVaultSettings";
 import { upsertRemoteConfigurationInPlace } from "@vrtmrz/livesync-commonlib/remote-configurations";
 import { isObjectDifferent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import Intro from "./SetupWizard/dialogs/Intro.svelte";
@@ -50,9 +50,9 @@ import {
     applySettingsWithScheduledInitialisation,
     type SetupInitialisationMode,
 } from "@/serviceFeatures/setupObsidian/setupActivationLifecycle.ts";
-import { isP2PMainRemote } from "@/common/remoteConfiguration.ts";
+import { isP2PMainRemote } from "@/common/core/settings/remoteConfiguration.ts";
 import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
-import { resolveInitialPathIdentity } from "@/common/initialPathIdentity";
+import { resolveInitialPathIdentity } from "@/common/core/replication/initialPathIdentity";
 import type { P2PConnectionProbeAdmission } from "@vrtmrz/livesync-commonlib/p2p";
 
 function copySettingsForRemoteProfileUpdate(settings: ObsidianLiveSyncSettings): ObsidianLiveSyncSettings {

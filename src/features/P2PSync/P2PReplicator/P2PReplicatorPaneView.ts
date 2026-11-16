@@ -1,7 +1,7 @@
 import { Menu, WorkspaceLeaf } from "@/deps.ts";
 import ReplicatorPaneComponent from "./P2PReplicatorPane.svelte";
 import { mount } from "svelte";
-import { SvelteItemView } from "@/common/SvelteItemView.ts";
+import { SvelteItemView } from "@/modules/coreObsidian/UI/SvelteItemView.ts";
 
 import { unique } from "octagonal-wheels/collection";
 import { LOG_LEVEL_NOTICE, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/types";

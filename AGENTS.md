@@ -66,6 +66,8 @@ Always adhere to the following stylistic and spelling rules:
      - `cli`: A Command Line Interface application. CLI unit tests are next to their source under [src/apps/cli](src/apps/cli), while CLI End-to-End tests are in [test/e2e-cli](test/e2e-cli) and run through the local [CLI package scripts](src/apps/cli/package.json).
      - `webapp`: A Web-based application.
      - `webpeer`: A Web-based peer utility.
+5. **Source Ownership and Imports**:
+   - Follow [Source layout](devs.md#source-layout) when adding or moving code. Check ownership and dependency direction before introducing a helper directory, preserve established placements that already express their role, and keep the `src/common/core/` host-independent boundary intact.
 
 ---
 

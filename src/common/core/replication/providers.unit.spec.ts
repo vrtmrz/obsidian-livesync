@@ -38,7 +38,7 @@ vi.mock("@vrtmrz/livesync-commonlib/compat/replication/journal/LiveSyncJournalRe
     },
 }));
 
-import { createCentralReplicatorProviderDefinitions } from "./replicatorProviders";
+import { createCentralReplicatorProviderDefinitions } from "./providers";
 
 describe("central Replicator provider definitions", () => {
     it("keeps the retained remote-resource catalogue bounded", () => {

@@ -7,12 +7,14 @@ import type {
     IStorageAdapter,
     IVaultAdapter,
 } from "@vrtmrz/livesync-commonlib/compat/serviceModules/adapters";
+import type { FileNameLookup } from "@vrtmrz/livesync-commonlib/storage";
 import type { TAbstractFile, TFile, TFolder, Stat, App } from "obsidian";
 import { ObsidianConversionAdapter } from "./ObsidianConversionAdapter";
 import { ObsidianPathAdapter } from "./ObsidianPathAdapter";
 import { ObsidianStorageAdapter } from "./ObsidianStorageAdapter";
 import { ObsidianTypeGuardAdapter } from "./ObsidianTypeGuardAdapter";
 import { ObsidianVaultAdapter } from "./ObsidianVaultAdapter";
+import { ObsidianFileNameSource } from "./ObsidianFileNameSource";
 
 declare module "obsidian" {
     interface Vault {
@@ -33,6 +35,8 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
     readonly conversion: IConversionAdapter<TFile, TFolder>;
     readonly storage: IStorageAdapter<Stat>;
     readonly vault: IVaultAdapter<TFile>;
+    readonly fileNameLookup: FileNameLookup;
+    private readonly fileNameSource: ObsidianFileNameSource;
 
     constructor(private app: App) {
         this.path = new ObsidianPathAdapter();
@@ -40,6 +44,8 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
         this.conversion = new ObsidianConversionAdapter();
         this.storage = new ObsidianStorageAdapter(app);
         this.vault = new ObsidianVaultAdapter(app);
+        this.fileNameSource = new ObsidianFileNameSource(app.vault);
+        this.fileNameLookup = this.fileNameSource;
     }
 
     getAbstractFileByPath(path: FilePath | string): Promise<TAbstractFile | null> {
@@ -65,5 +71,9 @@ export class ObsidianFileSystemAdapter implements IFileSystemAdapter<TAbstractFi
 
     async reconcileInternalFile(path: string): Promise<void> {
         return await Promise.resolve(this.app.vault.adapter.reconcileInternalFile?.(path));
+    }
+
+    dispose(): void {
+        this.fileNameSource.dispose();
     }
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { InjectableReplicationService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicationService";
 import { ServiceContext } from "@vrtmrz/livesync-commonlib/compat/services/base/ServiceBase";
-import { evaluateCompatibilityPause, legacyDatabaseCompatibilityVersionKey } from "./databaseCompatibility.ts";
+import { evaluateCompatibilityPause, legacyDatabaseCompatibilityVersionKey } from "./compatibilityReview.evaluation.ts";
 
 function migrationState(overrides: Record<string, unknown> = {}) {
     return {

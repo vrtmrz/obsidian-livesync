@@ -1,5 +1,5 @@
 import type { ObsidianLiveSyncSettings, SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
-import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
+import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";
 
 export type { ReviewHarnessScenarioResult, ReviewHarnessScenarioStatus } from "./reviewHarnessTypes";

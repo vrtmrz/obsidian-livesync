@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comparePluginVersions, differentDeviceVersions, joinedDevicesView } from "./joinedDevices";
+import { comparePluginVersions, differentDeviceVersions, joinedDevicesView } from "./view";
 import type { JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
 
 const empty: JoinedDevicesSnapshot = { milestonePresent: false, locked: false, cleaned: false, devices: [] };

@@ -5,11 +5,11 @@
     import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import Decision from "@/modules/services/LiveSyncUI/components/Decision.svelte";
     import UserDecisions from "@/modules/services/LiveSyncUI/components/UserDecisions.svelte";
-    import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "./utilCheckCouchDB";
+    import { checkConfig, type ConfigCheckResult, type ResultError, type ResultErrorMessage } from "@/modules/features/SetupWizard/connection/couchDBChecks";
     import { LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
     import { $msg as translateMessage } from "@/common/translation";
     import { getDialogContext } from "@/modules/services/LiveSyncUI/svelteDialog";
-    import { getCouchDBServerFixConfirmation } from "./couchDBServerFixConfirmation";
+    import { getCouchDBServerFixConfirmation } from "@/modules/features/SetupWizard/connection/couchDBServerFixConfirmation";
     type Props = {
         trialRemoteSetting: ObsidianLiveSyncSettings;
     };

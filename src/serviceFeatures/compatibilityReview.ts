@@ -10,7 +10,7 @@ import {
     evaluateCompatibilityPause,
     legacyDatabaseCompatibilityVersionKey,
     type CompatibilityPause,
-} from "@/common/databaseCompatibility.ts";
+} from "./compatibilityReview.evaluation.ts";
 
 export type CompatibilityReviewSummaryAction = "details" | "resume" | "keep-paused" | false;
 export type CompatibilityReviewDetailsAction = "back" | false;

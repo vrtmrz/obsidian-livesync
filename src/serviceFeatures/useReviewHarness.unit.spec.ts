@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
+import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import { REVIEW_HARNESS_STATE_KEY } from "@/features/ReviewHarness/reviewHarnessController.ts";
 import { useReviewHarness } from "./useReviewHarness.ts";
 

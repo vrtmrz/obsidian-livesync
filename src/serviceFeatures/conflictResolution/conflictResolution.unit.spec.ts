@@ -16,6 +16,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { EVENT_CONFLICT_CANCELLED, EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import { NO_INTERACTION } from "@vrtmrz/livesync-commonlib/replication";
+import type { FileNameReadOptions } from "@vrtmrz/livesync-commonlib/storage";
 import type { IAPIService } from "@vrtmrz/livesync-commonlib/compat/services/base/IService";
 import {
     createInstanceLogFunction,
@@ -58,7 +59,9 @@ function createHarness(options: HarnessOptions = {}) {
     };
     const addLog = vi.fn();
     const storageAccess = {
-        getFileNames: vi.fn(async () => options.files ?? []),
+        getFileNames: vi.fn<(readOptions?: FileNameReadOptions) => Promise<FilePathWithPrefix[]>>(
+            async () => options.files ?? []
+        ),
     };
     const activeFile = vi.fn(() => options.activeFile);
     const services = {
@@ -260,6 +263,41 @@ describe("conflict resolution serviceFeature", () => {
             ""
         );
         expect(API.addLog).toHaveBeenLastCalledWith("Done!", LOG_LEVEL_NOTICE, "resolveAllConflictedFilesByNewerOnes");
+    });
+
+    it("uses a fresh supported workset before bulk conflict revision deletion", async () => {
+        const harness = createHarness();
+        const currentPath = "current.md" as FilePathWithPrefix;
+        const removedPath = "removed-before-watch-delivery.md" as FilePathWithPrefix;
+        harness.storageAccess.getFileNames.mockImplementation((options) =>
+            Promise.resolve(options?.fresh ? [currentPath] : [removedPath])
+        );
+        harness.databaseFileAccess.fetchEntryMeta.mockImplementation((path: FilePathWithPrefix, rev?: string) =>
+            Promise.resolve(metadata(path, rev ?? "2-current", rev ? 1000 : 2000))
+        );
+        harness.databaseFileAccess.getConflictedRevs.mockResolvedValue(["1-older"]);
+
+        await harness.conflict.resolveAllConflictedFilesByNewerOnes();
+
+        expect(harness.fileHandler.deleteRevisionFromDB).toHaveBeenCalledExactlyOnceWith(currentPath, "1-older");
+        expect(harness.databaseFileAccess.fetchEntryMeta.mock.calls.every(([path]) => path === currentPath)).toBe(true);
+        expect(harness.storageAccess.getFileNames).toHaveBeenCalledExactlyOnceWith({ fresh: true });
+    });
+
+    it("does not delete conflict revisions when fresh bulk enumeration fails", async () => {
+        const harness = createHarness();
+        const failure = new Error("fresh listing could not validate its scope");
+        harness.storageAccess.getFileNames.mockImplementation((options) => {
+            if (options?.fresh) {
+                return Promise.reject(failure);
+            }
+            return Promise.resolve(["cached.md" as FilePathWithPrefix]);
+        });
+
+        await expect(harness.conflict.resolveAllConflictedFilesByNewerOnes()).rejects.toBe(failure);
+
+        expect(harness.databaseFileAccess.fetchEntryMeta).not.toHaveBeenCalled();
+        expect(harness.fileHandler.deleteRevisionFromDB).not.toHaveBeenCalled();
     });
 
     it("keeps resolver operations on narrow collaborators and extension seams", async () => {

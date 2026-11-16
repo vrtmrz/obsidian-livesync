@@ -47,6 +47,8 @@ export interface CLIOptions {
     writeSettings?: boolean;
     /** Restore the former zero exit code after a returned remote-administration verification failure. */
     compatRemoteAdminExitZero?: boolean;
+    /** Per-invocation opt-in; configured DB protection remains effective and no setting is saved. */
+    includeDbLikeDirs?: boolean;
     command: CLICommand;
     commandArgs: string[];
     interval?: number;

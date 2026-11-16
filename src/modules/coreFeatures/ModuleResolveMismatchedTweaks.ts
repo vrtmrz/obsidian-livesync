@@ -17,7 +17,7 @@ import { $msg, translateIfAvailable } from "@/common/translation";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import type { LiveSyncCore } from "@/main.ts";
 import { REMOTE_COUCHDB, REMOTE_P2P } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
-import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
 import {
     CENTRAL_COMPATIBILITY_REJECTION_REASONS,
     REMOTE_RESOURCE_KINDS,

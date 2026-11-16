@@ -81,6 +81,8 @@ export async function findDiagnosticFiles(
         reportProgress();
         return cancelledResult(processed, candidates);
     }
+    // The watched listing supplies a diagnostic existence hint. Membership here
+    // authorises no file or revision mutation, so a fresh full scan is unnecessary.
     const vaultPaths = new Set(await core.storageAccess.getFileNames());
     const matchingMetadataPaths = new Set<string>();
     if (options.signal?.aborted) {

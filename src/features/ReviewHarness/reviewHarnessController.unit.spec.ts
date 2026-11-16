@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
-import type { CompatibilityPause } from "@/common/databaseCompatibility.ts";
+import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import { ReviewHarnessController, type ReviewHarnessRuntime } from "./reviewHarnessController";
 
 function migration(): SettingsMigrationState {

@@ -65,11 +65,11 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { NetworkWarningStyles } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
-import { generateReport } from "@/common/reportTool.ts";
+import { generateReport } from "./ModuleLog/diagnostics/reportTool.ts";
 import {
     ANDROID_LINUX_PATH_COMPONENT_UTF8_WARNING_BOUNDARY,
     findPathComponentsExceedingUtf8Limit,
-} from "@/common/pathCompatibility.ts";
+} from "./ModuleLog/diagnostics/pathCompatibility.ts";
 
 // This module cannot be a core module because it depends on the Obsidian UI.
 

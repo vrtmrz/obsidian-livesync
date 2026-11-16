@@ -71,6 +71,7 @@ livesync-cli [database-path] [command] [args...]
 - `--vault <path>` / `-V <path>`: (daemon/mirror/rebuild/fetch) Path to the Vault directory containing `.md` files.
     - Allows the PouchDB database directory and the actual vault directory to be different locations.
     - For `mirror` command, the positional `[vault-path]` argument takes precedence over `--vault`.
+- `--include-db-like-dirs`: Include ordinary directories whose names match the default database-name exclusions. See [database-like directory exclusions](#database-like-directory-exclusions). Hidden entries and user ignore rules remain excluded.
 - `--force` / `-f`: Required by `rebuild` and `fetch` because they replace a database. It also retains its existing `init-settings` overwrite behaviour.
 - `--write-settings`: Write setting migrations and other lasting changes after the command succeeds.
     - `init-settings` writes its target file. `setup`, `remote-add`, `remote-rm`, `remote-set`, and `remote-activate` write their settings changes without this option.
@@ -674,6 +675,31 @@ livesync-cli /path/to/vault
 # Polling mode — poll every 60 seconds
 livesync-cli /path/to/vault --interval 60
 ```
+
+### Database-like directory exclusions
+
+By default, Vault synchronisation excludes path components ending in
+`-livesync-v2` or containing `-livesync-v2-mrview-` at every depth. These names
+cover the CLI's primary PouchDB directories and their view indexes. The same
+policy applies during startup scans, live monitoring, and target checks for
+received files.
+
+If an ordinary directory uses one of these names, specify `--include-db-like-dirs`
+on each invocation that should synchronise it:
+
+```bash
+livesync-cli ./database --vault ./vault --include-db-like-dirs daemon
+```
+
+The option does not override hidden-entry exclusions or `.livesync/ignore`.
+Direct database-like entries inside the configured `database-path` also remain
+excluded, including previous databases and view indexes. When `database-path`
+and the Vault are the same directory, the option can include matching names
+below ordinary subdirectories, but direct database-like entries remain protected.
+
+The option changes a naming rule; it does not inspect arbitrary directory
+contents. An unrelated database outside the configured database storage area
+can also be included by opting in. The option is not saved to settings.
 
 ### .livesync/ignore
 

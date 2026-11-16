@@ -1,6 +1,6 @@
 import { WorkspaceLeaf } from "@/deps.ts";
 import { mount } from "svelte";
-import { SvelteItemView } from "@/common/SvelteItemView.ts";
+import { SvelteItemView } from "@/modules/coreObsidian/UI/SvelteItemView.ts";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
 import type { P2PServiceViews } from "@vrtmrz/livesync-commonlib/p2p";
 import P2PServerStatusPane from "./P2PServerStatusPane.svelte";

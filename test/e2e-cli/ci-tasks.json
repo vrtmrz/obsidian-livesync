@@ -6,6 +6,7 @@
     "test:mirror",
     "test:daemon",
     "test:daemon-startup",
+    "test:daemon-watch-paths",
     "test:push-pull",
     "test:decoupled-vault",
     "test:sync-two-local",

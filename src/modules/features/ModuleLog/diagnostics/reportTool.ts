@@ -1,9 +1,9 @@
-import { redactTurnSettingsForReport } from "./turnSettingsPrivacy";
+import { redactTurnSettingsForReport } from "@/common/core/settings/turnPrivacy";
 import { REMOTE_COUCHDB, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/models/setting.const";
 import { DEFAULT_SETTINGS, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { parseHeaderValues } from "@vrtmrz/livesync-commonlib/compat/common/utils";
-import { requestToCouchDBWithCredentials } from "./utils";
+import { requestToCouchDBWithCredentials } from "@/common/utils";
 import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_couchdb";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";

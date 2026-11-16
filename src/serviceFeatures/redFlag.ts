@@ -18,7 +18,7 @@ import { askAndPerformFastSetupOnScheduledFetchAll } from "./redFlag.simpleFetch
 import { deleteFetchFlags } from "./redFlag.fetchState";
 import { ConnectionStringParser } from "@vrtmrz/livesync-commonlib/compat/common/ConnectionString";
 import { activateRemoteConfiguration } from "@vrtmrz/livesync-commonlib/remote-configurations";
-import { isP2PMainRemote } from "@/common/remoteConfiguration";
+import { isP2PMainRemote } from "@/common/core/settings/remoteConfiguration";
 import { $msg } from "@/common/translation";
 
 /**

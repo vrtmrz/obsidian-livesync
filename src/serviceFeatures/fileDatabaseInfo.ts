@@ -463,6 +463,8 @@ export async function copyFileDatabaseInfo(core: FileDatabaseInfoCore, path: str
 export async function collectFileDatabaseInfoPaths(core: FileDatabaseInfoCore): Promise<string[]> {
     const ignorePatterns = getFileRegExp(core.settings, "syncInternalFilesIgnorePatterns");
     const targetPatterns = getFileRegExp(core.settings, "syncInternalFilesTargetPatterns");
+    // These names seed a chooser or inspection; per-entry reads establish current
+    // state before offering actions. Hidden-file mode keeps its separate listing scope.
     const storagePaths = core.settings.syncInternalFiles
         ? await core.storageAccess.getFilesIncludeHidden("/", targetPatterns, ignorePatterns)
         : await core.storageAccess.getFileNames();

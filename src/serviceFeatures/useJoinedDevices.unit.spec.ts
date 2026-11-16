@@ -3,14 +3,14 @@ import { UICommandRegistry } from "@vrtmrz/livesync-commonlib/ui-commands";
 import { createNewVaultSettings } from "@vrtmrz/livesync-commonlib/settings";
 import { REMOTE_COUCHDB } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { JoinedDevicesSnapshot } from "@vrtmrz/livesync-commonlib/replication";
-import type { JoinedDevicesDialogOptions } from "./joinedDevicesDialogTypes";
-vi.mock("@/modules/services/LiveSyncUI/dialogues/JoinedDevicesDialog.svelte", () => ({ default: {} }));
+import type { JoinedDevicesDialogOptions } from "./joinedDevices/types";
+vi.mock("@/serviceFeatures/joinedDevices/JoinedDevicesDialog.svelte", () => ({ default: {} }));
 vi.mock("@/common/translation", () => ({
     $msg: (message: string, values: Record<string, string> = {}) =>
         message.replace(/\$\{([^}]+)\}/g, (placeholder, key: string) => values[key] ?? placeholder),
 }));
 import { useJoinedDevicesFeature } from "./useJoinedDevices";
-import { OPEN_JOINED_DEVICES } from "./joinedDevicesCommand";
+import { OPEN_JOINED_DEVICES } from "./joinedDevices/command";
 
 function fixture() {
     const settings = {

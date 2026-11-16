@@ -11,4 +11,8 @@ export class FileAccessObsidian extends FileAccessBase<ObsidianFileSystemAdapter
         const adapter = new ObsidianFileSystemAdapter(app);
         super(adapter, dependencies);
     }
+
+    dispose(): void {
+        this.adapter.dispose();
+    }
 }

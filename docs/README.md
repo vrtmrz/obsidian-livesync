@@ -41,6 +41,7 @@ Use these references for the area being changed, together with its relevant ADR.
 | P2P connection preparation | [TURN connection settings](design_docs/renewable_turn_credentials.md) |
 | Journal storage internals | [Journal Replicator 2nd Edition](design_docs_of_journalsync_2nd.md) |
 | CLI database selection and interrupted reconstruction | [CLI database continuity](design_docs/cli_database_continuity.md) |
+| CLI filesystem monitoring | [CLI watcher path filtering](design_docs/cli_watcher_path_filtering.md): accepted implementation included in 1.0.50; reporter confirmation remains pending |
 
 The installed `@vrtmrz/livesync-commonlib` package is authoritative for shared runtime contracts. Use the exact dependency selected by [package.json](../package.json) and its lockfile when checking behaviour. The [Commonlib documentation](https://github.com/vrtmrz/livesync-commonlib/tree/main/docs) is maintained in that repository; this index does not replace its package contracts.
 
@@ -65,6 +66,7 @@ These records are useful for design work. Their proposed representation or behav
 
 | Document | Recorded state |
 |---|---|
+| [File path index and watched CLI file names](design_docs/file_path_index.md) | Implementation design for #1346, included in 1.0.50; shared name index and collision queries; Commonlib 0.5.0 adopted |
 | [Tiered Chunk Storage with Live Compaction](design_docs/tired_chunk_pack.md) | In design |
 | [Tiered Chunk Storage for Bucket Sync](design_docs/tired_chunk_pack_bucket.md) | In design |
 | [Design intent for Metadata and Chunks](design_docs/intention_of_chunks.md) | Incomplete explanation; use the data-structure reference for current representations |

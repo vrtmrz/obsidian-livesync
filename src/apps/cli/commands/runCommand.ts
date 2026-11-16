@@ -27,7 +27,7 @@ import {
     REMOTE_RESOURCE_KINDS,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
-import { withOwnedRemoteResource } from "@/common/ownedRemoteResource";
+import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
 import { runJournalSkipCommand } from "./journalSkip";
 import {
     isCentralRemoteAdministrationCommand,

@@ -8,7 +8,7 @@ vi.mock("@/deps.ts", () => ({
     stringifyYaml: vi.fn(),
 }));
 vi.mock("./Log/LogPaneView.ts", () => ({ LogPaneView: class {}, VIEW_TYPE_LOG: "log" }));
-vi.mock("@/common/reportTool.ts", () => ({ generateReport: vi.fn() }));
+vi.mock("@/modules/features/ModuleLog/diagnostics/reportTool.ts", () => ({ generateReport: vi.fn() }));
 vi.mock("@/common/utils.ts", () => ({ isValidPath: () => true }));
 vi.mock("@/common/translation", () => ({ $msg: (key: string) => key }));
 vi.mock("@/common/events.ts", () => ({

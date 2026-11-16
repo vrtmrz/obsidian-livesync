@@ -7,8 +7,8 @@ import { isCloudantURI } from "@vrtmrz/livesync-commonlib/compat/pouchdb/utils_c
 import { generateCredentialObject } from "@vrtmrz/livesync-commonlib/compat/replication/httplib";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { isUnauthorizedError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
-import { normaliseCouchDBConfiguration } from "@/common/couchdbConfiguration";
-import { isCouchDBVersionAtLeast, normaliseResponseHeaderKeys } from "@/modules/features/couchDBDiagnosticValues";
+import { normaliseCouchDBConfiguration } from "./couchdbConfiguration";
+import { isCouchDBVersionAtLeast, normaliseResponseHeaderKeys } from "./couchDBDiagnosticValues";
 
 export type ResultMessage = { message: string; classes: string[] };
 export type ResultErrorMessage = { message: string; result: "error"; classes: string[] };

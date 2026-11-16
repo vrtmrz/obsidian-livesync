@@ -8,7 +8,7 @@
         JoinedDeviceRow,
         JoinedDevicesDialogOptions,
         JoinedDevicesView,
-    } from "@/serviceFeatures/joinedDevicesDialogTypes";
+    } from "./types";
 
     const { setResult, getInitialData }: GuestDialogProps<"close", JoinedDevicesDialogOptions> = $props();
     let options = $state<JoinedDevicesDialogOptions>();

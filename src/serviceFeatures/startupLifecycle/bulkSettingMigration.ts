@@ -1,7 +1,7 @@
 import { LOG_LEVEL_NOTICE } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { LogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { $msg } from "@/common/translation";
-import { disableLegacyBulkChunkPreSend } from "@/common/compatibilitySettings";
+import { disableLegacyBulkChunkPreSend } from "@/common/core/settings/compatibilitySettings";
 import type { LegacyBulkSendSettings } from "./types";
 
 /** Collaborators required to persist the obsolete bulk-send setting migration. */
