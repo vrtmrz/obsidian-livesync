@@ -738,6 +738,10 @@ moduleLog:
         This path contains a file or folder name longer than ${maxBytes} UTF-8
         bytes. It may not work on some Android and Linux file systems.
     showLog: Show Log
+    syncMode:
+        configured: "Configured automatic synchronisation: ${modes}."
+        manual: Manual synchronisation only. Automatic synchronisation is disabled.
+        periodic: Periodic
 moduleMigration:
     fix0256:
         buttons:
