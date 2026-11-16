@@ -62,6 +62,9 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 
 ## Proposals and incomplete explanations
 
+The [local database connection recovery candidate](design_docs/local_database_connection_recovery.md) records the #1360 implementation boundary, controlled runtime verification, and outstanding package adoption and physical iPhone checks.
+- [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): retained ordinary-file failures, one automatic retry, and review after transport or local database recovery.
+
 These records are useful for design work. Their proposed representation or behaviour is not a current runtime contract.
 
 | Document | Recorded state |

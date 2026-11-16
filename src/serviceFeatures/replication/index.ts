@@ -8,7 +8,16 @@ import { EVENT_APPLICATION_READY, EVENT_VAULT_REFLECTION_FAILED } from "@/common
 import { createAutomaticReplicationTriggers } from "./automaticTriggers";
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 import { createOnlineReplicationPreflight, createSecuritySeedPreflight } from "./preflight";
-import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+import { ReplicateResultProcessor, type ReflectionRecoveryView } from "./ReplicateResultProcessor";
+import {
+    LOG_LEVEL_VERBOSE,
+    REMOTE_COUCHDB,
+    type LoadedEntry,
+    type MetaEntry,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { FullScanModes, processFilePair } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import { isAnyNote } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 
 type LocalApplicationActivityOwner = {
     runBoundedLocalApplicationActivity<T>(task: () => T | PromiseLike<T>, options?: { label?: string }): Promise<T>;
@@ -28,10 +37,11 @@ function ownsLocalApplicationActivity(value: object): value is LocalApplicationA
  * call this after host serviceFeatures and add-ons are composed, but before
  * legacy modules are bound, so lifecycle handlers observe the required order.
  */
-export function useReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
+export function createReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
     core: LiveSyncBaseCore<TContext, TCommands>
-): void {
+) {
     const { services } = core;
+    const recoveryEnabled = core.startupDatabaseOptions?.recoverChunkTransportFailures === true;
     // Obsidian adds an application-activity owner to its ReplicatorService.
     // Generic hosts retain the former direct-execution fallback.
     const localApplicationActivityOwner = ownsLocalApplicationActivity(services.replicator)
@@ -41,6 +51,60 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
     const resultProcessor = new ReplicateResultProcessor(
         {
             onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
+            canDeferContentReadFailure: (reason) => {
+                if (!recoveryEnabled) {
+                    return false;
+                }
+                const settings = services.setting.currentSettings();
+                return (
+                    settings.maxMTimeForReflectEvents <= 0 &&
+                    (reason === "local-database" ||
+                        (settings.remoteType === REMOTE_COUCHDB && settings.readChunksOnline))
+                );
+            },
+            inspectReflection: async (entry, source) => {
+                if (entry._conflicts?.length && !services.setting.currentSettings().writeDocumentsIfConflicted) {
+                    await services.conflict.queueCheckForIfOpen(services.path.getPath(entry));
+                    return "policy";
+                }
+                if (source === "received" && (entry.deleted || entry._deleted)) {
+                    try {
+                        if (await core.serviceModules.storageAccess.isExists(services.path.getPath(entry))) {
+                            return "pending";
+                        }
+                        const current = await core.localDatabase.getRaw<LoadedEntry>(entry._id, { conflicts: true });
+                        const confirmed =
+                            current._id === entry._id &&
+                            current._rev === entry._rev &&
+                            isAnyNote(current) &&
+                            (current.deleted || current._deleted) &&
+                            (!current._conflicts?.length ||
+                                services.setting.currentSettings().writeDocumentsIfConflicted);
+                        return confirmed ? "reflected" : "pending";
+                    } catch (error) {
+                        createInstanceLogFunction("SF:ReflectionRecovery", services.API)(error, LOG_LEVEL_VERBOSE);
+                        return "pending";
+                    }
+                }
+                const confirmed = await core.serviceModules.fileHandler.hasReflectedRevision?.(
+                    services.path.getPath(entry),
+                    entry._rev!
+                );
+                return confirmed ? "reflected" : "pending";
+            },
+            reconcileScannedDocument: async (entry, onFailure) => {
+                const file = await core.serviceModules.storageAccess.getFileStub(services.path.getPath(entry));
+                return await processFilePair(
+                    core,
+                    createInstanceLogFunction("SF:ReflectionRecovery", services.API),
+                    { file: file ?? undefined, doc: entry as MetaEntry },
+                    {
+                        mode: FullScanModes.NEWER_WINS,
+                        strictContentCheck: true,
+                        onContentReadFailure: onFailure,
+                    }
+                );
+            },
             currentSettings: () => services.setting.currentSettings(),
             getKeyValueDB: () => services.keyValueDB.kvDB,
             getLocalDatabase: () => core.localDatabase,
@@ -63,69 +127,135 @@ export function useReplicationFeature<TContext extends ServiceContext, TCommands
         },
         discardSnapshotOnReset
     );
-    if (discardSnapshotOnReset) {
-        services.database.onDatabaseReset.addHandler(async () => {
-            await resultProcessor.completeStartupDatabaseReset();
+    const register = () => {
+        services.databaseEvents.onBeforeDatabaseRecovery.addHandler(async () => {
+            await resultProcessor.pauseForDatabaseRecovery();
             return true;
         });
-    }
-    const unresolvedErrorManager = new UnresolvedErrorManager(services.appLifecycle, services.context.events);
-    const initialiseAutomaticReplicationTriggers = createAutomaticReplicationTriggers({
-        currentSettings: () => services.setting.currentSettings(),
-        isSuspended: () => services.appLifecycle.isSuspended(),
-        replicateDatabaseEvent: () =>
-            services.replication.replicateUnattendedByEvent({
-                trigger: "database-event",
-                interaction: NO_INTERACTION,
-            }),
-        reprocessStoredDocuments: () => resultProcessor.reprocessStoredDocuments(),
-        resumeResultApplication: () => resultProcessor.resume(),
-        suspendResultApplication: () => resultProcessor.suspend(),
-    });
-    const preflightContext = {
-        services: {
-            API: services.API,
-            replicator: services.replicator,
-            setting: services.setting,
-        },
-    };
-    const onlinePreflight = createOnlineReplicationPreflight(unresolvedErrorManager, preflightContext);
-    const securitySeedPreflight = createSecuritySeedPreflight(unresolvedErrorManager, preflightContext);
-    const centralCompatibilityRecovery = createCentralCompatibilityRecovery({
-        confirm: core.confirm,
-        rebuilder: core.rebuilder,
-        services: {
-            appLifecycle: services.appLifecycle,
-            replicator: services.replicator,
-            setting: services.setting,
-            tweakValue: services.tweakValue,
-        },
-    });
+        services.databaseEvents.onAfterDatabaseRecovery.addHandler(() => {
+            resultProcessor.resumeAfterDatabaseRecovery();
+            if (recoveryEnabled) {
+                // A retry may await a file lock still held by the recovery producer.
+                fireAndForget(async () => {
+                    try {
+                        await resultProcessor.retryWaitingReflections("local-database");
+                    } catch (error) {
+                        createInstanceLogFunction("SF:ReflectionRecovery", services.API)(error, LOG_LEVEL_VERBOSE);
+                    }
+                });
+            }
+            return Promise.resolve(true);
+        });
+        if (discardSnapshotOnReset || recoveryEnabled) {
+            services.database.onDatabaseReset.addHandler(async () => {
+                await resultProcessor.completeStartupDatabaseReset();
+                return true;
+            });
+        }
+        const unresolvedErrorManager = new UnresolvedErrorManager(services.appLifecycle, services.context.events);
+        const initialiseAutomaticReplicationTriggers = createAutomaticReplicationTriggers({
+            currentSettings: () => services.setting.currentSettings(),
+            isSuspended: () => services.appLifecycle.isSuspended(),
+            replicateDatabaseEvent: () =>
+                services.replication.replicateUnattendedByEvent({
+                    trigger: "database-event",
+                    interaction: NO_INTERACTION,
+                }),
+            reprocessStoredDocuments: () => resultProcessor.reprocessStoredDocuments(),
+            resumeResultApplication: () => resultProcessor.resume(),
+            suspendResultApplication: () => resultProcessor.suspend(),
+        });
+        const preflightContext = {
+            services: {
+                API: services.API,
+                replicator: services.replicator,
+                setting: services.setting,
+            },
+        };
+        const onlinePreflight = createOnlineReplicationPreflight(unresolvedErrorManager, preflightContext);
+        const securitySeedPreflight = createSecuritySeedPreflight(unresolvedErrorManager, preflightContext);
+        const centralCompatibilityRecovery = createCentralCompatibilityRecovery({
+            confirm: core.confirm,
+            rebuilder: core.rebuilder,
+            services: {
+                appLifecycle: services.appLifecycle,
+                replicator: services.replicator,
+                setting: services.setting,
+                tweakValue: services.tweakValue,
+            },
+        });
 
-    services.replicator.onBeforeReplicatorPublication.addHandler(() => {
-        // Key-derivation handlers belong to the candidate which is about to
-        // become active; discard callbacks retained by the previous owner.
-        clearHandlers();
-        return Promise.resolve(true);
-    });
-    services.databaseEvents.onDatabaseInitialised.addHandler(() => {
-        fireAndForget(() => resultProcessor.restoreFromSnapshotOnce());
-        return Promise.resolve(true);
-    });
-    // Commonlib emits this each time it establishes readiness. Documents held until then, such as those restored
-    // from the snapshot or received during a fetch, continue from here.
-    services.context.events.onEvent(EVENT_APPLICATION_READY, () => resultProcessor.continueHeldDocuments());
-    services.appLifecycle.onSettingLoaded.addHandler(initialiseAutomaticReplicationTriggers);
-    services.replication.parseSynchroniseResult.addHandler((documents) => {
-        resultProcessor.enqueueAll(documents);
-        return Promise.resolve(true);
-    });
-    services.replication.onBeforeReplicate.addHandler(onlinePreflight, 10);
-    services.replication.onPrepareCentralRemoteReplication.addHandler(securitySeedPreflight);
-    services.replication.onBeforeReplicate.addHandler(async () => {
-        await resultProcessor.restoreFromSnapshotOnce();
-        unresolvedErrorManager.clearErrors();
-        return true;
-    }, 100);
-    services.replication.onReplicationFailed.addHandler(centralCompatibilityRecovery.handleReplicationFailure);
+        services.replicator.onBeforeReplicatorPublication.addHandler(() => {
+            // Key-derivation handlers belong to the candidate which is about to
+            // become active; discard callbacks retained by the previous owner.
+            clearHandlers();
+            return Promise.resolve(true);
+        });
+        services.databaseEvents.onDatabaseInitialised.addHandler(() => {
+            fireAndForget(() => resultProcessor.restoreFromSnapshotOnce());
+            return Promise.resolve(true);
+        });
+        // Commonlib emits this each time it establishes readiness. Documents held until then, such as those restored
+        // from the snapshot or received during a fetch, continue from here.
+        services.context.events.onEvent(EVENT_APPLICATION_READY, () => resultProcessor.continueHeldDocuments());
+        services.appLifecycle.onSettingLoaded.addHandler(initialiseAutomaticReplicationTriggers);
+        services.replication.parseSynchroniseResult.addHandler((documents) => {
+            resultProcessor.enqueueAll(documents);
+            return Promise.resolve(true);
+        });
+        services.replication.onBeforeReplicate.addHandler(onlinePreflight, 10);
+        services.replication.onPrepareCentralRemoteReplication.addHandler(securitySeedPreflight);
+        services.replication.onBeforeReplicate.addHandler(async () => {
+            await resultProcessor.restoreFromSnapshotOnce();
+            unresolvedErrorManager.clearErrors();
+            return true;
+        }, 100);
+        services.replication.onReplicationFailed.addHandler(centralCompatibilityRecovery.handleReplicationFailure);
+        if (recoveryEnabled) {
+            const stopObservingReflections = services.context.events.onEvent("event-file-changed", ({ file }) => {
+                if (!resultProcessor.hasPendingReflections) {
+                    return;
+                }
+                fireAndForget(async () => {
+                    try {
+                        const documentId = await services.path.path2id(file);
+                        await resultProcessor.reconcilePendingDocument(documentId);
+                    } catch (error) {
+                        createInstanceLogFunction("SF:ReflectionRecovery", services.API)(error, LOG_LEVEL_VERBOSE);
+                    }
+                });
+            });
+            services.replication.onFileReflectionContentReadFailed.addHandler(async (failure) => {
+                await resultProcessor.registerContentReadFailure(failure, "scan");
+                return true;
+            });
+            services.replication.onFiniteReplicationCompleted.addHandler(() => {
+                // Recovery inspection can await a file lock whose Chunk read still
+                // observes this producer. Let its finite activity release first.
+                fireAndForget(async () => {
+                    try {
+                        await resultProcessor.retryWaitingReflections();
+                    } catch (error) {
+                        createInstanceLogFunction("SF:ReflectionRecovery", services.API)(error, LOG_LEVEL_VERBOSE);
+                    }
+                });
+                return Promise.resolve(true);
+            });
+            services.appLifecycle.onBeforeUnload.addHandler(async () => {
+                stopObservingReflections();
+                await resultProcessor.stop();
+                return true;
+            });
+        }
+    };
+    return { recovery: resultProcessor.recovery, register };
+}
+
+/** Compose directly when the host does not need the recovery view during its earlier UI composition. */
+export function useReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
+    core: LiveSyncBaseCore<TContext, TCommands>
+): ReflectionRecoveryView {
+    const feature = createReplicationFeature(core);
+    feature.register();
+    return feature.recovery;
 }

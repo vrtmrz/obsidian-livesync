@@ -76,6 +76,60 @@ describe("ObsidianAPIService.showWindowOnRight", () => {
     });
 });
 
+describe("ObsidianAPIService.nativeFetch failure boundary", () => {
+    const url = "https://couchdb.example.test/vault";
+
+    it("identifies a native request rejection while retaining its cause", async () => {
+        const cause = new Error("The network connection was lost");
+        mocks.requestUrl.mockRejectedValue(cause);
+        await expect(createService({}).nativeFetch(url)).rejects.toMatchObject({
+            name: "RemoteRequestError",
+            cause,
+        });
+    });
+
+    it("keeps cancellation out of request recovery", async () => {
+        const cause = new DOMException("Cancelled", "AbortError");
+        mocks.requestUrl.mockRejectedValue(cause);
+        await expect(createService({}).nativeFetch(url)).rejects.toBe(cause);
+    });
+
+    it("does not classify a rejected request as transport after its signal was cancelled", async () => {
+        const controller = new AbortController();
+        const cause = new Error("Native cancellation");
+        mocks.requestUrl.mockImplementation(async () => {
+            controller.abort();
+            throw cause;
+        });
+        await expect(createService({}).nativeFetch(new Request(url, { signal: controller.signal }))).rejects.toBe(
+            cause
+        );
+    });
+
+    it.each([401, 403, 500])("preserves an HTTP %s response", async (status) => {
+        mocks.requestUrl.mockResolvedValue({ status, headers: {}, arrayBuffer: new ArrayBuffer(0) });
+        const response = await createService({}).nativeFetch(url);
+        expect(response.status).toBe(status);
+    });
+
+    it("does not wrap failures while preparing the request", async () => {
+        const cause = new Error("Cannot read headers");
+        const headers = Object.defineProperty({}, "test", {
+            enumerable: true,
+            get: () => {
+                throw cause;
+            },
+        });
+        await expect(createService({}).nativeFetch(url, { headers })).rejects.toBe(cause);
+        expect(mocks.requestUrl).not.toHaveBeenCalled();
+    });
+
+    it("does not wrap failures while constructing the response", async () => {
+        mocks.requestUrl.mockResolvedValue({ status: 0, headers: {}, arrayBuffer: new ArrayBuffer(0) });
+        await expect(createService({}).nativeFetch(url)).rejects.toBeInstanceOf(RangeError);
+    });
+});
+
 describe("ObsidianAPIService.nativeFetch cache control", () => {
     const url = "https://couchdb.example.test/vault/f%3Ametadata";
 

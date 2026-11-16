@@ -62,7 +62,11 @@ function setup() {
         },
         context,
         database: { isDatabaseReady: vi.fn(() => true) },
-        databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
+        databaseEvents: {
+            onDatabaseInitialised: { addHandler: vi.fn() },
+            onBeforeDatabaseRecovery: { addHandler: vi.fn() },
+            onAfterDatabaseRecovery: { addHandler: vi.fn() },
+        },
         keyValueDB: { kvDB: keyValueDB },
         localDatabase,
         path: { getPath: vi.fn((entry: { path: string }) => entry.path) },

@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
 import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import { ReviewHarnessController, type ReviewHarnessRuntime } from "./reviewHarnessController";
+import type {
+    DatabaseProbeAction,
+    DatabaseProbeMode,
+    DatabaseProbeSnapshot,
+    ReviewHarnessDatabaseProbe,
+} from "./reviewHarnessDatabaseProbeTypes";
 
 function migration(): SettingsMigrationState {
     return {
@@ -116,6 +122,79 @@ function createRuntime(): ReviewHarnessRuntime & {
     return runtime;
 }
 
+function createDatabaseProbe(initialMode: DatabaseProbeMode | null = null): {
+    readonly probe: ReviewHarnessDatabaseProbe;
+    setSnapshot(snapshot: DatabaseProbeSnapshot): void;
+} {
+    let snapshot: DatabaseProbeSnapshot = {
+        mode: initialMode,
+        phase: initialMode ? "observing" : "idle",
+        instruction: "Follow the current diagnostic step.",
+        expected: "Listener state and event counts are observations.",
+        availableActions: initialMode ? ["check", "finish", "cancel"] : [],
+        result: { status: initialMode ? "waiting-for-user" : "idle", detail: "Ready", observations: [] },
+    };
+    const listeners = new Set<() => void>();
+    const update = (next: DatabaseProbeSnapshot) => {
+        snapshot = next;
+        for (const listener of listeners) {
+            listener();
+        }
+    };
+    const probe: ReviewHarnessDatabaseProbe = {
+        snapshot: vi.fn(() => snapshot),
+        subscribe: vi.fn((listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        }),
+        start: vi.fn(async (mode) => {
+            update({
+                mode,
+                phase: "observing",
+                instruction: "Return to the app and check the fixture connection.",
+                expected: "A zero-event count is still useful evidence.",
+                availableActions:
+                    mode === "controlled"
+                        ? ["close-native", "check", "finish", "cancel"]
+                        : ["check", "finish", "cancel"],
+                result: {
+                    status: "waiting-for-user",
+                    detail: "Observation is active.",
+                    observations: ["fixture-native.close: listener=registered; received=0; last=none"],
+                },
+            });
+        }),
+        perform: vi.fn(async (action: DatabaseProbeAction) => {
+            const finished = action === "finish" || action === "cancel";
+            let availableActions: readonly DatabaseProbeAction[];
+            if (finished) {
+                availableActions = [];
+            } else if (action === "close-native") {
+                availableActions = ["check", "reopen", "finish", "cancel"];
+            } else if (action === "reopen") {
+                availableActions = ["close-native", "check", "finish", "cancel"];
+            } else if (snapshot.availableActions.includes("reopen")) {
+                availableActions = ["check", "reopen", "finish", "cancel"];
+            } else {
+                availableActions = ["check", "finish", "cancel"];
+            }
+            update({
+                ...snapshot,
+                phase: finished ? "complete" : "observing",
+                availableActions: finished ? [] : availableActions,
+                result: {
+                    status:
+                        action === "cancel" ? "cancelled" : action === "finish" ? "not-observed" : "waiting-for-user",
+                    detail: action === "finish" ? "No connection failure was observed." : "Observation is active.",
+                    observations: [...snapshot.result.observations, `action=${action}`],
+                },
+            });
+        }),
+        dispose: vi.fn(async () => undefined),
+    };
+    return { probe, setSnapshot: update };
+}
+
 describe("ReviewHarnessController", () => {
     it("runs the automatic settings check", async () => {
         const runtime = createRuntime();
@@ -127,6 +206,120 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().results["vault-round-trip"].status).toBe("idle");
         expect(controller.snapshot().results["compatibility-review"].status).toBe("idle");
         expect(controller.snapshot().results["file-content-hash-performance"].status).toBe("idle");
+    });
+
+    it("keeps both database diagnostics out of Automatic and Full review", async () => {
+        const runtime = createRuntime();
+        const { probe } = createDatabaseProbe();
+        runtime.databaseProbe = probe;
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runAutomaticScenarios();
+        await controller.runAllScenarios();
+
+        expect(probe.start).not.toHaveBeenCalled();
+        expect(controller.snapshot().results["database-connection-loss"].status).toBe("idle");
+        expect(controller.snapshot().results["database-background-events"].status).toBe("idle");
+    });
+
+    it("dispatches individual probe modes and includes live observations in the report", async () => {
+        const runtime = createRuntime();
+        const { probe } = createDatabaseProbe();
+        runtime.databaseProbe = probe;
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runScenario("database-connection-loss");
+        expect(probe.start).toHaveBeenNthCalledWith(1, "controlled");
+        expect(controller.snapshot().databaseProbe).toMatchObject({ mode: "controlled", phase: "observing" });
+        expect(controller.snapshot().results["database-connection-loss"].observations).toContain(
+            "fixture-native.close: listener=registered; received=0; last=none"
+        );
+
+        await controller.performDatabaseProbeAction("close-native");
+        await controller.performDatabaseProbeAction("check");
+        await controller.performDatabaseProbeAction("reopen");
+        await controller.performDatabaseProbeAction("check");
+        await controller.performDatabaseProbeAction("finish");
+        expect(controller.snapshot().results["database-connection-loss"].status).toBe("not-observed");
+        expect(probe.perform).toHaveBeenNthCalledWith(1, "close-native");
+        expect(probe.perform).toHaveBeenNthCalledWith(2, "check");
+        expect(probe.perform).toHaveBeenNthCalledWith(3, "reopen");
+        expect(probe.perform).toHaveBeenNthCalledWith(4, "check");
+        expect(probe.perform).toHaveBeenNthCalledWith(5, "finish");
+
+        await controller.runScenario("database-background-events");
+        expect(probe.start).toHaveBeenNthCalledWith(2, "background");
+        await controller.copyReport();
+
+        const report = vi.mocked(runtime.copyText).mock.calls[0][0];
+        expect(report).toContain("fixture-native.close: listener=registered; received=0; last=none");
+        expect(report).toContain(
+            "The diagnostic is observational; it does not perform or verify automatic LiveSync recovery."
+        );
+        expect(report).toContain(
+            "The controlled native close is diagnostic input and does not emit a native close event."
+        );
+        expect(report).toContain("No observed failure does not establish that a fix worked.");
+        expect(report).toContain("Database connection-loss diagnostic (database-connection-loss)");
+        expect(report).toContain("Database background-events diagnostic (database-background-events)");
+    });
+
+    it("marks a database diagnostic unsupported when the optional runtime is absent", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runScenario("database-connection-loss");
+
+        expect(controller.snapshot().databaseProbe).toBeNull();
+        expect(controller.snapshot().results["database-connection-loss"]).toMatchObject({
+            status: "unsupported",
+            detail: "The database diagnostic is unavailable in this runtime.",
+        });
+    });
+
+    it("blocks other work during an active probe but allows cancellation during asynchronous start", async () => {
+        const runtime = createRuntime();
+        const { probe } = createDatabaseProbe("controlled");
+        runtime.databaseProbe = probe;
+        const activeController = new ReviewHarnessController(runtime);
+
+        await activeController.runScenario("vault-round-trip");
+        await activeController.runScenario("database-background-events");
+        await activeController.openCompatibilityReview();
+        await activeController.prepareCompatibilityReviewRestart();
+        expect(runtime.runVaultRoundTrip).not.toHaveBeenCalled();
+        expect(runtime.openCompatibilityReview).not.toHaveBeenCalled();
+        expect(runtime.restart).not.toHaveBeenCalled();
+        expect(probe.start).not.toHaveBeenCalled();
+
+        const idleRuntime = createRuntime();
+        const { probe: idleDatabaseProbe, setSnapshot: setIdleSnapshot } = createDatabaseProbe();
+        idleRuntime.databaseProbe = idleDatabaseProbe;
+        let finishStart!: () => void;
+        const pendingStart = new Promise<void>((resolve) => {
+            finishStart = resolve;
+        });
+        idleDatabaseProbe.start = vi.fn(async (mode) => {
+            setIdleSnapshot({
+                ...idleDatabaseProbe.snapshot(),
+                mode,
+                phase: "preparing",
+                availableActions: ["cancel"],
+                result: { status: "running", detail: "Preparing", observations: [] },
+            });
+            await pendingStart;
+        });
+        const controller = new ReviewHarnessController(idleRuntime);
+        const starting = controller.runScenario("database-connection-loss");
+        await Promise.resolve();
+
+        expect(controller.snapshot().databaseProbe?.availableActions).toEqual(["cancel"]);
+        await controller.performDatabaseProbeAction("cancel");
+        expect(idleDatabaseProbe.perform).toHaveBeenCalledWith("cancel");
+
+        finishStart();
+        await starting;
+        expect(controller.snapshot().results["database-connection-loss"].status).toBe("cancelled");
     });
 
     it("runs the Vault fixture scenario only when it is selected explicitly", async () => {

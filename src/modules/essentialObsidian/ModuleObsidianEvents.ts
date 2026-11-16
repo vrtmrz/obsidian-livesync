@@ -230,6 +230,10 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         }
         this.isLastHidden = isHidden;
 
+        if (!isHidden && !(await this.services.databaseEvents.onBeforeDatabaseResume())) {
+            return;
+        }
+
         const pendingFileEventsCommitted = await this.services.fileProcessing.commitPendingFileEvents();
         if (!pendingFileEventsCommitted) {
             this._log(

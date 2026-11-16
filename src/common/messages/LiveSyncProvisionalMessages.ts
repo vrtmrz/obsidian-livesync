@@ -9,12 +9,46 @@
  * the same change.
  */
 export const liveSyncProvisionalEnglishMessages = {
+    "Review files which could not be reflected": "Review files which could not be reflected",
+    "Review files which could not be reflected into the Vault after synchronisation.":
+        "Review files which could not be reflected into the Vault after synchronisation.",
+    "Review files": "Review files",
+    Waiting: "Waiting",
+    "Needs review": "Needs review",
+    "Retry running": "Retry running",
+    "The network was offline when the file content was needed.":
+        "The network was offline when the file content was needed.",
+    "A network error prevented the file content from being retrieved.":
+        "A network error prevented the file content from being retrieved.",
+    "Required file content was not found on the server.": "Required file content was not found on the server.",
+    "The retrieved file content could not be validated.": "The retrieved file content could not be validated.",
+    "The content request was cancelled.": "The content request was cancelled.",
+    "The file content could not be retrieved.": "The file content could not be retrieved.",
+    "The server did not authorise the content request.": "The server did not authorise the content request.",
+    "Connection settings or compatibility checks prevented the content request.":
+        "Connection settings or compatibility checks prevented the content request.",
+    "The previous retry was interrupted. Review the file before retrying.":
+        "The previous retry was interrupted. Review the file before retrying.",
+    "The pending recovery state could not be saved. The automatic retry was not started.":
+        "The pending recovery state could not be saved. The automatic retry was not started.",
+    "Reflection could not be confirmed after the retry.": "Reflection could not be confirmed after the retry.",
+    "Reason unavailable": "Reason unavailable",
+    "Some files could not be reflected in the Vault. Review the affected files.":
+        "Some files could not be reflected in the Vault. Review the affected files.",
+    "There are no files waiting for reflection review.": "There are no files waiting for reflection review.",
+    "Back to file list": "Back to file list",
+    "Retry this file": "Retry this file",
+    "Choose a file to review. Each entry shows its state and reason.":
+        "Choose a file to review. Each entry shows its state and reason.",
+    "Review file": "Review file",
+    "The retry could not be started. Try again later.": "The retry could not be started. Try again later.",
+    "The local database connection was unavailable when the file was being reflected.":
+        "The local database connection was unavailable when the file was being reflected.",
     "Diagnostic summary": "Diagnostic summary",
     "Open log": "Open log",
     "Detailed P2P diagnostics and Log Pane output are enabled":
         "Detailed P2P diagnostics and Log Pane output are enabled",
-    "Enable detailed P2P diagnostics and Log Pane output":
-        "Enable detailed P2P diagnostics and Log Pane output",
+    "Enable detailed P2P diagnostics and Log Pane output": "Enable detailed P2P diagnostics and Log Pane output",
     "Enable SyncGuard": "Enable SyncGuard",
     "Enable device-local SyncGuard protection during synchronisation.":
         "Enable device-local SyncGuard protection during synchronisation.",

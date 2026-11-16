@@ -29,7 +29,8 @@ import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serv
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
 import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/core/replication/providers";
-import { useReplicationFeature } from "./serviceFeatures/replication";
+import { createReplicationFeature } from "./serviceFeatures/replication";
+import type { ReflectionRecoveryView } from "./serviceFeatures/replication/ReplicateResultProcessor";
 import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
@@ -37,12 +38,14 @@ import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
 /** Focused views returned by serviceFeatures which the host may consume during composition. */
 export interface LiveSyncCoreFeatureViews {
     readonly replicationScheduling: ReplicationSchedulingControl;
+    readonly reflectionRecovery: ReflectionRecoveryView;
 }
 
 export interface StartupDatabaseOptions {
     readonly discardReplicationResultSnapshotOnReset?: boolean;
     readonly ignoreSuspending?: boolean;
     readonly continueOnFileFailure?: boolean;
+    readonly recoverChunkTransportFailures?: boolean;
 }
 
 type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;
@@ -93,7 +96,12 @@ export class LiveSyncBaseCore<
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
-        const coreFeatureViews = this.initialiseServiceFeatures();
+        // Construction is inert; handler registration stays after host features and add-ons.
+        const replicationFeature = createReplicationFeature(this);
+        const coreFeatureViews: LiveSyncCoreFeatureViews = {
+            ...this.initialiseServiceFeatures(),
+            reflectionRecovery: replicationFeature.recovery,
+        };
         featuresInitialiser(this, coreFeatureViews);
         const addOns = addOnsInitialiser(this);
         for (const addOn of addOns) {
@@ -101,7 +109,7 @@ export class LiveSyncBaseCore<
         }
         // Compose late core features after host features and add-ons, then bind
         // legacy modules so lifecycle handlers observe the required order.
-        useReplicationFeature(this);
+        replicationFeature.register();
         useBasicCommandsFeature(this);
         this.bindModuleFunctions();
     }
@@ -291,7 +299,7 @@ export class LiveSyncBaseCore<
      * Initialise ServiceFeatures.
      * (Please refer `serviceFeatures` for more details)
      */
-    initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
+    initialiseServiceFeatures(): Pick<LiveSyncCoreFeatureViews, "replicationScheduling"> {
         useConflictResolutionFeature({
             services: this.services,
             serviceModules: this.serviceModules,

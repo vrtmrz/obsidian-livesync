@@ -73,7 +73,16 @@ export class ModuleLiveSyncMain extends AbstractModule {
             false,
             ignoreSuspending,
             continueOnFileFailure,
-            { strictContentCheck }
+            {
+                strictContentCheck,
+                ...(continueOnFileFailure && this.core.startupDatabaseOptions.recoverChunkTransportFailures
+                    ? {
+                          onContentReadFailure: async (failure) => {
+                              await this.services.replication.onFileReflectionContentReadFailed(failure);
+                          },
+                      }
+                    : {}),
+            }
         );
         if (initialisationResult === VaultScanResults.FAILED) {
             this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);

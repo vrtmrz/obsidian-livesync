@@ -3,6 +3,8 @@ import { NEW_VAULT_SETTINGS, type SettingsMigrationState } from "@vrtmrz/livesyn
 import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import {
     REVIEW_HARNESS_SCENARIOS,
+    REVIEW_HARNESS_AUTOMATIC_SCENARIO_IDS,
+    REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS,
     REVIEW_HARNESS_SCENARIO_IDS,
     formatReviewHarnessReport,
     inspectCompatibilityReview,
@@ -78,11 +80,25 @@ describe("Review Harness contract", () => {
             "vault-round-trip",
             "id-generation-performance",
             "file-content-hash-performance",
+            "database-connection-loss",
+            "database-background-events",
         ]);
         expect(REVIEW_HARNESS_SCENARIOS.find(({ id }) => id === "file-content-hash-performance")).toMatchObject({
             mode: "manual",
             access: "read-only",
         });
+        expect(REVIEW_HARNESS_AUTOMATIC_SCENARIO_IDS).toEqual(["settings-lifecycle"]);
+        expect(REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS).not.toContain("database-connection-loss");
+        expect(REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS).not.toContain("database-background-events");
+        expect(
+            REVIEW_HARNESS_SCENARIOS.filter(({ id }) => id.startsWith("database-")).map(({ mode, access }) => ({
+                mode,
+                access,
+            }))
+        ).toEqual([
+            { mode: "guided", access: "dedicated-database-fixtures" },
+            { mode: "guided", access: "dedicated-database-fixtures" },
+        ]);
     });
 
     it("checks that an existing Vault exposes the seven synchronisation choices as booleans", () => {

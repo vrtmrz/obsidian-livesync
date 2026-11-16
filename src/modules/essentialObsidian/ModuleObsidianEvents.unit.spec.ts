@@ -24,6 +24,7 @@ function setup(opts: SetupOptions) {
         onResumed: vi.fn(async () => true),
     };
     const fileProcessing = { commitPendingFileEvents: vi.fn(async () => true) };
+    const databaseEvents = { onBeforeDatabaseResume: vi.fn(async () => true) };
     const replication = { replicateUnattendedByEvent: vi.fn(async () => undefined) };
     const conflict = { queueCheckForIfOpen: vi.fn(async () => undefined) };
     const boundedRemoteActivityCount = reactiveSource(0);
@@ -42,6 +43,7 @@ function setup(opts: SetupOptions) {
             setting: { saveSettingData: vi.fn(async () => undefined) },
             appLifecycle,
             fileProcessing,
+            databaseEvents,
             replication,
             conflict,
             replicator: { boundedRemoteActivityCount, boundedLocalApplicationActivityCount },
@@ -66,6 +68,7 @@ function setup(opts: SetupOptions) {
         module,
         appLifecycle,
         fileProcessing,
+        databaseEvents,
         replication,
         conflict,
         api: core._services.API,
@@ -75,6 +78,15 @@ function setup(opts: SetupOptions) {
 }
 
 describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () => {
+    it("checks the existing database before committing pending events on foreground return", async () => {
+        const { module, databaseEvents, fileProcessing, appLifecycle } = setup({ hidden: false, isLastHidden: true });
+        databaseEvents.onBeforeDatabaseResume.mockResolvedValue(false);
+        await module.watchWindowVisibilityAsync();
+        expect(databaseEvents.onBeforeDatabaseResume).toHaveBeenCalledOnce();
+        expect(fileProcessing.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(appLifecycle.onResuming).not.toHaveBeenCalled();
+    });
+
     afterEach(() => {
         // The handler reads a global `activeWindow`; clear it so it doesn't leak into sibling spec
         // files running in the same worker.

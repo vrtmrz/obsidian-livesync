@@ -5,6 +5,8 @@ export type ReviewHarnessScenarioStatus =
     | "waiting-for-user"
     | "passed"
     | "failed"
+    | "not-observed"
+    | "unsupported"
     | "cancelled";
 
 export interface ReviewHarnessScenarioResult {

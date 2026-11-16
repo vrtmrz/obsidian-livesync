@@ -4,6 +4,7 @@ import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { bindableFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/HandlerUtils";
 
 const unusedStartupDependencies: readonly [string, readonly string[]][] = [
+    ["./serviceFeatures/replication/reflectionRecoveryReview", ["useReflectionRecoveryReview"]],
     ["@/serviceFeatures/useP2PSettingsPreparation", ["useP2PSettingsPreparation"]],
     ["@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", ["setGetLanguage"]],
     ["./features/LiveSyncCommands.ts", ["LiveSyncCommands"]],
@@ -42,6 +43,7 @@ const unusedStartupDependencies: readonly [string, readonly string[]][] = [
     ["@vrtmrz/livesync-commonlib/p2p", ["useP2PReplicatorCommands", "useP2PReplicatorFeature"]],
     ["./serviceFeatures/useP2PReplicatorUI.ts", ["useP2PReplicatorUI"]],
     ["./serviceFeatures/useReviewHarness.ts", ["useReviewHarness"]],
+    ["./serviceFeatures/databaseConnectionRecovery.ts", ["useDatabaseConnectionRecovery"]],
     ["./features/P2PSync/P2PReplicator/P2PReplicationUI.ts", ["createOpenReplicationUI", "createOpenRebuildUI"]],
     ["./serviceFeatures/compatibilityReview.ts", ["useCompatibilityReview"]],
     ["./serviceFeatures/compatibilityReviewObsidian.ts", ["createObsidianCompatibilityReviewUi"]],

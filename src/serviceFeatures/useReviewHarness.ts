@@ -1,5 +1,5 @@
 import { NEW_VAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/settings";
-import { LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
+import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import type ObsidianLiveSyncPlugin from "@/main";
 import type { LiveSyncCore } from "@/main";
 import type { WorkspaceLeaf } from "@/deps";
@@ -19,6 +19,115 @@ import { runReviewHarnessIdBenchmark } from "@/features/ReviewHarness/reviewHarn
 import { createIdBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessIdBenchmarkRuntime";
 import { runReviewHarnessFileContentHashBenchmark } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmark";
 import { createFileContentHashBenchmarkOperations } from "@/features/ReviewHarness/reviewHarnessFileContentHashBenchmarkRuntime";
+import {
+    ReviewHarnessDatabaseProbeController,
+    type DatabaseProbeEvent,
+} from "@/features/ReviewHarness/reviewHarnessDatabaseProbe";
+import {
+    awaitDatabaseProbeOperation,
+    createDatabaseProbeFixture,
+    databaseProbeErrorName,
+    observeDatabaseProbeBrowserEvents,
+} from "@/features/ReviewHarness/reviewHarnessDatabaseProbeRuntime";
+import commonlibPackage from "@vrtmrz/livesync-commonlib/package.json";
+
+function createDatabaseProbe(core: LiveSyncCore): ReviewHarnessDatabaseProbeController {
+    const services = core.services;
+    const withLog = (emit: (event: DatabaseProbeEvent) => void) => (event: DatabaseProbeEvent) => {
+        services.API.addLog(
+            `[Review Harness: IndexedDB] ${event.source}.${event.name}${event.registration ? ` listener=${event.registration}` : ""}${event.detail ? ` ${event.detail}` : ""}`,
+            LOG_LEVEL_INFO
+        );
+        emit(event);
+    };
+    return new ReviewHarnessDatabaseProbeController({
+        now: () => new Date(),
+        confirmStart: async () =>
+            services.setting.currentSettings().enableDebugTools &&
+            (await services.UI.confirm.askYesNoDialog(
+                "Use a dedicated test Vault. This diagnostic creates a disposable local database, observes events, and can close only that fixture's native connection. The active LiveSync database is inspected read-only. Continue?",
+                { title: "Review Harness: IndexedDB connection observation", defaultOption: "No" }
+            )) === "yes",
+        createFixture: async (emit, signal) => {
+            const record = withLog(emit);
+            const { PouchDB } = await import("@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser");
+            record({
+                source: "probe",
+                name: "versions",
+                detail: `Commonlib=${commonlibPackage.version}; PouchDB=${PouchDB.version}; adapter=idb; probe=1`,
+            });
+            return await createDatabaseProbeFixture({
+                factory: activeWindow.indexedDB,
+                PouchDB,
+                token: activeWindow.crypto.randomUUID(),
+                emit: record,
+                signal,
+            });
+        },
+        observeLifecycle: (emit) => {
+            const record = withLog(emit);
+            const removers = [observeDatabaseProbeBrowserEvents(activeDocument, activeWindow, record)];
+            for (const name of ["onSuspending", "onResuming", "onResumed", "onBeforeUnload", "onUnload"] as const) {
+                removers.push(
+                    services.appLifecycle[name].addHandler(() => {
+                        record({ source: "host", name });
+                        return Promise.resolve(true);
+                    })
+                );
+                record({ source: "host", name, registration: "registered" });
+            }
+            const database = services.database.localDatabaseDirect?.localDatabase;
+            if (database) {
+                for (const name of ["close", "closed"] as const) {
+                    const handler = () => record({ source: "active-local-pouch", name });
+                    database.on(name, handler);
+                    removers.push(() => {
+                        database.removeListener(name, handler);
+                    });
+                    record({ source: "active-local-pouch", name, registration: "registered" });
+                }
+            }
+            record({
+                source: "active-local-native",
+                name: "close",
+                registration: "unavailable",
+                detail: "The active database's native handle is not exposed; only the fixture native handle is observed.",
+            });
+            return () => {
+                for (const remove of removers) remove();
+            };
+        },
+        inspectActiveDatabase: async (signal) => {
+            const ready = services.database.isDatabaseReady();
+            const database = services.database.localDatabaseDirect?.localDatabase;
+            const observations = [
+                `active-local.ready=${String(ready)}`,
+                `application.ready=${String(services.appLifecycle.isReady())}`,
+            ];
+            if (!database)
+                return { observations: [...observations, "active-local.info=unavailable"], connectionFailure: false };
+            let connectionFailure = false;
+            try {
+                const info = await awaitDatabaseProbeOperation(database.info(), signal);
+                const adapter = (info as { adapter?: unknown }).adapter;
+                observations.push(
+                    `active-local.adapter=${adapter === "idb" || adapter === "indexeddb" ? adapter : "unavailable"}`
+                );
+                observations.push("active-local.info=ok");
+            } catch (error) {
+                if (signal.aborted) {
+                    throw error;
+                }
+                const name = databaseProbeErrorName(error);
+                connectionFailure = name === "InvalidStateError" || name === "UnknownError";
+                observations.push(`active-local.info=error; name=${name}`);
+            }
+            for (const detail of observations)
+                services.API.addLog(`[Review Harness: IndexedDB] ${detail}`, LOG_LEVEL_INFO);
+            return { observations, connectionFailure };
+        },
+    });
+}
 
 async function runVaultRoundTrip(plugin: ObsidianLiveSyncPlugin): Promise<ReviewHarnessScenarioResult> {
     const vault = plugin.app.vault;
@@ -53,7 +162,9 @@ export function useReviewHarness(
     compatibilityReview: CompatibilityReviewController
 ): ReviewHarnessController {
     const services = core.services;
+    const databaseProbe = createDatabaseProbe(core);
     const runtime: ReviewHarnessRuntime = {
+        databaseProbe,
         now: () => new Date(),
         getSettings: () => services.setting.currentSettings(),
         getNewVaultSettings: () => NEW_VAULT_SETTINGS,
@@ -90,6 +201,11 @@ export function useReviewHarness(
         }),
     };
     const controller = new ReviewHarnessController(runtime);
+    services.appLifecycle.onUnload.addHandler(async () => {
+        await databaseProbe.dispose();
+        controller.dispose();
+        return true;
+    });
     let continuationConsumed = false;
     let registered = false;
     let openAfterLayout = false;

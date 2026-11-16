@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
-import { VERSIONING_DOCID, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_COUCHDB, VERSIONING_DOCID, type EntryDoc } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { EVENT_APPLICATION_READY } from "@/common/events";
-import { useReplicationFeature } from "./index";
+import { createReplicationFeature, useReplicationFeature } from "./index";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 
 type BooleanHandler = (showMessage: boolean) => Promise<boolean>;
@@ -16,6 +16,8 @@ type KeyValueDBFixture = {
     };
 };
 type SetupOptions = {
+    readonly recoveryEnabled?: boolean;
+    readonly deferComposition?: boolean;
     readonly getLocalDatabase?: () => object;
     readonly keyValueDB?: KeyValueDBFixture;
     readonly onCloseActiveReplication?: () => Promise<boolean>;
@@ -43,6 +45,8 @@ function setup(options: SetupOptions = {}) {
     const createRemoteResource = vi.fn(async () => ({ read, dispose }));
     const beforeReplicateHandlers = new Map<number, BooleanHandler>();
     const centralRemoteHandlers: BooleanHandler[] = [];
+    const failureHandlers: ((failure: unknown) => Promise<boolean>)[] = [];
+    const finiteSuccessHandlers: (() => Promise<boolean>)[] = [];
     let parseHandler: ParseHandler | undefined;
     const services = {
         API: { isMobile: vi.fn(() => false), isOnline: true },
@@ -51,9 +55,16 @@ function setup(options: SetupOptions = {}) {
             isReady: vi.fn(() => true),
             isSuspended: vi.fn(() => false),
             onSettingLoaded: { addHandler: vi.fn() },
+            onBeforeUnload: { addHandler: vi.fn() },
         },
+        database: { isDatabaseReady: vi.fn(() => true), onDatabaseReset: { addHandler: vi.fn() } },
+        conflict: { queueCheckForIfOpen: vi.fn(async () => undefined) },
         context: createServiceContext(),
-        databaseEvents: { onDatabaseInitialised: { addHandler: vi.fn() } },
+        databaseEvents: {
+            onDatabaseInitialised: { addHandler: vi.fn() },
+            onBeforeDatabaseRecovery: { addHandler: vi.fn((handler: () => Promise<boolean>) => handler) },
+            onAfterDatabaseRecovery: { addHandler: vi.fn((handler: () => Promise<boolean>) => handler) },
+        },
         keyValueDB,
         path: { getPath: vi.fn((entry: { path: string }) => entry.path) },
         replication: {
@@ -67,6 +78,12 @@ function setup(options: SetupOptions = {}) {
                 addHandler: vi.fn((handler: BooleanHandler) => centralRemoteHandlers.push(handler)),
             },
             onReplicationFailed: { addHandler: vi.fn() },
+            onFileReflectionContentReadFailed: {
+                addHandler: vi.fn((handler: (failure: unknown) => Promise<boolean>) => failureHandlers.push(handler)),
+            },
+            onFiniteReplicationCompleted: {
+                addHandler: vi.fn((handler: () => Promise<boolean>) => finiteSuccessHandlers.push(handler)),
+            },
             parseSynchroniseResult: {
                 addHandler: vi.fn((handler: ParseHandler) => {
                     parseHandler = handler;
@@ -81,20 +98,34 @@ function setup(options: SetupOptions = {}) {
         },
         setting: { currentSettings: vi.fn(() => ({})) },
         tweakValue: {},
-        vault: {},
+        vault: {
+            isTargetFile: vi.fn(async () => true),
+            isFileSizeTooLarge: vi.fn(() => false),
+        },
     };
     const core = {
+        startupDatabaseOptions: { recoverChunkTransportFailures: options.recoveryEnabled === true },
         confirm: {},
         get localDatabase() {
             return getLocalDatabase();
         },
         rebuilder: {},
         services,
+        serviceModules: {
+            fileHandler: { hasReflectedRevision: vi.fn(async () => false) },
+            storageAccess: { isExists: vi.fn(async () => false) },
+        },
     };
 
-    useReplicationFeature(core as never);
+    if (!options.deferComposition) {
+        useReplicationFeature(core as never);
+    }
 
     return {
+        core,
+        services,
+        failureHandlers,
+        finiteSuccessHandlers,
         beforeReplicateHandlers,
         centralRemoteHandlers,
         context: services.context,
@@ -108,7 +139,236 @@ function setup(options: SetupOptions = {}) {
     };
 }
 
+function deletionRecoveryHarness(source: "received" | "scan" = "received") {
+    const entry = {
+        _id: "deleted-target",
+        _rev: "1-deletion",
+        path: "deleted-target.md",
+        type: "plain",
+        deleted: true,
+    };
+    let current = entry;
+    const context = setup({
+        recoveryEnabled: true,
+        deferComposition: true,
+        getLocalDatabase: () => ({ getRaw: async () => current }),
+        keyValueDB: {
+            kvDB: {
+                get: async () => ({
+                    queued: [],
+                    processing: [],
+                    pendingReflections: [
+                        {
+                            documentId: entry._id,
+                            revision: entry._rev,
+                            source,
+                            state: "waiting",
+                            automaticAttempted: false,
+                            reason: "local-database",
+                        },
+                    ],
+                }),
+                set: async () => undefined,
+            },
+        },
+    });
+    const feature = createReplicationFeature(context.core as never);
+    feature.register();
+    return {
+        context,
+        feature,
+        entry,
+        setCurrent(value: typeof entry) {
+            current = value;
+        },
+    };
+}
+
 describe("replication serviceFeature composition", () => {
+    it("confirms a matching logical deletion only after observing storage absence", async () => {
+        const { context, feature } = deletionRecoveryHarness();
+        await feature.recovery.reconcile();
+        expect(feature.recovery.list()).toEqual([]);
+        expect(context.core.serviceModules.storageAccess.isExists).toHaveBeenCalledExactlyOnceWith("deleted-target.md");
+        expect(context.core.serviceModules.fileHandler.hasReflectedRevision).not.toHaveBeenCalled();
+    });
+
+    it.each(["file", "folder"])("keeps a deletion pending while its path contains a %s", async () => {
+        const { context, feature } = deletionRecoveryHarness();
+        context.core.serviceModules.storageAccess.isExists.mockResolvedValue(true);
+        await feature.recovery.reconcile();
+        expect(feature.recovery.list()).toHaveLength(1);
+    });
+
+    it("does not confirm deletion if the current Metadata changes during the absence check", async () => {
+        const { context, feature, entry, setCurrent } = deletionRecoveryHarness();
+        context.core.serviceModules.storageAccess.isExists.mockImplementation(async () => {
+            setCurrent({ ...entry, _rev: "2-restored", deleted: false });
+            return false;
+        });
+        await feature.recovery.reconcile();
+        expect(feature.recovery.list()).toHaveLength(1);
+    });
+
+    it("keeps an inconclusive deletion absence check pending", async () => {
+        const { context, feature } = deletionRecoveryHarness();
+        context.core.serviceModules.storageAccess.isExists.mockRejectedValue(new Error("Storage is unavailable"));
+        await feature.recovery.reconcile();
+        expect(feature.recovery.list()).toHaveLength(1);
+    });
+
+    it("retains the scanner's existing deletion-completion policy", async () => {
+        const { context, feature } = deletionRecoveryHarness("scan");
+        await feature.recovery.reconcile();
+        expect(feature.recovery.list()).toHaveLength(1);
+        expect(context.core.serviceModules.storageAccess.isExists).not.toHaveBeenCalled();
+        expect(context.core.serviceModules.fileHandler.hasReflectedRevision).toHaveBeenCalledOnce();
+    });
+
+    it("resumes held application before detached local recovery admission and acknowledges without waiting", async () => {
+        const released = promiseWithResolvers<void>();
+        const order: string[] = [];
+        const resume = vi
+            .spyOn(ReplicateResultProcessor.prototype, "resumeAfterDatabaseRecovery")
+            .mockImplementation(() => {
+                order.push("resume");
+            });
+        const retry = vi
+            .spyOn(ReplicateResultProcessor.prototype, "retryWaitingReflections")
+            .mockImplementation(async () => {
+                order.push("retry");
+                await released.promise;
+            });
+        try {
+            const context = setup({ recoveryEnabled: true });
+            const handler = context.services.databaseEvents.onAfterDatabaseRecovery.addHandler.mock.calls[0][0];
+            await expect(handler()).resolves.toBe(true);
+            await vi.waitFor(() => expect(retry).toHaveBeenCalledExactlyOnceWith("local-database"));
+            expect(order).toEqual(["resume", "retry"]);
+        } finally {
+            released.resolve();
+            resume.mockRestore();
+            retry.mockRestore();
+        }
+    });
+
+    it("keeps local database failure retention independent of remote Chunk settings", async () => {
+        const entry = { _id: "local-only", _rev: "1-test", path: "local-only.md", type: "plain" };
+        const context = setup({ recoveryEnabled: true, deferComposition: true });
+        context.services.setting.currentSettings.mockReturnValue({
+            remoteType: "other",
+            readChunksOnline: false,
+            maxMTimeForReflectEvents: 0,
+        });
+        context.services.database.isDatabaseReady.mockReturnValue(false);
+        const feature = createReplicationFeature(context.core as never);
+        feature.register();
+        await context.failureHandlers[0]({ documentId: entry._id, revision: entry._rev, reason: "local-database" });
+        expect(feature.recovery.list()).toEqual([
+            expect.objectContaining({ documentId: entry._id, reason: "local-database", automaticAttempted: false }),
+        ]);
+    });
+
+    it("exposes an inert recovery view while retaining late handler registration", () => {
+        const context = setup({ recoveryEnabled: true, deferComposition: true });
+        const feature = createReplicationFeature(context.core as never);
+        expect(feature.recovery.list()).toEqual([]);
+        expect(context.beforeReplicateHandlers.size).toBe(0);
+        expect(context.failureHandlers).toEqual([]);
+        expect(context.services.databaseEvents.onBeforeDatabaseRecovery.addHandler).not.toHaveBeenCalled();
+        expect(context.services.databaseEvents.onAfterDatabaseRecovery.addHandler).not.toHaveBeenCalled();
+        feature.register();
+        expect(context.beforeReplicateHandlers.size).toBe(2);
+        expect(context.failureHandlers).toHaveLength(1);
+        expect(context.finiteSuccessHandlers).toHaveLength(1);
+    });
+
+    it("awaits startup failure retention and schedules recovery only through the finite success port", async () => {
+        const register = vi
+            .spyOn(ReplicateResultProcessor.prototype, "registerContentReadFailure")
+            .mockResolvedValue(undefined);
+        const retry = vi
+            .spyOn(ReplicateResultProcessor.prototype, "retryWaitingReflections")
+            .mockResolvedValue(undefined);
+        try {
+            const context = setup({ recoveryEnabled: true });
+            const failure = { documentId: "pending", revision: "1-test", reason: "offline" };
+            await expect(context.failureHandlers[0](failure)).resolves.toBe(true);
+            expect(register).toHaveBeenCalledExactlyOnceWith(failure, "scan");
+            expect(retry).not.toHaveBeenCalled();
+            await expect(context.finiteSuccessHandlers[0]()).resolves.toBe(true);
+            expect(retry).toHaveBeenCalledOnce();
+        } finally {
+            register.mockRestore();
+            retry.mockRestore();
+        }
+    });
+
+    it("acknowledges finite success while a recovery inspection still awaits the producer's release", async () => {
+        const producerReleased = promiseWithResolvers<void>();
+        const inspectionStarted = promiseWithResolvers<void>();
+        const retry = vi
+            .spyOn(ReplicateResultProcessor.prototype, "retryWaitingReflections")
+            .mockImplementation(async () => {
+                inspectionStarted.resolve();
+                await producerReleased.promise;
+            });
+        let acknowledged = false;
+        let completion: Promise<void> | undefined;
+        try {
+            const context = setup({ recoveryEnabled: true });
+            completion = context.finiteSuccessHandlers[0]().then(() => {
+                acknowledged = true;
+                producerReleased.resolve();
+            });
+            await inspectionStarted.promise;
+            await vi.waitFor(() => expect(acknowledged).toBe(true));
+        } finally {
+            producerReleased.resolve();
+            await completion;
+            retry.mockRestore();
+        }
+    });
+
+    it("retires a conflicted target only after the existing conflict owner accepts it", async () => {
+        const entry = {
+            _id: "conflicted",
+            _rev: "2-current",
+            path: "conflicted.md",
+            type: "plain",
+            _conflicts: ["1-other"],
+        };
+        const context = setup({
+            recoveryEnabled: true,
+            deferComposition: true,
+            getLocalDatabase: () => ({ getRaw: async () => entry }),
+        });
+        context.services.setting.currentSettings.mockReturnValue({
+            remoteType: REMOTE_COUCHDB,
+            readChunksOnline: true,
+            maxMTimeForReflectEvents: 0,
+        });
+        const feature = createReplicationFeature(context.core as never);
+        feature.register();
+        await context.failureHandlers[0]({ documentId: entry._id, revision: entry._rev, reason: "offline" });
+        expect(feature.recovery.list()).toHaveLength(1);
+        const accepted = promiseWithResolvers<undefined>();
+        context.services.conflict.queueCheckForIfOpen.mockImplementation(() => accepted.promise);
+        const reconciliation = feature.recovery.reconcile();
+        try {
+            await vi.waitFor(() =>
+                expect(context.services.conflict.queueCheckForIfOpen).toHaveBeenCalledExactlyOnceWith(entry.path)
+            );
+            expect(feature.recovery.list()).toHaveLength(1);
+            accepted.resolve(undefined);
+            await reconciliation;
+            expect(feature.recovery.list()).toEqual([]);
+        } finally {
+            accepted.resolve(undefined);
+            await reconciliation;
+        }
+    });
+
     it("does not acquire the local database while composing result handlers", () => {
         const acquireLocalDatabase = vi.fn(() => {
             throw new Error("Local database is not ready yet");

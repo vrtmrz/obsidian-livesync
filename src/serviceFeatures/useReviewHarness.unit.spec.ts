@@ -75,6 +75,7 @@ function createFixture(options: { enableDebugTools?: boolean; continuation?: str
         },
         config,
         appLifecycle: {
+            onUnload: { addHandler: vi.fn(() => () => {}) },
             onSettingLoaded: {
                 addHandler: vi.fn((handler: () => Promise<boolean>) => settingLoadedHandlers.push(handler)),
             },
