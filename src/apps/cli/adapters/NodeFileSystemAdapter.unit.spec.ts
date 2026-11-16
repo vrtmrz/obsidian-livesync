@@ -322,6 +322,39 @@ describe("NodeFileSystemAdapter case-insensitive path lookup", () => {
         expect(scanDirectory).not.toHaveBeenCalled();
     });
 
+    it.each([".Secret.md", "Notes/.Secret.md"])(
+        "compatibility: resolves a hidden file %s through visible directories without scanning",
+        async (actualPath) => {
+            const { adapter } = await createVault([actualPath]);
+            const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+
+            await expect(adapter.getAbstractFileByPathInsensitive(actualPath.toLowerCase())).resolves.toMatchObject({
+                path: actualPath,
+            });
+            expect(scanDirectory).not.toHaveBeenCalled();
+        }
+    );
+
+    it("compatibility: refreshes a previously addressed hidden path through case-insensitive lookup", async () => {
+        const actualPath = ".Private/Note.md";
+        const { directory, adapter } = await createVault([actualPath]);
+        await adapter.getAbstractFileByPath(actualPath);
+        await expect(adapter.getAbstractFileByPathInsensitive(".private/note.md")).resolves.toMatchObject({
+            path: actualPath,
+        });
+        const scanDirectory = vi.spyOn(adapter, "scanDirectory");
+        const updated = "updated hidden content after an explicit lookup";
+        await fs.writeFile(path.join(directory, actualPath), updated);
+
+        await expect(adapter.getAbstractFileByPathInsensitive(".private/note.md")).resolves.toMatchObject({
+            path: actualPath,
+            stat: { size: Buffer.byteLength(updated) },
+        });
+        await fs.unlink(path.join(directory, actualPath));
+        await expect(adapter.getAbstractFileByPathInsensitive(".private/note.md")).resolves.toBeNull();
+        expect(scanDirectory).not.toHaveBeenCalled();
+    });
+
     it("does not resolve a differently cased path into a hidden directory", async () => {
         const { adapter } = await createVault([".Private/Note.md"]);
 

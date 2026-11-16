@@ -109,9 +109,27 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         }
 
         const exact = await this.getAbstractFileByPath(pathStr);
-        if (exact) return exact;
+        if (exact) {
+            return exact;
+        }
+        // Explicit lookups can cache hidden paths which Vault scans do not visit.
+        // Retain access to those paths, while refreshing their current metadata.
+        if (isHiddenPath(pathStr)) {
+            const wantedLower = pathStr.toLowerCase();
+            for (const cachedPath of this.fileCache.keys()) {
+                if (cachedPath.toLowerCase() !== wantedLower) {
+                    continue;
+                }
+                const cachedFile = await this.refreshFile(cachedPath);
+                if (cachedFile) {
+                    return cachedFile;
+                }
+            }
+        }
         const actualPath = await this.findPathCaseInsensitive(pathStr);
-        if (actualPath === null) return null;
+        if (actualPath === null) {
+            return null;
+        }
         return await this.refreshFile(actualPath);
     }
 
@@ -123,7 +141,9 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
      */
     private async findPathCaseInsensitive(pathStr: string): Promise<string | null> {
         const segments = pathStr.split("/").filter((segment) => segment !== "");
-        if (segments.length === 0) return null;
+        if (segments.length === 0) {
+            return null;
+        }
         return await this.findSegmentsCaseInsensitive("", segments);
     }
 
@@ -134,13 +154,15 @@ export class NodeFileSystemAdapter implements IFileSystemAdapter<NodeFile, NodeF
         const candidates = isLast ? entries.files : entries.folders;
         const wanted = parent === "" ? segment : `${parent}/${segment}`;
         const wantedLower = wanted.toLowerCase();
-        // Hidden entries are excluded, as they are from vault scans.
+        // Vault scans include hidden files but do not descend into hidden directories.
         const matches = candidates
-            .filter((candidate) => !isHiddenPath(candidate) && candidate.toLowerCase() === wantedLower)
+            .filter((candidate) => (isLast || !isHiddenPath(candidate)) && candidate.toLowerCase() === wantedLower)
             .sort((left, right) => Number(right === wanted) - Number(left === wanted));
         for (const match of matches) {
             const found = isLast ? match : await this.findSegmentsCaseInsensitive(match, rest);
-            if (found !== null) return found;
+            if (found !== null) {
+                return found;
+            }
         }
         return null;
     }
