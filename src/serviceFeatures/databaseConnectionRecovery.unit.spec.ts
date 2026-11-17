@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { useDatabaseConnectionRecovery } from "./databaseConnectionRecovery";
+import {
+    createDatabaseConnectionRecoveryContext,
+    requestDatabaseConnectionRecovery,
+    useDatabaseConnectionRecovery,
+} from "./databaseConnectionRecovery";
 
-function setup() {
+function setup(registerRecovery = true) {
     const callbacks: Record<string, (...args: any[]) => Promise<boolean>> = {};
     const event = (name: string) => ({
         addHandler: (callback: (typeof callbacks)[string]) => {
@@ -40,13 +44,37 @@ function setup() {
     };
     const dispatch = { pauseDispatch: vi.fn(async (): Promise<void> => {}), resumeDispatch: vi.fn() };
     const visible = vi.fn(() => true);
-    useDatabaseConnectionRecovery({ services } as never, dispatch, visible);
+    if (registerRecovery) {
+        useDatabaseConnectionRecovery({ services } as never, dispatch, visible);
+    }
     return { callbacks, selected, services, database, dispatch, visible };
 }
 
 const closing = () => new DOMException("The database connection is closing.", "InvalidStateError");
 
 describe("local database connection recovery", () => {
+    it("shares a direct recovery request and clears it when the operation settles", async () => {
+        const { services, database, dispatch, visible } = setup(false);
+        const context = createDatabaseConnectionRecoveryContext({ services } as never, dispatch, visible);
+        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
+        let finish!: () => void;
+        dispatch.pauseDispatch.mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    finish = resolve;
+                })
+        );
+
+        const first = requestDatabaseConnectionRecovery(context, true);
+        expect(requestDatabaseConnectionRecovery(context, false)).toBe(first);
+        await vi.waitFor(() => expect(dispatch.pauseDispatch).toHaveBeenCalledOnce());
+        finish();
+
+        await expect(first).resolves.toBe(true);
+        expect(context.running).toBeUndefined();
+        expect(database.reopenDatabase).toHaveBeenCalledOnce();
+    });
+
     it("only checks the existing connection when healthy", async () => {
         const { callbacks, database, dispatch } = setup();
         await expect(callbacks.foreground()).resolves.toBe(true);

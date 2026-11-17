@@ -34,11 +34,11 @@ function ownsLocalApplicationActivity(value: object): value is LocalApplicationA
 }
 
 /**
- * Compose result application, automatic triggers, preflight, and central
- * compatibility recovery around the existing typed Services.
+ * Prepare result application, automatic triggers, preflight, and central
+ * compatibility recovery without registering their handlers.
  *
  * Registration order is observable for equal-priority handlers. The host must
- * call this after host serviceFeatures and add-ons are composed, but before
+ * call the returned `register` after host serviceFeatures and add-ons are composed, but before
  * legacy modules are bound, so lifecycle handlers observe the required order.
  */
 export function createReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(

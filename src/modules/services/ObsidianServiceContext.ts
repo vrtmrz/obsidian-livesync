@@ -14,6 +14,15 @@ export class ObsidianServiceContext extends ServiceContext {
     readonly notices: KeyedNoticeManager;
     readonly noticeGroups: ObsidianNoticeGroups;
 
+    /**
+     * Read the current active document's visibility at the time of the operation.
+     * This is a document visibility signal, separate from focus, readiness, and user suspension;
+     * it does not establish the native application's suspension state.
+     */
+    isActiveDocumentVisible(): boolean {
+        return !activeWindow.document.hidden;
+    }
+
     constructor(
         app: App,
         plugin: Plugin,

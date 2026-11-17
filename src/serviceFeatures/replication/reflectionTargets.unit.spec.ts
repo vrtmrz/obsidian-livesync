@@ -243,6 +243,58 @@ describe("reflection target scopes", () => {
         expect(restored.get("unknown")).toMatchObject({ resources: [], state: "review" });
     });
 
+    it("ignores malformed headers and keeps unknown stored resources unclassified", () => {
+        const snapshot = {
+            pendingReflections: [
+                {
+                    documentId: "malformed",
+                    revision: "1",
+                    source: "received",
+                    state: "waiting",
+                    automaticAttempted: false,
+                    resources: ["remote"],
+                },
+                {
+                    documentId: "unknown-resource",
+                    revision: "1",
+                    source: "received",
+                    state: "waiting",
+                    automaticAttempted: false,
+                    reason: "remote",
+                    resources: ["future-resource"],
+                },
+            ],
+        } as unknown as ReflectionSnapshot;
+        const restored = owner();
+
+        restored.restore(snapshot);
+
+        expect(restored.list()).toMatchObject([
+            { documentId: "unknown-resource", resources: [], state: "review", reason: "unavailable" },
+        ]);
+    });
+
+    it("publishes review-state changes once at each owning transition", () => {
+        const targets = owner();
+        const target = targets.issue("note").retainFailure(failure())!;
+        const changed = vi.fn();
+        targets.onChanged(changed);
+
+        targets.markForReview(target, "manual-review");
+        expect(changed).toHaveBeenCalledTimes(1);
+        expect(target).toMatchObject({ state: "review", reason: "manual-review" });
+
+        const attempt = targets.admit(target, "manual")!;
+        expect(changed).toHaveBeenCalledTimes(1);
+        targets.finishAttempt(attempt, "manual-failed");
+        expect(changed).toHaveBeenCalledTimes(2);
+        expect(target).toMatchObject({ state: "review", reason: "manual-failed" });
+
+        targets.finishAttempt(attempt, "stale-finish");
+        targets.markForReview(undefined, "no-current-target");
+        expect(changed).toHaveBeenCalledTimes(3);
+    });
+
     it("does not swallow another scope's exit as its own", async () => {
         const targets = owner();
         const obsolete = targets.issue("note");

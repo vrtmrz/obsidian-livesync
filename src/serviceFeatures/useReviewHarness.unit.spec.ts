@@ -143,10 +143,14 @@ describe("Review Harness composition", () => {
         const fixture = createFixture({ continuation });
 
         await fixture.settingLoadedHandlers[0]();
+        await fixture.settingLoadedHandlers[0]();
 
         expect(fixture.local.has(REVIEW_HARNESS_STATE_KEY)).toBe(false);
+        expect(fixture.config.getValue).toHaveBeenCalledOnce();
         expect(fixture.controller.snapshot().resumedRequestId).toBe(`compatibility-review-${requestedAt}`);
         expect(fixture.api.registerWindow).toHaveBeenCalledWith(VIEW_TYPE_REVIEW_HARNESS, expect.any(Function));
+        expect(fixture.api.registerWindow).toHaveBeenCalledOnce();
+        expect(fixture.api.addCommand).toHaveBeenCalledOnce();
 
         await fixture.layoutReadyHandlers[0]();
 

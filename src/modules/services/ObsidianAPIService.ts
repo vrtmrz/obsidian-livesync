@@ -193,9 +193,10 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             headers: transformedHeaders,
             contentType: contentType,
         };
-        let r: Awaited<ReturnType<typeof requestUrl>>;
+        // Wrap only native request failures; Response conversion errors remain separate.
+        let response: Awaited<ReturnType<typeof requestUrl>>;
         try {
-            r = await requestUrl({ ...requestParam, throw: false });
+            response = await requestUrl({ ...requestParam, throw: false });
         } catch (error) {
             const signal = opts?.signal ?? (req instanceof Request ? req.signal : undefined);
             if (signal?.aborted) {
@@ -203,10 +204,10 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             }
             throw new RemoteRequestError("Remote request failed", { cause: error });
         }
-        return new Response(r.arrayBuffer, {
-            headers: r.headers,
-            status: r.status,
-            statusText: `${r.status}`,
+        return new Response(response.arrayBuffer, {
+            headers: response.headers,
+            status: response.status,
+            statusText: `${response.status}`,
         });
     }
 

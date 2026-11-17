@@ -32,6 +32,7 @@ function setup(opts: SetupOptions) {
 
     const core = {
         _services: {
+            context: { isActiveDocumentVisible: () => !activeWindow.document.hidden },
             API: {
                 addLog: vi.fn(),
                 addCommand: vi.fn(),
@@ -61,7 +62,7 @@ function setup(opts: SetupOptions) {
     module.isLastHidden = opts.isLastHidden ?? false;
     module.hasFocus = opts.hasFocus ?? true;
 
-    // The handler reads `activeWindow.document.hidden`.
+    // The host visibility capability reads the current active document.
     (globalThis as any).activeWindow = { document: { hidden: opts.hidden } };
 
     return {
@@ -88,7 +89,7 @@ describe("watchWindowVisibilityAsync — keepReplicationActiveInBackground", () 
     });
 
     afterEach(() => {
-        // The handler reads a global `activeWindow`; clear it so it doesn't leak into sibling spec
+        // The host visibility capability reads `activeWindow`; clear it between spec
         // files running in the same worker.
         delete (globalThis as any).activeWindow;
     });

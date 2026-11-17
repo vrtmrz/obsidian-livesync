@@ -190,9 +190,25 @@ export function useReviewHarness(
     plugin: ObsidianLiveSyncPlugin,
     compatibilityReview: CompatibilityReviewController
 ): ReviewHarnessController {
-    const services = core.services;
     const databaseProbe = createDatabaseProbe(core);
-    const runtime: ReviewHarnessRuntime = {
+    const runtime = createReviewHarnessRuntime(core, plugin, compatibilityReview, databaseProbe);
+    const controller = new ReviewHarnessController(runtime);
+    registerReviewHarnessLifecycle(core, controller, databaseProbe);
+    return controller;
+}
+
+/**
+ * Build the runtime adapters used by one controller. Settings, compatibility state, and host APIs are read
+ * when their operations run so the controller observes the current host state.
+ */
+function createReviewHarnessRuntime(
+    core: LiveSyncCore,
+    plugin: ObsidianLiveSyncPlugin,
+    compatibilityReview: CompatibilityReviewController,
+    databaseProbe: ReviewHarnessDatabaseProbeController
+): ReviewHarnessRuntime {
+    const services = core.services;
+    return {
         databaseProbe,
         now: () => new Date(),
         getSettings: () => services.setting.currentSettings(),
@@ -229,46 +245,107 @@ export function useReviewHarness(
                     : "unavailable",
         }),
     };
-    const controller = new ReviewHarnessController(runtime);
+}
+
+/** State retained by the lifecycle handlers belonging to one Review Harness composition. */
+interface ReviewHarnessLifecycleContext {
+    /** Set only after continuation consumption completes, so a failed deletion can be retried. */
+    continuationConsumed: boolean;
+    /** Prevents the view and command from being registered more than once for this composition. */
+    debugUiRegistered: boolean;
+    /** Carries a restored continuation from settings-loaded to the later layout-ready stage. */
+    openAfterLayout: boolean;
+}
+
+function createReviewHarnessLifecycleContext(): ReviewHarnessLifecycleContext {
+    return {
+        continuationConsumed: false,
+        debugUiRegistered: false,
+        openAfterLayout: false,
+    };
+}
+
+/**
+ * Consume the saved continuation once and remember whether layout-ready should reopen the Harness.
+ * The returned promise covers continuation reading, deletion, and restoration; a failure rejects and leaves
+ * the one-shot flag clear so a later settings-loaded invocation can retry.
+ */
+async function restoreReviewHarnessContinuation(
+    controller: ReviewHarnessController,
+    context: ReviewHarnessLifecycleContext
+): Promise<void> {
+    if (!context.continuationConsumed) {
+        await controller.consumeContinuation();
+        context.continuationConsumed = true;
+    }
+    const snapshot = controller.snapshot();
+    context.openAfterLayout = snapshot.resumedRequestId !== null || snapshot.continuationError !== null;
+}
+
+type ReviewHarnessUiApi = Pick<LiveSyncCore["services"]["API"], "registerWindow" | "addCommand" | "showWindow">;
+
+/** Register the debug-only view and command after settings have loaded. */
+function registerReviewHarnessDebugUi(
+    api: ReviewHarnessUiApi,
+    controller: ReviewHarnessController,
+    context: ReviewHarnessLifecycleContext,
+    enableDebugTools: boolean
+): void {
+    if (!enableDebugTools || context.debugUiRegistered) {
+        return;
+    }
+
+    context.debugUiRegistered = true;
+    api.registerWindow(VIEW_TYPE_REVIEW_HARNESS, (leaf: WorkspaceLeaf) => new ReviewHarnessView(leaf, controller));
+    api.addCommand({
+        id: "open-review-harness",
+        name: "Open review harness",
+        callback: () => {
+            void api.showWindow(VIEW_TYPE_REVIEW_HARNESS);
+        },
+    });
+}
+
+/**
+ * Reopen a restored Harness only after layout is ready and debug tools are still enabled.
+ * The lifecycle promise covers this decision; the view-opening promise remains deliberately fire-and-forget.
+ */
+function openReviewHarnessAfterLayout(
+    api: ReviewHarnessUiApi,
+    context: ReviewHarnessLifecycleContext,
+    enableDebugTools: boolean
+): Promise<boolean> {
+    if (context.openAfterLayout && enableDebugTools) {
+        void api.showWindow(VIEW_TYPE_REVIEW_HARNESS);
+    }
+    return Promise.resolve(true);
+}
+
+/** Bind controller disposal and the settings/layout operations to this composition's lifecycle. */
+function registerReviewHarnessLifecycle(
+    core: LiveSyncCore,
+    controller: ReviewHarnessController,
+    databaseProbe: ReviewHarnessDatabaseProbeController
+): void {
+    const services = core.services;
+    const context = createReviewHarnessLifecycleContext();
+
     services.appLifecycle.onUnload.addHandler(async () => {
         await databaseProbe.dispose();
         controller.dispose();
         return true;
     });
-    let continuationConsumed = false;
-    let registered = false;
-    let openAfterLayout = false;
-
     services.appLifecycle.onSettingLoaded.addHandler(async () => {
-        if (!continuationConsumed) {
-            await controller.consumeContinuation();
-            continuationConsumed = true;
-        }
-        const snapshot = controller.snapshot();
-        openAfterLayout = snapshot.resumedRequestId !== null || snapshot.continuationError !== null;
-        if (!services.setting.currentSettings().enableDebugTools || registered) return true;
-
-        registered = true;
-        services.API.registerWindow(
-            VIEW_TYPE_REVIEW_HARNESS,
-            (leaf: WorkspaceLeaf) => new ReviewHarnessView(leaf, controller)
+        await restoreReviewHarnessContinuation(controller, context);
+        registerReviewHarnessDebugUi(
+            services.API,
+            controller,
+            context,
+            services.setting.currentSettings().enableDebugTools
         );
-        services.API.addCommand({
-            id: "open-review-harness",
-            name: "Open review harness",
-            callback: () => {
-                void services.API.showWindow(VIEW_TYPE_REVIEW_HARNESS);
-            },
-        });
         return true;
     });
-
-    services.appLifecycle.onLayoutReady.addHandler(() => {
-        if (openAfterLayout && services.setting.currentSettings().enableDebugTools) {
-            void services.API.showWindow(VIEW_TYPE_REVIEW_HARNESS);
-        }
-        return Promise.resolve(true);
-    });
-
-    return controller;
+    services.appLifecycle.onLayoutReady.addHandler(() =>
+        openReviewHarnessAfterLayout(services.API, context, services.setting.currentSettings().enableDebugTools)
+    );
 }

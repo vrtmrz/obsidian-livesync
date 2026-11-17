@@ -90,7 +90,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             storageAccessManager: storageAccessManager,
             APIService: services.API,
         });
-        useDatabaseConnectionRecovery(core, storageEventManager, () => !activeWindow.document.hidden);
+        useDatabaseConnectionRecovery(core, storageEventManager, () => services.context.isActiveDocumentVisible());
         const storageAccess = new ServiceFileAccessObsidian({
             API: services.API,
             setting: services.setting,

@@ -24,6 +24,7 @@ import {
 import {
     defaultLogger,
     LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     setGlobalLogFunction,
@@ -1546,23 +1547,34 @@ describe("ReplicateResultProcessor", () => {
     });
 
     it("still skips a document modified after the limit while the application is unready", async () => {
-        const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
-        const { processor, processSynchroniseResult } = setup({
-            applicationReady: false,
-            maxMTimeForReflectEvents,
-        });
+        const logger = vi.fn();
+        setGlobalLogFunction(logger);
+        try {
+            const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
+            const { processor, processSynchroniseResult } = setup({
+                applicationReady: false,
+                maxMTimeForReflectEvents,
+            });
 
-        const tooRecent = {
-            ...note("too-recent"),
-            mtime: maxMTimeForReflectEvents + 1,
-        } as PouchDB.Core.ExistingDocument<EntryDoc>;
-        processor.enqueueAll([tooRecent]);
+            const tooRecent = {
+                ...note("too-recent"),
+                mtime: maxMTimeForReflectEvents + 1,
+            } as PouchDB.Core.ExistingDocument<EntryDoc>;
+            processor.enqueueAll([tooRecent]);
 
-        await vi.waitFor(() => {
-            expect(processor["_queuedChanges"]).toHaveLength(0);
-            expect(processor["_processingChanges"]).toHaveLength(0);
-        });
-        expect(processSynchroniseResult).not.toHaveBeenCalled();
+            await vi.waitFor(() => {
+                expect(processor["_queuedChanges"]).toHaveLength(0);
+                expect(processor["_processingChanges"]).toHaveLength(0);
+            });
+            expect(processSynchroniseResult).not.toHaveBeenCalled();
+            expect(logger).toHaveBeenCalledWith(
+                expect.stringContaining("modification time (2026-09-01T00:00:00.001Z) exceeding the limit"),
+                LOG_LEVEL_INFO,
+                undefined
+            );
+        } finally {
+            setGlobalLogFunction(defaultLogger);
+        }
     });
 
     it("retires active ownership when a newer remote version is observed", async () => {

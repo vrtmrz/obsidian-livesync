@@ -17,29 +17,22 @@ import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/co
 import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
 import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
-import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
-import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
-import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/core/replication/providers";
-import { createReplicationFeature } from "./serviceFeatures/replication";
-import type { ReflectionRecoveryView } from "./serviceFeatures/replication/ReplicateResultProcessor";
-import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
-import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
+import {
+    composeCoreFeatures,
+    initialiseSharedCoreFeatures,
+    type HostFeatureInitialiser,
+    type LiveSyncCoreFeatureViews,
+} from "./serviceFeatures/coreFeatures";
 
-/** Focused views returned by serviceFeatures which the host may consume during composition. */
-export interface LiveSyncCoreFeatureViews {
-    readonly replicationScheduling: ReplicationSchedulingControl;
-    readonly reflectionRecovery: ReflectionRecoveryView;
-}
+export type { LiveSyncCoreFeatureViews } from "./serviceFeatures/coreFeatures";
 
 export interface StartupDatabaseOptions {
     readonly discardReplicationResultSnapshotOnReset?: boolean;
@@ -88,7 +81,7 @@ export class LiveSyncBaseCore<
         ) => ServiceModules,
         extraModuleInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => AbstractModule[],
         addOnsInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => TCommands[],
-        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void,
+        featuresInitialiser: HostFeatureInitialiser<LiveSyncBaseCore<T, TCommands>>,
         readonly startupDatabaseOptions: StartupDatabaseOptions = {}
     ) {
         this._services = serviceHub;
@@ -96,21 +89,11 @@ export class LiveSyncBaseCore<
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
-        // Construction is inert; handler registration stays after host features and add-ons.
-        const replicationFeature = createReplicationFeature(this);
-        const coreFeatureViews: LiveSyncCoreFeatureViews = {
-            ...this.initialiseServiceFeatures(),
-            reflectionRecovery: replicationFeature.recovery,
-        };
-        featuresInitialiser(this, coreFeatureViews);
-        const addOns = addOnsInitialiser(this);
-        for (const addOn of addOns) {
-            this._registerAddOn(addOn);
-        }
-        // Compose late core features after host features and add-ons, then bind
-        // legacy modules so lifecycle handlers observe the required order.
-        replicationFeature.register();
-        useBasicCommandsFeature(this);
+        composeCoreFeatures(this, featuresInitialiser, () => {
+            for (const addOn of addOnsInitialiser(this)) {
+                this._registerAddOn(addOn);
+            }
+        });
         this.bindModuleFunctions();
     }
     /**
@@ -300,19 +283,7 @@ export class LiveSyncBaseCore<
      * (Please refer `serviceFeatures` for more details)
      */
     initialiseServiceFeatures(): Pick<LiveSyncCoreFeatureViews, "replicationScheduling"> {
-        useConflictResolutionFeature({
-            services: this.services,
-            serviceModules: this.serviceModules,
-            log: createInstanceLogFunction("SF:ConflictResolution", this.services.API),
-        });
-        useTargetFilters(this);
-        // enable target filter feature.
-        usePrepareDatabaseForUse(this);
-        // Migration to multiple remote configurations
-        useRemoteConfigurationMigration(this);
-        return Object.freeze({
-            replicationScheduling: useReplicationScheduling(this),
-        });
+        return initialiseSharedCoreFeatures(this);
     }
 }
 

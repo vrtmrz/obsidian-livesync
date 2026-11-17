@@ -50,6 +50,7 @@ import {
     type RecoveryAttempt,
     type RecoveryResource,
     type ReflectionApplicationScope,
+    type ReflectionTargetScope,
     type ReflectionRecoveryView,
     type ReflectionSnapshot,
 } from "./reflectionTargets";
@@ -101,6 +102,7 @@ type ReplicateResultProcessorState = ReflectionSnapshot & {
     queued: PouchDB.Core.ExistingDocument<EntryDoc>[];
     processing: PouchDB.Core.ExistingDocument<EntryDoc>[];
 };
+type AdmittedRecoveryAttempt = { readonly attempt: RecoveryAttempt; readonly entry: LoadedEntry };
 
 export type { PendingReflection, ReflectionRecoveryView } from "./reflectionTargets";
 
@@ -119,9 +121,13 @@ export class ReplicateResultProcessor {
         isWaitingForReset: () => this.waitingForDatabaseReset,
         onListenerError: (error) => this.logError(error),
     });
+    /** Serialises durable writes; each caller still observes its own write failure. */
     private snapshotWrites: Promise<void> = Promise.resolve();
+    /** Latest requested snapshot save, distinct from a database or target generation. */
     private snapshotRequestVersion = 0;
+    /** Latest request covered by a successfully completed key-value write. */
     private savedSnapshotVersion = 0;
+    /** Serialises retry admission and allowance persistence, rather than file application. */
     private readonly recoveryAdmissionLock = Symbol("reflection-recovery-admission");
 
     readonly recovery: ReflectionRecoveryView = {
@@ -145,6 +151,10 @@ export class ReplicateResultProcessor {
         await this.retainReflectionFailure(target, error, scope);
     }
 
+    /**
+     * Retain an input target's failure using only explicitly reported resource dependencies.
+     * Unclassified errors retain their cause without acquiring automatic retry eligibility.
+     */
     private async retainReflectionFailure(
         target: ReflectionOperationContext["target"],
         error: unknown,
@@ -154,6 +164,10 @@ export class ReplicateResultProcessor {
         await this.retainContentReadFailure({ ...target, resources, cause: error }, scope);
     }
 
+    /**
+     * Restore retained work before admitting this captured scope's failure and saving it.
+     * Scope identity prevents a late failure from replacing a newer pending target.
+     */
     private async retainContentReadFailure(
         failure: ContentReadFailure,
         scope: ReflectionApplicationScope,
@@ -169,6 +183,10 @@ export class ReplicateResultProcessor {
         }
     }
 
+    /**
+     * Persist target and retry-allowance changes before acknowledging or enqueueing work.
+     * A failed save marks the affected target for review and propagates the write failure.
+     */
     private async saveRecoveryState(target?: PendingReflectionRecord): Promise<void> {
         try {
             await this._takeSnapshot();
@@ -178,6 +196,7 @@ export class ReplicateResultProcessor {
         }
     }
 
+    /** Remove a missing current target, or leave other inspection failures for manual review. */
     private pendingInspectionFailed(target: PendingReflectionRecord, error: unknown): void {
         if (!this.reflectionTargets.isCurrent(target)) {
             return;
@@ -190,50 +209,22 @@ export class ReplicateResultProcessor {
         }
     }
 
-    /** Read current Metadata and filters without inspecting Vault contents or provenance. */
+    /**
+     * Read the retained revision's current Metadata and target filters without reading Vault content.
+     * Obsolete, missing, filtered, or unreadable targets produce no candidate; a current database
+     * read failure is retained before recovery is requested without joining this inspection.
+     */
     private async readPendingMetadata(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
         const scope = this.reflectionTargets.inspect(target);
         return scope
             .run(async () => {
                 scope.checkpoint();
-                const selected = this.services.database.localDatabaseDirect;
-                let current;
-                try {
-                    current = await this.localDatabase.getRaw<LoadedEntry>(target.documentId as DocumentID, {
-                        conflicts: true,
-                    });
-                } catch (error) {
-                    if (isNotFoundError(error)) {
-                        throw error;
-                    }
-                    if (this.reflectionTargets.isCurrent(target)) {
-                        this.logError(error);
-                        this.reflectionTargets.issue(target.documentId, undefined, target.source).retainFailure({
-                            documentId: target.documentId as DocumentID,
-                            revision: target.revision,
-                            resources: ["local-database"],
-                            cause: error,
-                        });
-                        // The caller persists the changed target; recovery must not wait on this inspection.
-                        if (selected) {
-                            fireAndForget(() => this.services.database.onLocalDatabaseError(selected, error));
-                        }
-                    }
+                const current = await this.readRetainedMetadata(target);
+                if (!current) {
                     return;
                 }
                 scope.checkpoint();
-                if (current._rev !== target.revision || !isAnyNote(current)) {
-                    this.reflectionTargets.remove(target);
-                    return;
-                }
-                const path = this.getPath(current);
-                const targetFile = await this.services.vault.isTargetFile(path);
-                scope.checkpoint();
-                if (!targetFile || this.services.vault.isFileSizeTooLarge(current.size)) {
-                    this.reflectionTargets.remove(target);
-                    return;
-                }
-                return current;
+                return this.filterPendingMetadata(target, current, scope);
             })
             .catch((error: unknown): undefined => {
                 this.pendingInspectionFailed(target, error);
@@ -241,7 +232,55 @@ export class ReplicateResultProcessor {
             });
     }
 
-    /** Confirm completion or the existing reflection policy only when executing or reconciling. */
+    /** Retain a current database read failure and request recovery without joining this inspection. */
+    private async readRetainedMetadata(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
+        const selected = this.services.database.localDatabaseDirect;
+        try {
+            return await this.localDatabase.getRaw<LoadedEntry>(target.documentId as DocumentID, { conflicts: true });
+        } catch (error) {
+            if (isNotFoundError(error)) {
+                throw error;
+            }
+            if (this.reflectionTargets.isCurrent(target)) {
+                this.logError(error);
+                this.reflectionTargets.issue(target.documentId, undefined, target.source).retainFailure({
+                    documentId: target.documentId as DocumentID,
+                    revision: target.revision,
+                    resources: ["local-database"],
+                    cause: error,
+                });
+                // The caller persists the changed target; recovery must not wait on this inspection.
+                if (selected) {
+                    fireAndForget(() => this.services.database.onLocalDatabaseError(selected, error));
+                }
+            }
+            return undefined;
+        }
+    }
+
+    /** Retire obsolete or excluded Metadata, checking target lifetime after asynchronous filtering. */
+    private async filterPendingMetadata(
+        target: PendingReflectionRecord,
+        current: LoadedEntry,
+        scope: ReflectionTargetScope
+    ): Promise<LoadedEntry | undefined> {
+        if (current._rev !== target.revision || !isAnyNote(current)) {
+            this.reflectionTargets.remove(target);
+            return;
+        }
+        const targetFile = await this.services.vault.isTargetFile(this.getPath(current));
+        scope.checkpoint();
+        if (!targetFile || this.services.vault.isFileSizeTooLarge(current.size)) {
+            this.reflectionTargets.remove(target);
+            return;
+        }
+        return current;
+    }
+
+    /**
+     * Confirm reflection or existing policy during execution or reconciliation, then retire the target.
+     * Admission uses Metadata alone so it does not consume content or provenance evidence early.
+     */
     private async currentPendingEntry(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
         const scope = this.reflectionTargets.inspect(target);
         return scope
@@ -326,6 +365,10 @@ export class ReplicateResultProcessor {
         }
     }
 
+    /**
+     * Serialise candidate admission and persist consumed allowances before enqueueing the batch.
+     * Resource recovery can change pending state even when no candidate is admitted.
+     */
     private async scheduleRecovery(
         kind: RecoveryAttempt["kind"],
         ids?: readonly string[],
@@ -347,26 +390,34 @@ export class ReplicateResultProcessor {
             if (admitted.length === 0 && this.reflectionTargets.version === before) {
                 return;
             }
-            this.reflectionTargets.notifyChanged();
-            // Persist all consumed allowances together before any of this batch can execute.
-            try {
-                await this.saveRecoveryState();
-            } catch (error) {
-                for (const { attempt } of admitted) {
-                    this.reflectionTargets.finishAttempt(attempt, "snapshot-save-failed");
-                }
-                throw error;
-            }
+            await this.persistRecoveryAdmission(admitted);
             await this.enqueueRecoveryAttempts(admitted);
         });
     }
 
+    /** Persist consumed allowances before dispatch; failed writes leave admitted targets for review. */
+    private async persistRecoveryAdmission(admitted: readonly AdmittedRecoveryAttempt[]): Promise<void> {
+        this.reflectionTargets.notifyChanged();
+        try {
+            await this.saveRecoveryState();
+        } catch (error) {
+            for (const { attempt } of admitted) {
+                this.reflectionTargets.finishAttempt(attempt, "snapshot-save-failed");
+            }
+            throw error;
+        }
+    }
+
+    /**
+     * Re-read current Metadata before reserving eligible targets under the admission lock.
+     * Content and provenance inspection remain with execution or reconciliation.
+     */
     private async admitRecoveryCandidates(
         candidates: readonly PendingReflectionRecord[],
         kind: RecoveryAttempt["kind"],
         selected?: ReadonlySet<string>
-    ): Promise<{ attempt: RecoveryAttempt; entry: LoadedEntry }[]> {
-        const admitted: { attempt: RecoveryAttempt; entry: LoadedEntry }[] = [];
+    ): Promise<AdmittedRecoveryAttempt[]> {
+        const admitted: AdmittedRecoveryAttempt[] = [];
         for (const target of candidates) {
             if ((selected && !selected.has(target.documentId)) || !this.reflectionTargets.canAdmit(target, kind)) {
                 continue;
@@ -383,9 +434,8 @@ export class ReplicateResultProcessor {
         return admitted;
     }
 
-    private async enqueueRecoveryAttempts(
-        admitted: readonly { attempt: RecoveryAttempt; entry: LoadedEntry }[]
-    ): Promise<void> {
+    /** Queue still-current admitted attempts, and durably record interruption of the others. */
+    private async enqueueRecoveryAttempts(admitted: readonly AdmittedRecoveryAttempt[]): Promise<void> {
         let interrupted = false;
         for (const { attempt, entry } of admitted) {
             if (this.isSuspended || !this.reflectionTargets.isCurrentAttempt(attempt)) {
@@ -400,12 +450,17 @@ export class ReplicateResultProcessor {
         }
     }
 
+    /** Prefix processor diagnostics without changing their supplied log level. */
     private log(message: string, level: LOG_LEVEL = LOG_LEVEL_INFO) {
         Logger(`[ReplicateResultProcessor] ${message}`, level);
     }
+    /** Preserve the original diagnostic value in verbose logging. */
     private logError(e: unknown) {
         Logger(e, LOG_LEVEL_VERBOSE);
     }
+    /**
+     * Notify the host of incomplete reflection without claiming that retention or retry succeeded.
+     */
     private reportVaultReflectionFailure(entry: MetaEntry, cause?: unknown) {
         this.context.onVaultReflectionFailure?.();
         this.log(
@@ -446,9 +501,11 @@ export class ReplicateResultProcessor {
         this.continueHeldDocuments();
     }
 
+    /** Resolve the current database owner instead of retaining a connection across recovery. */
     private get localDatabase() {
         return this.context.getLocalDatabase();
     }
+    /** Use the service capabilities supplied to this processor's context. */
     private get services() {
         return this.context.services;
     }
@@ -466,7 +523,9 @@ export class ReplicateResultProcessor {
         this.continueHeldDocuments();
     }
 
+    /** Holds dispatch for connection replacement independently of explicit user suspension. */
     private databaseRecoveryPaused = false;
+    /** Started operations, including scoped cleanup, which recovery and shutdown must drain. */
     private readonly pendingApplications = new Set<Promise<unknown>>();
 
     /** Hold dispatch while the current local database lifetime is replaced. */
@@ -525,11 +584,12 @@ export class ReplicateResultProcessor {
     }
 
     /**
-     * Take a snapshot of the current processing state.
-     * This snapshot is stored in the KV database for recovery on restart.
+     * Request a durable snapshot of queued, processing, and retained recovery work.
+     * Serialised writers may coalesce requests already covered by a completed write; request versions
+     * track that coverage and do not invalidate document scopes or identify a database generation.
      */
     protected _takeSnapshot(): Promise<void> {
-        const requested = ++this.snapshotRequestVersion;
+        const requested = this.issueSnapshotRequestVersion();
         const write = this.snapshotWrites
             .catch((): void => {})
             .then(async () => {
@@ -554,6 +614,11 @@ export class ReplicateResultProcessor {
             });
         this.snapshotWrites = write;
         return write;
+    }
+
+    /** Issue a save request number so later completed writes can cover earlier requests. */
+    private issueSnapshotRequestVersion(): number {
+        return ++this.snapshotRequestVersion;
     }
     /**
      * Trigger taking a snapshot.
@@ -723,6 +788,10 @@ export class ReplicateResultProcessor {
     private _processingActivity?: Promise<void>;
     private _processingActivityDone?: PromiseWithResolvers<void>;
 
+    /**
+     * Publish bounded application activity while queued work can run.
+     * Suspension releases that activity marker; pendingApplications separately tracks real completion.
+     */
     private updateProcessingActivity() {
         if (this.isSuspended) {
             this._processingActivityDone?.resolve();
@@ -806,7 +875,8 @@ export class ReplicateResultProcessor {
     private _isRunningProcessQueue: boolean = false;
 
     /**
-     * Process the queued changes.
+     * Dispatch queued changes after semaphore capacity becomes available, without joining each one.
+     * Per-document operations own their completion and resource release; this guard owns only the loop.
      */
     private async runProcessQueue() {
         // Avoid re-entrance, suspend processing, or empty queue loop consumption.
@@ -862,6 +932,11 @@ export class ReplicateResultProcessor {
         }
     }
 
+    /**
+     * Own one received target from application through failure retention and queue bookkeeping.
+     * Persist a retained failure before requesting recovery, then remove the original queued object
+     * and publish counts before the final snapshot. The surrounding scope releases resources later.
+     */
     private async parseDocumentChangeAndSaveSnapshot(
         change: PouchDB.Core.ExistingDocument<EntryDoc>,
         resources: Scope<unknown>
@@ -875,51 +950,70 @@ export class ReplicateResultProcessor {
                 this.applyCurrentDocumentChange(change, targetScope, resources, recoveryAttempt)
             );
         } catch (error) {
-            // The input target owns retention, even if reading a historical revision failed.
-            // Save first; recovery can drain this attempt and must not be awaited here.
-            try {
-                if (isAnyNote(change)) {
-                    await this.retainReflectionFailure(
-                        { documentId: change._id, revision: change._rev },
-                        error,
-                        targetScope
-                    );
-                }
-            } finally {
-                if (
-                    selectedDatabase &&
-                    error instanceof ContentReadError &&
-                    (error.failure.resources.includes("local-database") || error.failure.resources.length === 0)
-                ) {
-                    fireAndForget(() => this.services.database.onLocalDatabaseError(selectedDatabase, error));
-                }
-                this.reportVaultReflectionFailure(change as MetaEntry, error);
-            }
+            await this.recordDocumentApplicationFailure(change, error, targetScope, selectedDatabase);
         } finally {
-            if (recoveryAttempt) {
-                this.reflectionTargets.finishAttempt(recoveryAttempt);
-            }
-            // Remove from processing queue
-            this._processingChanges = this._processingChanges.filter((e) => e !== queuedChange);
-            // Queue visibility must not wait for persisting a recovery snapshot. Consumers
-            // use this count to decide whether the reflected Vault is ready for interaction.
-            this.reportStatus();
-            try {
-                if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
-                    try {
-                        await this._takeSnapshot();
-                    } catch (error) {
-                        this.logError(error);
-                    }
-                } else {
-                    this.triggerTakeSnapshot();
-                }
-            } finally {
-                this.updateProcessingActivity();
-            }
+            await this.finishDocumentChange(queuedChange, recoveryAttempt);
         }
     }
 
+    /**
+     * Persist the input target's failure, including failed historical reads, before requesting recovery.
+     * Recovery can drain this operation, so its request must not be awaited here.
+     */
+    private async recordDocumentApplicationFailure(
+        change: PouchDB.Core.ExistingDocument<EntryDoc>,
+        error: unknown,
+        scope: ReflectionApplicationScope,
+        selectedDatabase: ReplicateResultProcessorServices["database"]["localDatabaseDirect"]
+    ): Promise<void> {
+        try {
+            if (isAnyNote(change)) {
+                await this.retainReflectionFailure({ documentId: change._id, revision: change._rev }, error, scope);
+            }
+        } finally {
+            if (
+                selectedDatabase &&
+                error instanceof ContentReadError &&
+                (error.failure.resources.includes("local-database") || error.failure.resources.length === 0)
+            ) {
+                fireAndForget(() => this.services.database.onLocalDatabaseError(selectedDatabase, error));
+            }
+            this.reportVaultReflectionFailure(change as MetaEntry, error);
+        }
+    }
+
+    /**
+     * Finish the attempt and remove its original queued object before persisting queue state.
+     * Publish counts first so consumers can observe completion even if the final save is delayed.
+     */
+    private async finishDocumentChange(
+        queuedChange: PouchDB.Core.ExistingDocument<EntryDoc>,
+        recoveryAttempt?: RecoveryAttempt
+    ): Promise<void> {
+        if (recoveryAttempt) {
+            this.reflectionTargets.finishAttempt(recoveryAttempt);
+        }
+        this._processingChanges = this._processingChanges.filter((entry) => entry !== queuedChange);
+        this.reportStatus();
+        try {
+            if (this._queuedChanges.length === 0 && this._processingChanges.length === 0) {
+                try {
+                    await this._takeSnapshot();
+                } catch (error) {
+                    this.logError(error);
+                }
+            } else {
+                this.triggerTakeSnapshot();
+            }
+        } finally {
+            this.updateProcessingActivity();
+        }
+    }
+
+    /**
+     * Revalidate a retry target and apply modification-time, virtual-document, path, and size policy.
+     * Terminal application errors remain with the enclosing target-retention boundary.
+     */
     private async applyCurrentDocumentChange(
         change: PouchDB.Core.ExistingDocument<EntryDoc>,
         scope: ReflectionApplicationScope,
@@ -941,7 +1035,7 @@ export class ReplicateResultProcessor {
                 const docPath = this.getPath(change);
                 this.log(
                     `Processing ${docPath} has been skipped due to modification time (${new Date(
-                        docMtime * 1000
+                        docMtime
                     ).toISOString()}) exceeding the limit`,
                     LOG_LEVEL_INFO
                 );
@@ -999,7 +1093,10 @@ export class ReplicateResultProcessor {
         log: (message, level) => this.log(message, level),
     };
 
-    // Capture the target before waiting for the per-document lock.
+    /**
+     * Apply a previously captured target under its document lock and recheck freshness after waiting.
+     * Scanner retries retain their reconciliation policy; other targets use ordinary application.
+     */
     private _applyToDatabase(
         doc: PouchDB.Core.ExistingDocument<AnyEntry>,
         scope: ReflectionApplicationScope,

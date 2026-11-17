@@ -149,13 +149,13 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         const deferredLifecycle = this.deferredBoundedLifecycle;
         this.deferredBoundedLifecycle = undefined;
         const keepActiveInBackground = this.keepReplicationActiveInBackground();
-        if (deferredLifecycle === "suspend-if-hidden" && activeWindow.document.hidden) {
+        if (deferredLifecycle === "suspend-if-hidden" && !this.services.context.isActiveDocumentVisible()) {
             if (!keepActiveInBackground) await this.services.appLifecycle.onSuspending();
             return;
         }
         if (
             deferredLifecycle === "restart-continuous-if-visible" &&
-            !activeWindow.document.hidden &&
+            this.services.context.isActiveDocumentVisible() &&
             keepActiveInBackground &&
             this.settings.liveSync
         ) {
@@ -202,7 +202,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
     async watchWindowVisibilityAsync() {
         if (this.settings.suspendFileWatching) {
             if (this.settings.isConfigured && this.services.appLifecycle.isReady() && this.hasBoundedActivity()) {
-                const isHidden = activeWindow.document.hidden;
+                const isHidden = !this.services.context.isActiveDocumentVisible();
                 this.isLastHidden = isHidden;
                 this.deferredBoundedLifecycle = isHidden ? "suspend-if-hidden" : undefined;
                 this.deferLifecycleUntilBoundedActivityEnds();
@@ -217,7 +217,7 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
             return;
         }
 
-        const isHidden = activeWindow.document.hidden;
+        const isHidden = !this.services.context.isActiveDocumentVisible();
         if (this.isLastHidden === isHidden) {
             return;
         }

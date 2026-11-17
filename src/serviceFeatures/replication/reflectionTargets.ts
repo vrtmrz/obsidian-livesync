@@ -1,6 +1,7 @@
 import type { ContentReadFailure } from "@vrtmrz/livesync-commonlib/replication";
 import { isInternalMetadata } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 
+/** A retained document revision, its remaining dependencies, and its finite retry allowance. */
 export interface PendingReflection {
     documentId: string;
     revision: string;
@@ -13,10 +14,15 @@ export interface PendingReflection {
     running: boolean;
 }
 
+/** Read and explicitly act on retained work without exposing mutable target ownership. */
 export interface ReflectionRecoveryView {
+    /** Inspect current targets; this does not admit retries or read file content. */
     list(): readonly PendingReflection[];
+    /** Await admission and persistence of selected manual retries, rather than their file application. */
     retry(documentIds: readonly string[]): Promise<void>;
+    /** Retire targets already reflected or excluded by policy, without applying their contents. */
     reconcile(): Promise<void>;
+    /** Observe published target-state changes and return an unsubscribe function. */
     onChanged(listener: () => void): () => void;
 }
 
@@ -64,34 +70,59 @@ type FailureObservation = {
     currentRevision?: string;
 };
 
+type StoredPendingReflectionHeader = Pick<
+    PendingReflectionRecord,
+    "documentId" | "revision" | "source" | "state" | "automaticAttempted" | "reason"
+> & { resources?: unknown };
+
 function recoveryKey(documentId: string, revision: string): string {
     return JSON.stringify([documentId, revision]);
 }
 
-function isPendingReflectionRecord(value: unknown): value is PendingReflectionRecord {
+/** Validate the required snapshot header while leaving optional resources untrusted for restore. */
+function isStoredPendingReflectionHeader(value: unknown): value is StoredPendingReflectionHeader {
     if (!value || typeof value !== "object") {
         return false;
     }
-    return (
-        "documentId" in value &&
-        typeof value.documentId === "string" &&
-        "revision" in value &&
-        typeof value.revision === "string" &&
-        "source" in value &&
-        (value.source === "scan" || value.source === "received") &&
-        "state" in value &&
-        (value.state === "waiting" || value.state === "review") &&
-        "automaticAttempted" in value &&
-        typeof value.automaticAttempted === "boolean" &&
-        "reason" in value &&
-        typeof value.reason === "string"
-    );
+
+    // Identity names the retained document revision.
+    if (
+        !("documentId" in value) ||
+        typeof value.documentId !== "string" ||
+        !("revision" in value) ||
+        typeof value.revision !== "string"
+    ) {
+        return false;
+    }
+
+    // Source and state must be from the supported snapshot vocabulary.
+    if (
+        !("source" in value) ||
+        (value.source !== "scan" && value.source !== "received") ||
+        !("state" in value) ||
+        (value.state !== "waiting" && value.state !== "review")
+    ) {
+        return false;
+    }
+
+    // The finite retry allowance and its reason are required before restore normalises resources.
+    if (
+        !("automaticAttempted" in value) ||
+        typeof value.automaticAttempted !== "boolean" ||
+        !("reason" in value) ||
+        typeof value.reason !== "string"
+    ) {
+        return false;
+    }
+
+    return true;
 }
 
 function isRecoveryResource(value: unknown): value is RecoveryResource {
     return value === "local-database" || value === "remote";
 }
 
+/** Recover only dependencies represented explicitly by older snapshot reasons. */
 function legacyResources(reason: string): RecoveryResource[] {
     if (reason === "local-database") {
         return ["local-database"];
@@ -106,11 +137,13 @@ function describeResources(resources: readonly RecoveryResource[]): string {
     return resources.length === 0 ? "unavailable" : [...new Set(resources)].sort().join(",");
 }
 
+/** Accept only explicitly known dependencies; unknown resource data stays unclassified. */
 function failureResources(failure: ContentReadFailure): RecoveryResource[] {
     const resources: unknown = failure.resources;
     return Array.isArray(resources) && resources.every(isRecoveryResource) ? [...new Set(resources)].sort() : [];
 }
 
+/** Consume only this scope's own obsolete-target exit, preserving unrelated failure identity. */
 function targetScope(isCurrent: () => boolean): ReflectionTargetScope {
     let obsolete: Error | undefined;
     return {
@@ -137,7 +170,9 @@ export class ReflectionTargets {
     private readonly pending = new Map<string, MutablePendingReflection>();
     private readonly attempts = new Map<string, MutableRecoveryAttempt>();
     private readonly listeners = new Set<() => void>();
+    /** Invalidates issued scopes on reset; restoring records does not revive those scopes. */
     private generation = 0;
+    /** Counts published state changes so callers can decide whether another snapshot is needed. */
     private changeVersion = 0;
     private stopped = false;
 
@@ -176,6 +211,7 @@ export class ReflectionTargets {
         };
     }
 
+    /** Advance the observed change version and notify listeners without persisting a snapshot. */
     notifyChanged(): void {
         this.changeVersion++;
         for (const listener of this.listeners) {
@@ -194,6 +230,7 @@ export class ReflectionTargets {
         this.listeners.clear();
     }
 
+    /** Test target object ownership, rather than only matching its document and revision strings. */
     isCurrent(target: PendingReflectionRecord): boolean {
         return !this.stopped && this.pending.get(target.documentId) === target;
     }
@@ -225,6 +262,7 @@ export class ReflectionTargets {
         };
     }
 
+    /** Admit ordinary versioned file failures only while retention policy and this owner allow it. */
     acceptsFailure(failure: ContentReadFailure): boolean {
         return (
             !!failure.revision &&
@@ -235,6 +273,11 @@ export class ReflectionTargets {
         );
     }
 
+    /**
+     * Merge a failure into its current target without letting late I/O replace newer retained work.
+     * The captured generation, prior record, and observed revision constrain which updates are valid.
+     * This changes memory and notifies listeners; the processor owns the durable write.
+     */
     private retainFailure(
         failure: ContentReadFailure,
         source: PendingReflectionRecord["source"],
@@ -303,15 +346,22 @@ export class ReflectionTargets {
         this.notifyChanged();
     }
 
+    /** Update a still-owned target's review reason and publish the change without saving it. */
     markForReview(target: PendingReflectionRecord | undefined, reason: string): void {
         const current = target && this.pending.get(target.documentId);
         if (current && current === target) {
-            current.state = "review";
-            current.reason = reason;
+            this.moveTargetToReview(current, reason);
         }
         this.notifyChanged();
     }
 
+    /** Update a target's review state and reason without publishing a change. */
+    private moveTargetToReview(target: MutablePendingReflection, reason: string): void {
+        target.state = "review";
+        target.reason = reason;
+    }
+
+    /** Require waiting state, an unused automatic allowance, and no remaining recovery dependencies. */
     private automaticEligible(target: PendingReflectionRecord): boolean {
         return target.state === "waiting" && !target.automaticAttempted && target.resources.length === 0;
     }
@@ -363,6 +413,7 @@ export class ReflectionTargets {
         return attempt;
     }
 
+    /** Require both the original target object and its exact reserved attempt to remain current. */
     isCurrentAttempt(attempt: RecoveryAttempt): boolean {
         return (
             this.pending.get(attempt.documentId) === attempt.target &&
@@ -370,6 +421,7 @@ export class ReflectionTargets {
         );
     }
 
+    /** Claim an existing reservation once; ordinary received work does not create one here. */
     startAttempt(documentId: string, revision: string): RecoveryAttempt | undefined {
         const attempt = this.attempts.get(recoveryKey(documentId, revision));
         if (!attempt || attempt.started) {
@@ -379,6 +431,7 @@ export class ReflectionTargets {
         return attempt;
     }
 
+    /** Release only this reservation and retain its outcome on the still-current target for review. */
     finishAttempt(attempt: RecoveryAttempt, reason = "reflection-failed"): void {
         const key = recoveryKey(attempt.documentId, attempt.revision);
         if (this.attempts.get(key) !== attempt) {
@@ -387,12 +440,12 @@ export class ReflectionTargets {
         this.attempts.delete(key);
         const target = this.pending.get(attempt.documentId);
         if (target === attempt.target) {
-            target.state = "review";
-            target.reason = attempt.failureReason ?? reason;
+            this.moveTargetToReview(target, attempt.failureReason ?? reason);
         }
         this.notifyChanged();
     }
 
+    /** Copy pending records, resource arrays, and minimal attempt identities for the durable snapshot. */
     snapshot(): ReflectionSnapshot {
         return {
             ...(this.pending.size > 0
@@ -415,16 +468,20 @@ export class ReflectionTargets {
         };
     }
 
-    /** Return a queue filter so consumed recovery work cannot be replayed as ordinary work. */
+    /**
+     * Validate and migrate stored targets, preserving newer records and consumed automatic allowances.
+     * Return a queue filter so interrupted recovery attempts cannot replay as ordinary received work.
+     */
     restore(snapshot: ReflectionSnapshot): (documentId: string, revision: string) => boolean {
         const interrupted = new Set(
             (snapshot.recoveryAttempts ?? []).map((attempt) => recoveryKey(attempt.documentId, attempt.revision))
         );
         for (const stored of snapshot.pendingReflections ?? []) {
-            if (!isPendingReflectionRecord(stored)) {
+            const storedSnapshotValue: unknown = stored;
+            if (!isStoredPendingReflectionHeader(storedSnapshotValue)) {
                 continue;
             }
-            const storedResourcesField = (stored as Partial<PendingReflectionRecord>).resources as unknown;
+            const storedResourcesField = storedSnapshotValue.resources;
             const validResources =
                 Array.isArray(storedResourcesField) && storedResourcesField.every(isRecoveryResource);
             const storedResources = validResources
@@ -460,7 +517,10 @@ export class ReflectionTargets {
         return (documentId, revision) => !interrupted.has(recoveryKey(documentId, revision));
     }
 
-    /** Reset invalidates issued scopes even when persisting the reset later fails. */
+    /**
+     * Invalidate issued scopes and detach records for a logical reset.
+     * Rollback restores absent records and reservations, but deliberately keeps old scopes obsolete.
+     */
     beginReset() {
         this.generation++;
         const previousPending = [...this.pending.entries()];

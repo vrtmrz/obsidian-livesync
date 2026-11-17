@@ -110,52 +110,63 @@ describe("ModuleLiveSyncMain", () => {
         expect(log).toHaveBeenCalledWith("Ui.Common.LocalDatabaseInitialisationFailed", LOG_LEVEL_NOTICE);
     });
 
-    it("awaits startup failure registration before continuing initialisation", async () => {
-        const registered = promiseWithResolvers<void>();
-        const target = { documentId: "pending.md", revision: "1-pending" } as ReflectionTarget;
-        const failure = new Error("Content unavailable");
-        const onFileReflectionFailed = vi.fn(() => registered.promise);
-        const appLifecycle = {
-            onLayoutReady: vi.fn(async () => true),
-            onFirstInitialise: vi.fn(async () => true),
-            onScanningStartupIssues: vi.fn(async () => true),
-        };
-        const initialiseDatabase = vi.fn(
-            async (
-                _showNotice: boolean,
-                _rebuild: boolean,
-                _ignoreSuspending: boolean,
-                _continueOnFailure: boolean,
-                options: {
-                    onReflectionFailed: (target: ReflectionTarget, error: unknown) => Promise<void>;
+    it.each(["accepted", "declined", "rejected"] as const)(
+        "awaits startup failure registration: %s",
+        async (result) => {
+            const registered = promiseWithResolvers<boolean>();
+            const target = { documentId: "pending.md", revision: "1-pending" } as ReflectionTarget;
+            const failure = new Error("Content unavailable");
+            const onFileReflectionFailed = vi.fn(() => registered.promise);
+            const appLifecycle = {
+                onLayoutReady: vi.fn(async () => true),
+                onFirstInitialise: vi.fn(async () => true),
+                onScanningStartupIssues: vi.fn(async () => true),
+            };
+            const initialiseDatabase = vi.fn(
+                async (
+                    _showNotice: boolean,
+                    _rebuild: boolean,
+                    _ignoreSuspending: boolean,
+                    _continueOnFailure: boolean,
+                    options: {
+                        onReflectionFailed: (target: ReflectionTarget, error: unknown) => Promise<void>;
+                    }
+                ) => {
+                    await options.onReflectionFailed(target, failure);
+                    return "completed-with-file-failures";
                 }
-            ) => {
-                await options.onReflectionFailed(target, failure);
-                return "completed-with-file-failures";
+            );
+            const host = {
+                core: {
+                    startupDatabaseOptions: { recoverFileReflectionFailures: true },
+                    services: { appLifecycle },
+                },
+                services: {
+                    API: { getPlatform: () => "ios" },
+                    appLifecycle,
+                    control: { applySettings: vi.fn(async () => undefined) },
+                    databaseEvents: { initialiseDatabase },
+                    replication: { onFileReflectionFailed },
+                },
+                settings: { suspendFileWatching: false, suspendParseReplicationResult: false },
+                _log: vi.fn(),
+            };
+            const starting = ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
+            await vi.waitFor(() => expect(onFileReflectionFailed).toHaveBeenCalledExactlyOnceWith(target, failure));
+            expect(appLifecycle.onFirstInitialise).not.toHaveBeenCalled();
+            if (result === "rejected") {
+                const registrationFailure = new Error("Failure retention could not be saved");
+                const rejected = expect(starting).rejects.toBe(registrationFailure);
+                registered.reject(registrationFailure);
+                await rejected;
+                expect(appLifecycle.onFirstInitialise).not.toHaveBeenCalled();
+                return;
             }
-        );
-        const host = {
-            core: {
-                startupDatabaseOptions: { recoverFileReflectionFailures: true },
-                services: { appLifecycle },
-            },
-            services: {
-                API: { getPlatform: () => "ios" },
-                appLifecycle,
-                control: { applySettings: vi.fn(async () => undefined) },
-                databaseEvents: { initialiseDatabase },
-                replication: { onFileReflectionFailed },
-            },
-            settings: { suspendFileWatching: false, suspendParseReplicationResult: false },
-            _log: vi.fn(),
-        };
-        const starting = ModuleLiveSyncMain.prototype._onLiveSyncReady.call(host as never);
-        await vi.waitFor(() => expect(onFileReflectionFailed).toHaveBeenCalledExactlyOnceWith(target, failure));
-        expect(appLifecycle.onFirstInitialise).not.toHaveBeenCalled();
-        registered.resolve();
-        await expect(starting).resolves.toBe(true);
-        expect(appLifecycle.onFirstInitialise).toHaveBeenCalledOnce();
-    });
+            registered.resolve(result === "accepted");
+            await expect(starting).resolves.toBe(true);
+            expect(appLifecycle.onFirstInitialise).toHaveBeenCalledOnce();
+        }
+    );
 
     it("warns when start-up continues with individual file failures", async () => {
         const initialiseDatabase = vi.fn(async () => "completed-with-file-failures");
