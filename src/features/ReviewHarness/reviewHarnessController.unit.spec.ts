@@ -96,6 +96,14 @@ function createRuntime(): ReviewHarnessRuntime & {
             detail: "File content hash measurements completed.",
             observations: ["SHA-256, 4 KiB: median=1.00 ms; range=1.00–1.00 ms"],
         })),
+        runDatabaseAbortDiagnostic: vi.fn(async () => ({
+            status: "observed" as const,
+            detail: "Abort injection and read states were observed.",
+            observations: [
+                "idb.abort.injected=true; operation=pending; drain=false",
+                "indexeddb.abort.injected=true; operation=pending; drain=false",
+            ],
+        })),
         async readContinuation() {
             return this.continuation;
         },
@@ -208,7 +216,7 @@ describe("ReviewHarnessController", () => {
         expect(controller.snapshot().results["file-content-hash-performance"].status).toBe("idle");
     });
 
-    it("keeps both database diagnostics out of Automatic and Full review", async () => {
+    it("keeps all database diagnostics out of Automatic and Full review", async () => {
         const runtime = createRuntime();
         const { probe } = createDatabaseProbe();
         runtime.databaseProbe = probe;
@@ -218,8 +226,10 @@ describe("ReviewHarnessController", () => {
         await controller.runAllScenarios();
 
         expect(probe.start).not.toHaveBeenCalled();
+        expect(runtime.runDatabaseAbortDiagnostic).not.toHaveBeenCalled();
         expect(controller.snapshot().results["database-connection-loss"].status).toBe("idle");
         expect(controller.snapshot().results["database-background-events"].status).toBe("idle");
+        expect(controller.snapshot().results["database-transaction-abort"].status).toBe("idle");
     });
 
     it("dispatches individual probe modes and includes live observations in the report", async () => {
@@ -396,6 +406,62 @@ describe("ReviewHarnessController", () => {
         expect(runtime.runFileContentHashBenchmark).toHaveBeenCalledOnce();
         expect(controller.snapshot().results["file-content-hash-performance"]).toMatchObject({ status: "passed" });
         expect(runtime.runVaultRoundTrip).not.toHaveBeenCalled();
+    });
+
+    it("restarts after an abort observation only when the user requests it", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+        expect(controller.canRestartAfterDatabaseAbortDiagnostic).toBe(false);
+        controller.restartAfterDatabaseAbortDiagnostic();
+        expect(runtime.restart).not.toHaveBeenCalled();
+
+        await controller.runScenario("database-transaction-abort");
+        expect(controller.canRestartAfterDatabaseAbortDiagnostic).toBe(true);
+        expect(runtime.restart).not.toHaveBeenCalled();
+        await controller.copyReport();
+        expect(runtime.restart).not.toHaveBeenCalled();
+
+        controller.restartAfterDatabaseAbortDiagnostic();
+        expect(runtime.restart).toHaveBeenCalledOnce();
+        expect(runtime.continuation).toBeNull();
+    });
+
+    it("runs the transaction-abort diagnostic only on request and copies its bounded observations", async () => {
+        const runtime = createRuntime();
+        const controller = new ReviewHarnessController(runtime);
+
+        await controller.runScenario("settings-lifecycle");
+        await controller.runAutomaticScenarios();
+        await controller.runAllScenarios();
+
+        expect(runtime.runDatabaseAbortDiagnostic).not.toHaveBeenCalled();
+        expect(controller.snapshot().results["database-transaction-abort"].status).toBe("idle");
+
+        await controller.runScenario("database-transaction-abort");
+        await controller.copyReport();
+
+        expect(runtime.runDatabaseAbortDiagnostic).toHaveBeenCalledOnce();
+        expect(controller.snapshot().results["database-transaction-abort"]).toEqual({
+            status: "observed",
+            detail: "Abort injection and read states were observed.",
+            observations: [
+                "idb.abort.injected=true; operation=pending; drain=false",
+                "indexeddb.abort.injected=true; operation=pending; drain=false",
+            ],
+        });
+        const report = vi.mocked(runtime.copyText).mock.calls[0][0];
+        expect(report).toContain("Settings lifecycle (settings-lifecycle)");
+        expect(report).toContain(
+            "| Settings lifecycle (settings-lifecycle) | automatic | passed | Loaded an existing Vault"
+        );
+        expect(report).toContain("Database transaction-abort diagnostic (database-transaction-abort)");
+        expect(report).toContain(
+            "| Database transaction-abort diagnostic (database-transaction-abort) | manual | observed | Abort injection and read states were observed."
+        );
+        expect(report).toContain("idb.abort.injected=true; operation=pending; drain=false");
+        expect(report).toContain("indexeddb.abort.injected=true; operation=pending; drain=false");
+        expect(report).not.toContain("private-vault");
+        expect(report).not.toContain("secret-note.md");
     });
 
     it("includes file content hash measurements in Full review", async () => {

@@ -62,9 +62,18 @@ try {
         });
         await page.evaluate(async () => {
             const host = window as unknown as {
-                app: { plugins: { plugins: Record<string, { core: { services: { API: { showWindow(type: string): Promise<void> } } } }> } };
+                app: {
+                    plugins: {
+                        plugins: Record<
+                            string,
+                            { core: { services: { API: { showWindow(type: string): Promise<void> } } } }
+                        >;
+                    };
+                };
             };
-            await host.app.plugins.plugins["obsidian-livesync"].core.services.API.showWindow("self-hosted-livesync-review-harness");
+            await host.app.plugins.plugins["obsidian-livesync"].core.services.API.showWindow(
+                "self-hosted-livesync-review-harness"
+            );
         });
         const harness = page.locator('[data-testid="review-harness"]');
         await harness.waitFor({ state: "visible" });
@@ -106,6 +115,42 @@ try {
                 .getByText(mode === "database-connection-loss" ? "Passed:" : "Not observed:", { exact: false })
                 .waitFor();
         }
+        const abortMode = "database-transaction-abort";
+        const restartButton = page.locator('[data-testid="review-harness-abort-restart"]');
+        assert.equal(await restartButton.count(), 0);
+        await page.evaluate(() => {
+            const target = window as unknown as {
+                app: {
+                    plugins: {
+                        plugins: Record<string, { core: { services: { appLifecycle: { performRestart(): void } } } }>;
+                    };
+                };
+                abortRestartRequests: number;
+                restoreAbortRestartProbe(): void;
+            };
+            const lifecycle = target.app.plugins.plugins["obsidian-livesync"].core.services.appLifecycle;
+            const descriptor = Object.getOwnPropertyDescriptor(lifecycle, "performRestart");
+            target.abortRestartRequests = 0;
+            lifecycle.performRestart = () => {
+                target.abortRestartRequests++;
+            };
+            target.restoreAbortRestartProbe = () => {
+                if (descriptor) {
+                    Object.defineProperty(lifecycle, "performRestart", descriptor);
+                } else {
+                    Reflect.deleteProperty(lifecycle, "performRestart");
+                }
+            };
+        });
+        await page.locator(`[data-testid="review-harness-run-${abortMode}"]`).click();
+        await page
+            .locator(".modal-container")
+            .filter({ hasText: "Review Harness: transaction abort" })
+            .getByRole("button", { name: "Yes" })
+            .click();
+        const abortResult = page.locator(`[data-testid="review-harness-result-${abortMode}"]`);
+        await abortResult.getByText("Observed:", { exact: false }).waitFor({ timeout: 25000 });
+        await assertNoHorizontalOverflow(page, harness, { label: "Transaction-abort observations" });
         await page.evaluate(() => {
             const target = window as unknown as { databaseProbeCopiedReport?: string };
             navigator.clipboard.writeText = async (value) => {
@@ -121,13 +166,26 @@ try {
         assert.ok(report.includes("active-local-native.close: listener=unavailable"));
         assert.ok(report.includes("active-local.info=ok"));
         assert.ok(report.includes("revisionMatches=true"));
+        for (const adapter of ["idb", "indexeddb"]) {
+            assert.ok(report.includes(`${adapter}.abort.injected=true; operation=pending; drain=false`));
+            assert.ok(report.includes(`${adapter}.reopen=not-attempted; this diagnostic observes the aborted read`));
+            assert.ok(report.includes(`${adapter}.cleanup=completed`));
+        }
         assert.ok(!report.includes(vault.name));
+        const restartRequests = () =>
+            page.evaluate(() => (window as unknown as { abortRestartRequests: number }).abortRestartRequests);
+        assert.equal(await restartRequests(), 0);
+        await restartButton.click();
+        assert.equal(await restartRequests(), 1);
+        await page.evaluate(() =>
+            (window as unknown as { restoreAbortRestartProbe(): void }).restoreAbortRestartProbe()
+        );
         const directory = process.env.E2E_OBSIDIAN_DIAGNOSTICS_DIR ?? "/tmp/livesync-database-probe";
         await mkdir(directory, { recursive: true });
         await writeFile(resolve(directory, "obsidian-report.md"), report);
         await page.screenshot({ path: resolve(directory, "obsidian-database-probe.png") });
         console.log(
-            "Real Obsidian: controlled close, diagnostic reopen, event-only run, mobile width, and copied report passed"
+            "Real Obsidian: controlled close, diagnostic reopen, event-only run, unfinished stock-adapter reads, mobile width, and copied report observations passed"
         );
     });
 } finally {

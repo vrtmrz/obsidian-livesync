@@ -4,6 +4,7 @@ export type ReviewHarnessScenarioStatus =
     | "running"
     | "waiting-for-user"
     | "passed"
+    | "observed"
     | "failed"
     | "not-observed"
     | "unsupported"

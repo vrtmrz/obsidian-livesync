@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<ReviewHarnessScenarioStatus, string> = {
     running: "Running",
     "waiting-for-user": "Waiting for review",
     passed: "Passed",
+    observed: "Observed",
     failed: "Failed",
     "not-observed": "Not observed",
     unsupported: "Unsupported",
@@ -127,6 +128,16 @@ export class ReviewHarnessView extends ItemView {
 
         if (matchingProbe) {
             this.renderDatabaseProbeGuide(id, matchingProbe);
+        }
+
+        if (id === "database-transaction-abort" && this.controller.canRestartAfterDatabaseAbortDiagnostic) {
+            const actions = new Setting(this.contentEl)
+                .setName("Copy the report before restarting Obsidian")
+                .setDesc("Restart happens only when you press the button.")
+                .setClass("sls-review-harness__actions");
+            this.addActionButton(actions, "Restart Obsidian", "review-harness-abort-restart", () =>
+                this.controller.restartAfterDatabaseAbortDiagnostic()
+            );
         }
 
         if (id === "compatibility-review" && result.status === "waiting-for-user") {

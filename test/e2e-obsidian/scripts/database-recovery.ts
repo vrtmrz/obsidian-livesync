@@ -203,12 +203,32 @@ try {
             let receiverMetadataReadFailed = false;
             let recoveryGateReached = false;
             let pendingObservedBeforeReopen = false;
+            let pendingReadRejected = false;
+            let lateReadUsed = false;
+            let finishPendingRead: () => void = () => undefined;
+            // A separate read remains pending until the known connection failure retires its owner.
+            const pendingRead = before
+                .readFromDatabase(
+                    () =>
+                        new Promise<void>((resolve) => {
+                            finishPendingRead = resolve;
+                        })
+                )
+                .then(
+                    () => {
+                        lateReadUsed = true;
+                    },
+                    () => {
+                        pendingReadRejected = true;
+                    }
+                );
             let failure = "none";
             let releaseRecoveryGate: () => void = () => undefined;
             const recoveryGateOpen = new Promise<void>((resolve) => {
                 releaseRecoveryGate = resolve;
             });
             const removeRecoveryGate = core.services.databaseEvents.onBeforeDatabaseRecovery.addHandler(async () => {
+                await pendingRead;
                 recoveryGateReached = true;
                 await recoveryGateOpen;
                 return true;
@@ -281,6 +301,8 @@ try {
                     pendingTarget.state === "waiting" &&
                     pendingTarget.reason === "local-database";
             } finally {
+                finishPendingRead();
+                await pendingRead;
                 releaseRecoveryGate();
                 removeRecoveryGate();
                 IDBDatabase.prototype.transaction = originalTransaction;
@@ -362,6 +384,8 @@ try {
                 injected: Boolean(injected),
                 failure,
                 receiverMetadataReadFailed: Boolean(receiverMetadataReadFailed),
+                pendingReadRejected,
+                lateReadUsed,
                 pendingObservedBeforeReopen,
                 receivedFileWasMissing,
                 receivedFileContent,
@@ -397,6 +421,8 @@ try {
         assert.equal(result.injected, true);
         assert.equal(result.failure, "InvalidStateError");
         assert.equal(result.receiverMetadataReadFailed, true);
+        assert.equal(result.pendingReadRejected, true);
+        assert.equal(result.lateReadUsed, false);
         assert.equal(result.receivedFileWasMissing, true);
         assert.equal(result.receivedFileContent, receivedContent);
         assert.equal(result.receivedDatabaseContent, receivedContent);

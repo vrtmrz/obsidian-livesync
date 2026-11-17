@@ -45,7 +45,7 @@ import {
 } from "./applyReplicatedDocument";
 
 import {
-    ReflectionTargets,
+    ReflectionRecoveryState,
     type PendingReflectionRecord,
     type RecoveryAttempt,
     type RecoveryResource,
@@ -53,7 +53,7 @@ import {
     type ReflectionTargetScope,
     type ReflectionRecoveryView,
     type ReflectionSnapshot,
-} from "./reflectionTargets";
+} from "./reflectionRecoveryState";
 
 const KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT = "replicationResultProcessorSnapshot";
 const REPROCESS_BATCH_SIZE = 100;
@@ -79,7 +79,7 @@ type ReplicateResultProcessorServices = Pick<
  * reset may replace their backing instances, so retaining an earlier concrete
  * database would be invalid.
  */
-interface ReplicateResultProcessorContext {
+export interface ReplicateResultProcessorContext {
     readonly onVaultReflectionFailure?: () => void;
     readonly canRetainFailedReflection?: () => boolean;
     readonly canRetryResource?: (resource: RecoveryResource) => boolean;
@@ -104,7 +104,7 @@ type ReplicateResultProcessorState = ReflectionSnapshot & {
 };
 type AdmittedRecoveryAttempt = { readonly attempt: RecoveryAttempt; readonly entry: LoadedEntry };
 
-export type { PendingReflection, ReflectionRecoveryView } from "./reflectionTargets";
+export type { PendingReflection, ReflectionRecoveryView } from "./reflectionRecoveryState";
 
 function shortenId(id: string): string {
     return id.length > 10 ? id.substring(0, 10) : id;
@@ -114,7 +114,7 @@ function shortenRev(rev: string | undefined): string {
     return rev.length > 10 ? rev.substring(0, 10) : rev;
 }
 export class ReplicateResultProcessor {
-    private readonly reflectionTargets = new ReflectionTargets({
+    private readonly recoveryState = new ReflectionRecoveryState({
         canRetainFailures: () => this.context.canRetainFailedReflection?.() === true,
         canRetryResource: (resource) => this.context.canRetryResource?.(resource) === true,
         isApplicationReady: () => this.services.appLifecycle.isReady(),
@@ -131,10 +131,10 @@ export class ReplicateResultProcessor {
     private readonly recoveryAdmissionLock = Symbol("reflection-recovery-admission");
 
     readonly recovery: ReflectionRecoveryView = {
-        list: () => this.reflectionTargets.list(),
+        list: () => this.recoveryState.list(),
         retry: (ids) => this.scheduleRecovery("manual", ids),
         reconcile: () => this.reconcilePendingReflections(),
-        onChanged: (listener) => this.reflectionTargets.onChanged(listener),
+        onChanged: (listener) => this.recoveryState.onChanged(listener),
     };
 
     /**
@@ -147,7 +147,7 @@ export class ReplicateResultProcessor {
         error: unknown,
         source: PendingReflectionRecord["source"]
     ): Promise<void> {
-        const scope = this.reflectionTargets.issue(target.documentId, undefined, source);
+        const scope = this.recoveryState.issue(target.documentId, undefined, source);
         await this.retainReflectionFailure(target, error, scope);
     }
 
@@ -173,39 +173,39 @@ export class ReplicateResultProcessor {
         scope: ReflectionApplicationScope,
         currentRevision?: string
     ): Promise<void> {
-        if (!this.reflectionTargets.acceptsFailure(failure)) {
+        if (!this.recoveryState.acceptsFailure(failure)) {
             return;
         }
         await this.restoreFromSnapshotOnce();
-        const target = scope.retainFailure(failure, currentRevision);
-        if (target) {
-            await this.saveRecoveryState(target);
+        const pending = scope.retainFailure(failure, currentRevision);
+        if (pending) {
+            await this.saveRecoveryState(pending);
         }
     }
 
     /**
-     * Persist target and retry-allowance changes before acknowledging or enqueueing work.
-     * A failed save marks the affected target for review and propagates the write failure.
+     * Persist pending-record and retry-allowance changes before acknowledging or enqueueing work.
+     * A failed save marks the affected record for review and propagates the write failure.
      */
-    private async saveRecoveryState(target?: PendingReflectionRecord): Promise<void> {
+    private async saveRecoveryState(pending?: PendingReflectionRecord): Promise<void> {
         try {
             await this._takeSnapshot();
         } catch (error) {
-            this.reflectionTargets.markForReview(target, "snapshot-save-failed");
+            this.recoveryState.markForReview(pending, "snapshot-save-failed");
             throw error;
         }
     }
 
-    /** Remove a missing current target, or leave other inspection failures for manual review. */
-    private pendingInspectionFailed(target: PendingReflectionRecord, error: unknown): void {
-        if (!this.reflectionTargets.isCurrent(target)) {
+    /** Remove a missing current record, or leave other inspection failures for manual review. */
+    private pendingInspectionFailed(pending: PendingReflectionRecord, error: unknown): void {
+        if (!this.recoveryState.isCurrent(pending)) {
             return;
         }
         if (isNotFoundError(error)) {
-            this.reflectionTargets.remove(target);
+            this.recoveryState.remove(pending);
         } else {
             this.logError(error);
-            this.reflectionTargets.markForReview(target, "unavailable");
+            this.recoveryState.markForReview(pending, "unavailable");
         }
     }
 
@@ -214,42 +214,42 @@ export class ReplicateResultProcessor {
      * Obsolete, missing, filtered, or unreadable targets produce no candidate; a current database
      * read failure is retained before recovery is requested without joining this inspection.
      */
-    private async readPendingMetadata(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
-        const scope = this.reflectionTargets.inspect(target);
+    private async readPendingMetadata(pending: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
+        const scope = this.recoveryState.inspect(pending);
         return scope
             .run(async () => {
                 scope.checkpoint();
-                const current = await this.readRetainedMetadata(target);
+                const current = await this.readRetainedMetadata(pending);
                 if (!current) {
                     return;
                 }
                 scope.checkpoint();
-                return this.filterPendingMetadata(target, current, scope);
+                return this.filterPendingMetadata(pending, current, scope);
             })
             .catch((error: unknown): undefined => {
-                this.pendingInspectionFailed(target, error);
+                this.pendingInspectionFailed(pending, error);
                 return undefined;
             });
     }
 
     /** Retain a current database read failure and request recovery without joining this inspection. */
-    private async readRetainedMetadata(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
+    private async readRetainedMetadata(pending: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
         const selected = this.services.database.localDatabaseDirect;
         try {
-            return await this.localDatabase.getRaw<LoadedEntry>(target.documentId as DocumentID, { conflicts: true });
+            return await this.localDatabase.getRaw<LoadedEntry>(pending.documentId as DocumentID, { conflicts: true });
         } catch (error) {
             if (isNotFoundError(error)) {
                 throw error;
             }
-            if (this.reflectionTargets.isCurrent(target)) {
+            if (this.recoveryState.isCurrent(pending)) {
                 this.logError(error);
-                this.reflectionTargets.issue(target.documentId, undefined, target.source).retainFailure({
-                    documentId: target.documentId as DocumentID,
-                    revision: target.revision,
+                this.recoveryState.issue(pending.documentId, undefined, pending.source).retainFailure({
+                    documentId: pending.documentId as DocumentID,
+                    revision: pending.revision,
                     resources: ["local-database"],
                     cause: error,
                 });
-                // The caller persists the changed target; recovery must not wait on this inspection.
+                // The caller persists the changed record; recovery must not wait on this inspection.
                 if (selected) {
                     fireAndForget(() => this.services.database.onLocalDatabaseError(selected, error));
                 }
@@ -258,92 +258,92 @@ export class ReplicateResultProcessor {
         }
     }
 
-    /** Retire obsolete or excluded Metadata, checking target lifetime after asynchronous filtering. */
+    /** Retire obsolete or excluded Metadata, checking record lifetime after asynchronous filtering. */
     private async filterPendingMetadata(
-        target: PendingReflectionRecord,
+        pending: PendingReflectionRecord,
         current: LoadedEntry,
         scope: ReflectionTargetScope
     ): Promise<LoadedEntry | undefined> {
-        if (current._rev !== target.revision || !isAnyNote(current)) {
-            this.reflectionTargets.remove(target);
+        if (current._rev !== pending.revision || !isAnyNote(current)) {
+            this.recoveryState.remove(pending);
             return;
         }
         const targetFile = await this.services.vault.isTargetFile(this.getPath(current));
         scope.checkpoint();
         if (!targetFile || this.services.vault.isFileSizeTooLarge(current.size)) {
-            this.reflectionTargets.remove(target);
+            this.recoveryState.remove(pending);
             return;
         }
         return current;
     }
 
     /**
-     * Confirm reflection or existing policy during execution or reconciliation, then retire the target.
+     * Confirm reflection or existing policy during execution or reconciliation, then retire the record.
      * Admission uses Metadata alone so it does not consume content or provenance evidence early.
      */
-    private async currentPendingEntry(target: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
-        const scope = this.reflectionTargets.inspect(target);
+    private async currentPendingEntry(pending: PendingReflectionRecord): Promise<LoadedEntry | undefined> {
+        const scope = this.recoveryState.inspect(pending);
         return scope
             .run(async () => {
-                const current = await this.readPendingMetadata(target);
+                const current = await this.readPendingMetadata(pending);
                 if (!current) {
                     return;
                 }
                 scope.checkpoint();
-                const disposition = await this.context.inspectReflection?.(current, target.source);
+                const disposition = await this.context.inspectReflection?.(current, pending.source);
                 scope.checkpoint();
                 if (disposition === "reflected" || disposition === "policy") {
                     this.log(
                         `Retired pending reflection (${disposition}): ${this.getPath(current)}`,
                         LOG_LEVEL_VERBOSE
                     );
-                    this.reflectionTargets.remove(target);
+                    this.recoveryState.remove(pending);
                     return;
                 }
                 return current;
             })
             .catch((error: unknown): undefined => {
-                this.pendingInspectionFailed(target, error);
+                this.pendingInspectionFailed(pending, error);
                 return undefined;
             });
     }
 
     public async reconcilePendingReflections(): Promise<void> {
         await this.restoreFromSnapshotOnce();
-        if (this.reflectionTargets.isStopped) {
+        if (this.recoveryState.isStopped) {
             return;
         }
-        const before = this.reflectionTargets.version;
-        if (!this.reflectionTargets.hasPending) {
+        const before = this.recoveryState.version;
+        if (!this.recoveryState.hasPending) {
             return;
         }
-        for (const target of this.reflectionTargets.candidates()) {
-            if (!this.reflectionTargets.attempt(target.documentId, target.revision)) {
-                await this.currentPendingEntry(target);
+        for (const pending of this.recoveryState.candidates()) {
+            if (!this.recoveryState.attempt(pending.documentId, pending.revision)) {
+                await this.currentPendingEntry(pending);
             }
         }
-        if (this.reflectionTargets.version !== before) {
+        if (this.recoveryState.version !== before) {
             await this.saveRecoveryState();
         }
     }
 
     public get hasPendingReflections(): boolean {
-        return this.reflectionTargets.hasPending;
+        return this.recoveryState.hasPending;
     }
 
-    /** Reconcile only the retained target affected by an existing local file-change event. */
+    /** Reconcile only the pending record affected by an existing local file-change event. */
     public async reconcilePendingDocument(documentId: string): Promise<void> {
         await this.restoreFromSnapshotOnce();
-        if (this.reflectionTargets.isStopped) {
+        if (this.recoveryState.isStopped) {
             return;
         }
-        const target = this.reflectionTargets.get(documentId);
-        if (!target || this.reflectionTargets.attempt(documentId, target.revision)) {
+        const pending = this.recoveryState.get(documentId);
+        if (!pending || this.recoveryState.attempt(documentId, pending.revision)) {
             return;
         }
-        const before = this.reflectionTargets.version;
-        await this.currentPendingEntry(target);
-        if (!this.reflectionTargets.isStopped && this.reflectionTargets.version !== before) {
+        const before = this.recoveryState.version;
+        await this.currentPendingEntry(pending);
+        if (!this.recoveryState.isStopped && this.recoveryState.version !== before) {
             await this.saveRecoveryState();
         }
     }
@@ -357,11 +357,11 @@ export class ReplicateResultProcessor {
     public async stop(): Promise<void> {
         this.suspend();
         await Promise.allSettled([...this.pendingApplications]);
-        this.reflectionTargets.stop();
+        this.recoveryState.stop();
         try {
             await this._takeSnapshot();
         } finally {
-            this.reflectionTargets.clearListeners();
+            this.recoveryState.clearListeners();
         }
     }
 
@@ -375,7 +375,7 @@ export class ReplicateResultProcessor {
         resource: RecoveryResource = "remote"
     ): Promise<void> {
         await this.restoreFromSnapshotOnce();
-        const candidates = this.reflectionTargets.candidates();
+        const candidates = this.recoveryState.candidates();
         if (this.isSuspended || candidates.length === 0) {
             return;
         }
@@ -384,10 +384,10 @@ export class ReplicateResultProcessor {
             if (this.isSuspended) {
                 return;
             }
-            const before = this.reflectionTargets.version;
-            if (kind === "automatic") this.reflectionTargets.resourceRecovered(resource);
+            const before = this.recoveryState.version;
+            if (kind === "automatic") this.recoveryState.resourceRecovered(resource);
             const admitted = await this.admitRecoveryCandidates(candidates, kind, selected);
-            if (admitted.length === 0 && this.reflectionTargets.version === before) {
+            if (admitted.length === 0 && this.recoveryState.version === before) {
                 return;
             }
             await this.persistRecoveryAdmission(admitted);
@@ -395,21 +395,21 @@ export class ReplicateResultProcessor {
         });
     }
 
-    /** Persist consumed allowances before dispatch; failed writes leave admitted targets for review. */
+    /** Persist consumed allowances before dispatch; failed writes leave admitted records for review. */
     private async persistRecoveryAdmission(admitted: readonly AdmittedRecoveryAttempt[]): Promise<void> {
-        this.reflectionTargets.notifyChanged();
+        this.recoveryState.notifyChanged();
         try {
             await this.saveRecoveryState();
         } catch (error) {
             for (const { attempt } of admitted) {
-                this.reflectionTargets.finishAttempt(attempt, "snapshot-save-failed");
+                this.recoveryState.finishAttempt(attempt, "snapshot-save-failed");
             }
             throw error;
         }
     }
 
     /**
-     * Re-read current Metadata before reserving eligible targets under the admission lock.
+     * Re-read current Metadata before reserving eligible pending records under the admission lock.
      * Content and provenance inspection remain with execution or reconciliation.
      */
     private async admitRecoveryCandidates(
@@ -418,15 +418,15 @@ export class ReplicateResultProcessor {
         selected?: ReadonlySet<string>
     ): Promise<AdmittedRecoveryAttempt[]> {
         const admitted: AdmittedRecoveryAttempt[] = [];
-        for (const target of candidates) {
-            if ((selected && !selected.has(target.documentId)) || !this.reflectionTargets.canAdmit(target, kind)) {
+        for (const pending of candidates) {
+            if ((selected && !selected.has(pending.documentId)) || !this.recoveryState.canAdmit(pending, kind)) {
                 continue;
             }
-            const entry = await this.readPendingMetadata(target);
+            const entry = await this.readPendingMetadata(pending);
             if (!entry || this.isSuspended) {
                 continue;
             }
-            const attempt = this.reflectionTargets.admit(target, kind);
+            const attempt = this.recoveryState.admit(pending, kind);
             if (attempt) {
                 admitted.push({ attempt, entry });
             }
@@ -438,8 +438,8 @@ export class ReplicateResultProcessor {
     private async enqueueRecoveryAttempts(admitted: readonly AdmittedRecoveryAttempt[]): Promise<void> {
         let interrupted = false;
         for (const { attempt, entry } of admitted) {
-            if (this.isSuspended || !this.reflectionTargets.isCurrentAttempt(attempt)) {
-                this.reflectionTargets.finishAttempt(attempt, "interrupted");
+            if (this.isSuspended || !this.recoveryState.isCurrentAttempt(attempt)) {
+                this.recoveryState.finishAttempt(attempt, "interrupted");
                 interrupted = true;
             } else {
                 this.enqueueChange(entry as PouchDB.Core.ExistingDocument<EntryDoc>);
@@ -477,10 +477,10 @@ export class ReplicateResultProcessor {
 
     /** Discard old reflection work only after the requested startup database replacement succeeds. */
     public async completeStartupDatabaseReset(): Promise<void> {
-        const reset = this.reflectionTargets.beginReset();
+        const reset = this.recoveryState.beginReset();
         const previousQueue = this._queuedChanges;
         this._queuedChanges = this._queuedChanges.filter((entry) => reset.keepQueued(entry._id, entry._rev));
-        this.reflectionTargets.notifyChanged();
+        this.recoveryState.notifyChanged();
         try {
             await this._takeSnapshot();
         } catch (error) {
@@ -489,7 +489,7 @@ export class ReplicateResultProcessor {
                 ...previousQueue,
                 ...this._queuedChanges.filter((entry) => !previousQueue.includes(entry)),
             ];
-            this.reflectionTargets.notifyChanged();
+            this.recoveryState.notifyChanged();
             this.reportStatus();
             this.updateProcessingActivity();
             throw error;
@@ -575,7 +575,7 @@ export class ReplicateResultProcessor {
             this.waitingForDatabaseReset ||
             this.databaseRecoveryPaused ||
             !this.services.database.isDatabaseReady() ||
-            this.reflectionTargets.isStopped ||
+            this.recoveryState.isStopped ||
             this._suspended ||
             !this.acceptsResultApplication ||
             this.context.currentSettings().suspendParseReplicationResult ||
@@ -602,7 +602,7 @@ export class ReplicateResultProcessor {
                 const snapshot: ReplicateResultProcessorState = {
                     queued: this._queuedChanges.slice(),
                     processing: this._processingChanges.slice(),
-                    ...this.reflectionTargets.snapshot(),
+                    ...this.recoveryState.snapshot(),
                 };
                 await this.context.getKeyValueDB().set(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT, snapshot);
                 this.savedSnapshotVersion = version;
@@ -646,7 +646,7 @@ export class ReplicateResultProcessor {
             .getKeyValueDB()
             .get<ReplicateResultProcessorState>(KV_KEY_REPLICATION_RESULT_PROCESSOR_SNAPSHOT);
         if (snapshot) {
-            const keepQueued = this.reflectionTargets.restore(snapshot);
+            const keepQueued = this.recoveryState.restore(snapshot);
             // Consumed recovery attempts remain review work; ordinary queued work can resume.
             const restored = [...snapshot.processing, ...snapshot.queued].filter((entry) =>
                 keepQueued(entry._id, entry._rev)
@@ -654,7 +654,7 @@ export class ReplicateResultProcessor {
             const newQueue = [...restored, ...this._queuedChanges];
             this._queuedChanges = [];
             this.enqueueAll(newQueue);
-            this.reflectionTargets.notifyChanged();
+            this.recoveryState.notifyChanged();
             this.log(
                 `Restored from snapshot (${snapshot.processing.length + snapshot.queued.length} items)`,
                 LOG_LEVEL_INFO
@@ -841,9 +841,9 @@ export class ReplicateResultProcessor {
             // Replace the old queued change (This may performed batched updates, actually process performed always with the latest version, hence we can simply replace it if the change is the same type).
             if (isDeletedBefore === isDeletedNow) {
                 this._queuedChanges = this._queuedChanges.filter((e) => e._id != doc._id);
-                const interrupted = this.reflectionTargets.attempt(old._id, old._rev);
+                const interrupted = this.recoveryState.attempt(old._id, old._rev);
                 if (interrupted && !interrupted.started) {
-                    this.reflectionTargets.finishAttempt(interrupted, "interrupted");
+                    this.recoveryState.finishAttempt(interrupted, "interrupted");
                 }
                 this.log(`[Enqueue] requeued: ${docNote} (from rev: ${shortenRev(oldRev)})`, LOG_LEVEL_VERBOSE);
             }
@@ -942,8 +942,8 @@ export class ReplicateResultProcessor {
         resources: Scope<unknown>
     ) {
         const queuedChange = change;
-        const recoveryAttempt = this.reflectionTargets.startAttempt(change._id, change._rev);
-        const targetScope = this.reflectionTargets.issue(change._id, recoveryAttempt);
+        const recoveryAttempt = this.recoveryState.startAttempt(change._id, change._rev);
+        const targetScope = this.recoveryState.issue(change._id, recoveryAttempt);
         const selectedDatabase = this.services.database.localDatabaseDirect;
         try {
             await targetScope.run(() =>
@@ -991,7 +991,7 @@ export class ReplicateResultProcessor {
         recoveryAttempt?: RecoveryAttempt
     ): Promise<void> {
         if (recoveryAttempt) {
-            this.reflectionTargets.finishAttempt(recoveryAttempt);
+            this.recoveryState.finishAttempt(recoveryAttempt);
         }
         this._processingChanges = this._processingChanges.filter((entry) => entry !== queuedChange);
         this.reportStatus();
@@ -1072,7 +1072,7 @@ export class ReplicateResultProcessor {
         doc: PouchDB.Core.ExistingDocument<AnyEntry>,
         resources: Scope<unknown>,
         recoveryAttempt?: RecoveryAttempt,
-        targetScope = this.reflectionTargets.issue(doc._id, recoveryAttempt)
+        targetScope = this.recoveryState.issue(doc._id, recoveryAttempt)
     ) {
         return this.withCounting(async () => {
             resources.defer(await this._semaphore.acquire());
@@ -1085,7 +1085,7 @@ export class ReplicateResultProcessor {
         processOptional: (entry) => this.services.replication.processOptionalSynchroniseResult(entry),
         applyToStorage: (entry, operation) => this.applyToStorage(entry, operation),
         onReflected: async (id) => {
-            const pending = this.reflectionTargets.get(id);
+            const pending = this.recoveryState.get(id);
             if (pending) {
                 await this.currentPendingEntry(pending);
             }
@@ -1148,7 +1148,7 @@ export class ReplicateResultProcessor {
      */
     protected async checkIsChangeRequiredForDatabaseProcessing(
         dbDoc: LoadedEntry,
-        scope = this.reflectionTargets.issue(dbDoc._id)
+        scope = this.recoveryState.issue(dbDoc._id)
     ): Promise<boolean> {
         return checkDocumentRevision(this.documentApplication, dbDoc, scope);
     }

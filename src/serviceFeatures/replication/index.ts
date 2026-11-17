@@ -9,19 +9,14 @@ import { createAutomaticReplicationTriggers } from "./automaticTriggers";
 import { createCentralCompatibilityRecovery } from "./centralCompatibilityRecovery";
 import { createOnlineReplicationPreflight, createSecuritySeedPreflight } from "./preflight";
 import { ReplicateResultProcessor, type ReflectionRecoveryView } from "./ReplicateResultProcessor";
-import {
-    LOG_LEVEL_VERBOSE,
-    REMOTE_COUCHDB,
-    type LoadedEntry,
-    type MetaEntry,
-} from "@vrtmrz/livesync-commonlib/compat/common/types";
-import {
-    FullScanModes,
-    FilePairProcessResults,
-    processFilePair,
-} from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
-import { isAnyNote } from "@vrtmrz/livesync-commonlib/compat/common/utils";
+import { LOG_LEVEL_VERBOSE } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
+import {
+    canRetainFailedReflection,
+    canRetryReflectionResource,
+    inspectReflection,
+    reconcileScannedDocument,
+} from "./replicateResultContext";
 
 type LocalApplicationActivityOwner = {
     runBoundedLocalApplicationActivity<T>(task: () => T | PromiseLike<T>, options?: { label?: string }): Promise<T>;
@@ -52,74 +47,37 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
         ? services.replicator
         : undefined;
     const discardSnapshotOnReset = core.startupDatabaseOptions?.discardReplicationResultSnapshotOnReset ?? false;
+    const reflectionPolicyContext = { recoveryEnabled, setting: services.setting };
+    const reflectionInspectionContext = {
+        setting: services.setting,
+        conflict: services.conflict,
+        path: services.path,
+        // Preserve the former callbacks' deferred lookup of reflection service modules.
+        get storageAccess() {
+            return core.serviceModules.storageAccess;
+        },
+        getLocalDatabase: () => core.localDatabase,
+        get fileHandler() {
+            return core.serviceModules.fileHandler;
+        },
+        API: services.API,
+    };
+    const scannedDocumentContext = {
+        scannerHost: core,
+        path: services.path,
+        get storageAccess() {
+            return core.serviceModules.storageAccess;
+        },
+        API: services.API,
+    };
     const resultProcessor = new ReplicateResultProcessor(
         {
             onVaultReflectionFailure: () => services.context.events.emitEvent(EVENT_VAULT_REFLECTION_FAILED),
-            canRetainFailedReflection: () =>
-                recoveryEnabled && services.setting.currentSettings().maxMTimeForReflectEvents <= 0,
-            canRetryResource: (resource) => {
-                if (!recoveryEnabled) {
-                    return false;
-                }
-                const settings = services.setting.currentSettings();
-                return (
-                    settings.maxMTimeForReflectEvents <= 0 &&
-                    (resource === "local-database" ||
-                        (settings.remoteType === REMOTE_COUCHDB && settings.readChunksOnline))
-                );
-            },
-            inspectReflection: async (entry, source) => {
-                if (entry._conflicts?.length && !services.setting.currentSettings().writeDocumentsIfConflicted) {
-                    await services.conflict.queueCheckForIfOpen(services.path.getPath(entry));
-                    return "policy";
-                }
-                if (source === "received" && (entry.deleted || entry._deleted)) {
-                    try {
-                        if (await core.serviceModules.storageAccess.isExists(services.path.getPath(entry))) {
-                            return "pending";
-                        }
-                        const current = await core.localDatabase.getRaw<LoadedEntry>(entry._id, { conflicts: true });
-                        const confirmed =
-                            current._id === entry._id &&
-                            current._rev === entry._rev &&
-                            isAnyNote(current) &&
-                            (current.deleted || current._deleted) &&
-                            (!current._conflicts?.length ||
-                                services.setting.currentSettings().writeDocumentsIfConflicted);
-                        return confirmed ? "reflected" : "pending";
-                    } catch (error) {
-                        createInstanceLogFunction("SF:ReflectionRecovery", services.API)(error, LOG_LEVEL_VERBOSE);
-                        return "pending";
-                    }
-                }
-                const confirmed = await core.serviceModules.fileHandler.inspectCurrentFileProvenance?.(
-                    services.path.getPath(entry),
-                    entry._rev!
-                );
-                return confirmed ? "reflected" : "pending";
-            },
-            reconcileScannedDocument: async (entry, operation) => {
-                const file = await core.serviceModules.storageAccess.getFileStub(services.path.getPath(entry));
-                operation.checkpoint?.();
-                const result = await processFilePair(
-                    core,
-                    createInstanceLogFunction("SF:ReflectionRecovery", services.API),
-                    { file: file ?? undefined, doc: entry as MetaEntry },
-                    {
-                        mode: FullScanModes.NEWER_WINS,
-                        strictContentCheck: true,
-                        reflectionOperation: operation,
-                        onReflectionFailed: (_target, error) => {
-                            throw error;
-                        },
-                    }
-                );
-                if (result === FilePairProcessResults.FAILED) {
-                    throw new Error("Scanner reflection did not complete");
-                }
-                operation.checkpoint?.();
-                return result;
-            },
+            canRetainFailedReflection: () => canRetainFailedReflection(reflectionPolicyContext),
+            canRetryResource: (resource) => canRetryReflectionResource(reflectionPolicyContext, resource),
+            inspectReflection: (entry, source) => inspectReflection(reflectionInspectionContext, entry, source),
+            reconcileScannedDocument: (entry, operation) =>
+                reconcileScannedDocument(scannedDocumentContext, entry, operation),
             currentSettings: () => services.setting.currentSettings(),
             getKeyValueDB: () => services.keyValueDB.kvDB,
             getLocalDatabase: () => core.localDatabase,
@@ -148,6 +106,8 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
             return true;
         });
         services.databaseEvents.onAfterDatabaseRecovery.addHandler(() => {
+            // A readable connection also completes recovery after a transaction-only failure.
+            // Resuming this hold is idempotent and preserves explicit user suspension.
             resultProcessor.resumeAfterDatabaseRecovery();
             if (recoveryEnabled) {
                 // A retry may await a file lock still held by the recovery producer.

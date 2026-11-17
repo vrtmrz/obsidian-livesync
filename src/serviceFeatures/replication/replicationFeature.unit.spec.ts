@@ -192,6 +192,31 @@ function deletionRecoveryHarness(source: "received" | "scan" = "received") {
     };
 }
 
+describe("reflection service resolution", () => {
+    it("does not resolve reflection-only service modules during composition", () => {
+        const { core } = setup({ deferComposition: true });
+        Object.defineProperty(core, "serviceModules", {
+            get() {
+                throw new Error("Unexpected eager service-module lookup");
+            },
+        });
+        expect(() => createReplicationFeature(core as never)).not.toThrow();
+    });
+
+    it("uses the current storage module when inspecting retained work", async () => {
+        const { context, feature } = deletionRecoveryHarness();
+        const previous = context.core.serviceModules.storageAccess;
+        const current = { isExists: vi.fn(async () => true) };
+        context.core.serviceModules = { ...context.core.serviceModules, storageAccess: current };
+
+        await feature.recovery.reconcile();
+
+        expect(current.isExists).toHaveBeenCalledExactlyOnceWith("deleted-target.md");
+        expect(previous.isExists).not.toHaveBeenCalled();
+        expect(feature.recovery.list()).toHaveLength(1);
+    });
+});
+
 describe("replication serviceFeature composition", () => {
     it("confirms a matching logical deletion only after observing storage absence", async () => {
         const { context, feature } = deletionRecoveryHarness();

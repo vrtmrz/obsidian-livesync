@@ -1,3 +1,4 @@
+import { runReviewHarnessDatabaseAbort } from "@/features/ReviewHarness/reviewHarnessDatabaseAbort";
 import { NEW_VAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/settings";
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import type ObsidianLiveSyncPlugin from "@/main";
@@ -210,6 +211,25 @@ function createReviewHarnessRuntime(
     const services = core.services;
     return {
         databaseProbe,
+        runDatabaseAbortDiagnostic: async () => {
+            const { PouchDB } = await import("@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser");
+            return await runReviewHarnessDatabaseAbort({
+                factory: activeWindow.indexedDB,
+                PouchDB,
+                createToken: () => activeWindow.crypto.randomUUID(),
+                confirmStart: async () =>
+                    services.setting.currentSettings().enableDebugTools &&
+                    (await services.UI.confirm.askYesNoDialog(
+                        "This development diagnostic aborts a read in disposable local databases and records events and operation state. Copy the report afterwards, then press Restart Obsidian. It does not change the active Vault database or restart automatically. Continue?",
+                        { title: "Review Harness: transaction abort", defaultOption: "No" }
+                    )) === "yes",
+                logEvent: (event) =>
+                    services.API.addLog(
+                        `[Review Harness: transaction abort] ${event.source}.${event.name}: ${event.registration ?? "received"}${event.detail ? `; ${event.detail}` : ""}`,
+                        LOG_LEVEL_INFO
+                    ),
+            });
+        },
         now: () => new Date(),
         getSettings: () => services.setting.currentSettings(),
         getNewVaultSettings: () => NEW_VAULT_SETTINGS,

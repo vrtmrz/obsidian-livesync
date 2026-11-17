@@ -196,13 +196,13 @@ remains outstanding.
 ## Implementation and publication
 
 The existing processor owns the runnable document queue and serialised snapshot
-writes. Its private [ReflectionTargets](../../src/serviceFeatures/replication/reflectionTargets.ts)
+writes. Its private [ReflectionRecoveryState](../../src/serviceFeatures/replication/reflectionRecoveryState.ts)
 instance owns retained targets, recovery-attempt markers, and the database
 generation. Recovery markers are saved before dispatch and remain distinguishable
 from ordinary work during restoration. Only the Obsidian host enables this
 integration; CLI and browser hosts keep their existing behaviour.
 
-`ReflectionTargets` owns target identity, validity, and the one-use allowance.
+`ReflectionRecoveryState` owns retained reflection identity, validity, and the one-use allowance.
 The resource scope owns only the lifetime of one application: it releases that
 operation's resources, listeners, and running marker and awaits asynchronous
 cleanup. These scopes are composed, not merged. Scope invalidation does not

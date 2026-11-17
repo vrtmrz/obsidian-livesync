@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import type { DocumentID } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { ContentReadFailure } from "@vrtmrz/livesync-commonlib/replication";
-import { ReflectionTargets, type ReflectionSnapshot } from "./reflectionTargets";
+import { ReflectionRecoveryState, type ReflectionSnapshot } from "./reflectionRecoveryState";
 
-function owner(canRetryResource: (resource: "local-database" | "remote") => boolean = () => true) {
-    return new ReflectionTargets({
+function recoveryState(canRetryResource: (resource: "local-database" | "remote") => boolean = () => true) {
+    return new ReflectionRecoveryState({
         canRetainFailures: () => true,
         canRetryResource,
         isApplicationReady: () => true,
@@ -29,26 +29,26 @@ function failure(
 
 describe("reflection target scopes", () => {
     it("issues ordinary work without creating pending state or consuming an allowance", async () => {
-        const targets = owner();
+        const state = recoveryState();
         const changed = vi.fn();
-        targets.onChanged(changed);
-        const scope = targets.issue("note");
+        state.onChanged(changed);
+        const scope = state.issue("note");
         expect(
             await scope.run(async () => {
                 scope.checkpoint();
                 return "applied";
             })
         ).toBe("applied");
-        expect(targets.list()).toEqual([]);
-        expect(targets.snapshot()).toEqual({});
+        expect(state.list()).toEqual([]);
+        expect(state.snapshot()).toEqual({});
         expect(changed).not.toHaveBeenCalled();
     });
 
     it("invalidates earlier scopes on reset even if durable reset must roll back", async () => {
-        const targets = owner();
-        const scope = targets.issue("note");
+        const state = recoveryState();
+        const scope = state.issue("note");
         scope.retainFailure(failure());
-        const reset = targets.beginReset();
+        const reset = state.beginReset();
         reset.rollback();
         const reflected = vi.fn();
         await scope.run(async () => {
@@ -56,8 +56,8 @@ describe("reflection target scopes", () => {
             reflected();
         });
         expect(reflected).not.toHaveBeenCalled();
-        expect(targets.list()).toHaveLength(1);
-        const next = targets.issue("note");
+        expect(state.list()).toHaveLength(1);
+        const next = state.issue("note");
         expect(
             await next.run(async () => {
                 next.checkpoint();
@@ -67,8 +67,8 @@ describe("reflection target scopes", () => {
     });
 
     it("waits for started work after stop and preserves its actual rejection", async () => {
-        const targets = owner();
-        const scope = targets.issue("note");
+        const state = recoveryState();
+        const scope = state.issue("note");
         const io = promiseWithResolvers<void>();
         const started = promiseWithResolvers<void>();
         const settled = vi.fn();
@@ -83,7 +83,7 @@ describe("reflection target scopes", () => {
             .finally(settled);
         const result = expect(operation).rejects.toBe(error);
         await started.promise;
-        targets.stop();
+        state.stop();
         expect(settled).not.toHaveBeenCalled();
         io.reject(error);
         await result;
@@ -91,14 +91,14 @@ describe("reflection target scopes", () => {
         expect(scope.retainFailure(failure())).toBeUndefined();
     });
 
-    it("keeps continuation and failure-retention rules distinct when a newer target arrives", async () => {
-        const targets = owner();
-        const ordinary = targets.issue("note");
+    it("keeps continuation and failure-retention rules distinct when a newer pending record arrives", async () => {
+        const state = recoveryState();
+        const ordinary = state.issue("note");
         const first = ordinary.retainFailure(failure())!;
-        targets.resourceRecovered("remote");
-        const attempt = targets.admit(first, "automatic")!;
-        const recovery = targets.issue("note", attempt);
-        targets.issue("note").retainFailure(failure("2-current"));
+        state.resourceRecovered("remote");
+        const attempt = state.admit(first, "automatic")!;
+        const recovery = state.issue("note", attempt);
+        state.issue("note").retainFailure(failure("2-current"));
         const continued = vi.fn();
         await ordinary.run(async () => {
             ordinary.checkpoint();
@@ -110,29 +110,29 @@ describe("reflection target scopes", () => {
         });
         expect(continued.mock.calls).toEqual([["ordinary"]]);
         expect(ordinary.retainFailure(failure())).toBeUndefined();
-        targets.finishAttempt(attempt);
-        expect(targets.list()).toMatchObject([{ revision: "2-current", automaticAttempted: false, state: "waiting" }]);
+        state.finishAttempt(attempt);
+        expect(state.list()).toMatchObject([{ revision: "2-current", automaticAttempted: false, state: "waiting" }]);
     });
 
     it("retains same-revision failures without refunding a previously consumed allowance", () => {
-        const targets = owner();
-        const scope = targets.issue("note");
-        const target = scope.retainFailure(failure())!;
-        targets.resourceRecovered("remote");
-        const attempt = targets.admit(target, "automatic")!;
-        targets.finishAttempt(attempt);
-        expect(scope.retainFailure(failure("1-first", "note", ["local-database"]))).toBe(target);
-        expect(targets.canAdmit(target, "automatic")).toBe(false);
+        const state = recoveryState();
+        const scope = state.issue("note");
+        const record = scope.retainFailure(failure())!;
+        state.resourceRecovered("remote");
+        const attempt = state.admit(record, "automatic")!;
+        state.finishAttempt(attempt);
+        expect(scope.retainFailure(failure("1-first", "note", ["local-database"]))).toBe(record);
+        expect(state.canAdmit(record, "automatic")).toBe(false);
     });
 
-    it("keeps target identity private to its owner and retires inspection after removal", async () => {
-        const firstOwner = owner();
-        const secondOwner = owner();
+    it("keeps pending record identity private to its owner and retires inspection after removal", async () => {
+        const firstOwner = recoveryState();
+        const secondOwner = recoveryState();
         const first = firstOwner.issue("note");
         const second = secondOwner.issue("note");
-        const target = first.retainFailure(failure())!;
-        const inspection = firstOwner.inspect(target);
-        firstOwner.remove(target);
+        const record = first.retainFailure(failure())!;
+        const inspection = firstOwner.inspect(record);
+        firstOwner.remove(record);
         const inspect = vi.fn();
         await inspection.run(async () => {
             inspection.checkpoint();
@@ -149,62 +149,62 @@ describe("reflection target scopes", () => {
     });
 
     it("restores consumed attempts as review work while keeping ordinary queued revisions", () => {
-        const targets = owner();
-        const target = targets.issue("note").retainFailure(failure())!;
-        targets.resourceRecovered("remote");
-        targets.admit(target, "automatic");
-        const snapshot = targets.snapshot();
-        const restored = owner();
+        const state = recoveryState();
+        const record = state.issue("note").retainFailure(failure())!;
+        state.resourceRecovered("remote");
+        state.admit(record, "automatic");
+        const snapshot = state.snapshot();
+        const restored = recoveryState();
         const keepQueued = restored.restore(snapshot);
         expect(keepQueued("note", "1-first")).toBe(false);
         expect(keepQueued("note", "2-current")).toBe(true);
         expect(restored.list()).toMatchObject([{ state: "review", reason: "interrupted", automaticAttempted: true }]);
         restored.issue("note").retainFailure(failure("1-first", "note", ["local-database"]));
         expect(snapshot.pendingReflections?.[0].resources).toEqual([]);
-        expect(targets.list()[0].resources).toEqual([]);
+        expect(state.list()[0].resources).toEqual([]);
     });
 
     it("retains an unclassified failure for review without granting an automatic retry", () => {
-        const targets = owner();
-        const target = targets.issue("note").retainFailure(failure("1-first", "note", []));
-        expect(target).toMatchObject({ state: "review", resources: [] });
-        expect(targets.admit(target!, "automatic")).toBeUndefined();
-        expect(targets.list()).toHaveLength(1);
+        const state = recoveryState();
+        const record = state.issue("note").retainFailure(failure("1-first", "note", []));
+        expect(record).toMatchObject({ state: "review", resources: [] });
+        expect(state.admit(record!, "automatic")).toBeUndefined();
+        expect(state.list()).toHaveLength(1);
     });
 
     it.each([{ resources: [] }, { resources: ["remote"] }, { resources: ["local-database"] }] as const)(
         "does not retain internal Metadata after a $resources content failure",
         ({ resources }) => {
-            const targets = owner();
-            const scope = targets.issue("i:hidden-file");
+            const state = recoveryState();
+            const scope = state.issue("i:hidden-file");
             expect(scope.retainFailure(failure("1-first", "i:hidden-file", resources))).toBeUndefined();
-            expect(targets.list()).toEqual([]);
+            expect(state.list()).toEqual([]);
         }
     );
 
     it("waits for every failed resource before admitting one retry and preserves its allowance", () => {
-        const targets = owner();
-        const target = targets.issue("note").retainFailure(failure("1-first", "note", ["local-database", "remote"]))!;
-        expect(targets.admit(target, "automatic")).toBeUndefined();
-        targets.resourceRecovered("local-database");
-        expect(targets.get("note")?.resources).toEqual(["remote"]);
-        expect(targets.admit(target, "automatic")).toBeUndefined();
-        targets.resourceRecovered("remote");
-        const attempt = targets.admit(target, "automatic");
+        const state = recoveryState();
+        const record = state.issue("note").retainFailure(failure("1-first", "note", ["local-database", "remote"]))!;
+        expect(state.admit(record, "automatic")).toBeUndefined();
+        state.resourceRecovered("local-database");
+        expect(state.get("note")?.resources).toEqual(["remote"]);
+        expect(state.admit(record, "automatic")).toBeUndefined();
+        state.resourceRecovered("remote");
+        const attempt = state.admit(record, "automatic");
         expect(attempt).toBeDefined();
-        expect(targets.get("note")?.automaticAttempted).toBe(true);
-        targets.finishAttempt(attempt!);
-        const restored = owner();
-        restored.restore(targets.snapshot());
+        expect(state.get("note")?.automaticAttempted).toBe(true);
+        state.finishAttempt(attempt!);
+        const restored = recoveryState();
+        restored.restore(state.snapshot());
         expect(restored.admit(restored.get("note")!, "automatic")).toBeUndefined();
     });
 
     it("clears a prerequisite only when the owner confirms that resource can retry", () => {
-        const targets = owner((resource) => resource !== "remote");
-        const target = targets.issue("note").retainFailure(failure("1-first", "note", ["remote"]))!;
-        expect(targets.resourceRecovered("remote")).toBe(false);
-        expect(targets.get("note")?.resources).toEqual(["remote"]);
-        expect(targets.admit(target, "automatic")).toBeUndefined();
+        const state = recoveryState((resource) => resource !== "remote");
+        const record = state.issue("note").retainFailure(failure("1-first", "note", ["remote"]))!;
+        expect(state.resourceRecovered("remote")).toBe(false);
+        expect(state.get("note")?.resources).toEqual(["remote"]);
+        expect(state.admit(record, "automatic")).toBeUndefined();
     });
 
     it("upgrades legacy retry reasons into resource prerequisites and keeps unknowns for review", () => {
@@ -236,7 +236,7 @@ describe("reflection target scopes", () => {
                 },
             ],
         } as unknown as ReflectionSnapshot;
-        const restored = owner();
+        const restored = recoveryState();
         restored.restore(snapshot);
         expect(restored.get("local")).toMatchObject({ resources: ["local-database"], state: "waiting" });
         expect(restored.get("remote")).toMatchObject({ resources: ["remote"], state: "waiting" });
@@ -265,7 +265,7 @@ describe("reflection target scopes", () => {
                 },
             ],
         } as unknown as ReflectionSnapshot;
-        const restored = owner();
+        const restored = recoveryState();
 
         restored.restore(snapshot);
 
@@ -275,31 +275,31 @@ describe("reflection target scopes", () => {
     });
 
     it("publishes review-state changes once at each owning transition", () => {
-        const targets = owner();
-        const target = targets.issue("note").retainFailure(failure())!;
+        const state = recoveryState();
+        const record = state.issue("note").retainFailure(failure())!;
         const changed = vi.fn();
-        targets.onChanged(changed);
+        state.onChanged(changed);
 
-        targets.markForReview(target, "manual-review");
+        state.markForReview(record, "manual-review");
         expect(changed).toHaveBeenCalledTimes(1);
-        expect(target).toMatchObject({ state: "review", reason: "manual-review" });
+        expect(record).toMatchObject({ state: "review", reason: "manual-review" });
 
-        const attempt = targets.admit(target, "manual")!;
+        const attempt = state.admit(record, "manual")!;
         expect(changed).toHaveBeenCalledTimes(1);
-        targets.finishAttempt(attempt, "manual-failed");
+        state.finishAttempt(attempt, "manual-failed");
         expect(changed).toHaveBeenCalledTimes(2);
-        expect(target).toMatchObject({ state: "review", reason: "manual-failed" });
+        expect(record).toMatchObject({ state: "review", reason: "manual-failed" });
 
-        targets.finishAttempt(attempt, "stale-finish");
-        targets.markForReview(undefined, "no-current-target");
+        state.finishAttempt(attempt, "stale-finish");
+        state.markForReview(undefined, "no-current-target");
         expect(changed).toHaveBeenCalledTimes(3);
     });
 
     it("does not swallow another scope's exit as its own", async () => {
-        const targets = owner();
-        const obsolete = targets.issue("note");
-        targets.beginReset();
-        const current = targets.issue("note");
+        const state = recoveryState();
+        const obsolete = state.issue("note");
+        state.beginReset();
+        const current = state.issue("note");
         await expect(
             current.run(async () => {
                 obsolete.checkpoint();

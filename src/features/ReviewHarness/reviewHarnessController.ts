@@ -31,6 +31,7 @@ export interface ReviewHarnessRuntime {
     runVaultRoundTrip(): Promise<ReviewHarnessScenarioResult>;
     runIdBenchmark(): Promise<ReviewHarnessScenarioResult>;
     runFileContentHashBenchmark(): Promise<ReviewHarnessScenarioResult>;
+    runDatabaseAbortDiagnostic(): Promise<ReviewHarnessScenarioResult>;
     databaseProbe?: ReviewHarnessDatabaseProbe;
     readContinuation(): Promise<string | null>;
     writeContinuation(value: string): Promise<void>;
@@ -269,6 +270,8 @@ export class ReviewHarnessController {
                 result = await this.runtime.runIdBenchmark();
             } else if (id === "file-content-hash-performance") {
                 result = await this.runtime.runFileContentHashBenchmark();
+            } else if (id === "database-transaction-abort") {
+                result = await this.runtime.runDatabaseAbortDiagnostic();
             } else if (id === "database-connection-loss" || id === "database-background-events") {
                 result = await this.startDatabaseProbe(id === "database-connection-loss" ? "controlled" : "background");
             } else {
@@ -362,6 +365,20 @@ export class ReviewHarnessController {
             observations: [],
         };
         this.record("scenario-failed", id);
+    }
+
+    /** Offer a manual restart after the diagnostic has finished; observing or copying never restarts. */
+    get canRestartAfterDatabaseAbortDiagnostic(): boolean {
+        const status = this.results["database-transaction-abort"].status;
+        return !this.running && !this.isDatabaseProbeActive() && (status === "observed" || status === "failed");
+    }
+
+    restartAfterDatabaseAbortDiagnostic(): void {
+        if (!this.canRestartAfterDatabaseAbortDiagnostic) {
+            return;
+        }
+        this.record("abort-diagnostic-restart-requested");
+        this.runtime.restart();
     }
 
     async prepareCompatibilityReviewRestart(): Promise<void> {

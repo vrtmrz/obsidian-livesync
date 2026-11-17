@@ -13,9 +13,9 @@ describe("ObsidianServiceContext contract", () => {
     it("reads visibility from the current active document without retaining the original window", () => {
         const context = Object.create(ObsidianServiceContext.prototype) as ObsidianServiceContext;
         vi.stubGlobal("activeWindow", { document: { hidden: false } });
-        expect(context.isActiveDocumentVisible()).toBe(true);
+        expect(context.isHostActive()).toBe(true);
         vi.stubGlobal("activeWindow", { document: { hidden: true } });
-        expect(context.isActiveDocumentVisible()).toBe(false);
+        expect(context.isHostActive()).toBe(false);
     });
 
     it("preserves the plug-in capabilities and host-neutral API results", () => {

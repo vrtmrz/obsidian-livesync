@@ -32,7 +32,7 @@ function setup(opts: SetupOptions) {
 
     const core = {
         _services: {
-            context: { isActiveDocumentVisible: () => !activeWindow.document.hidden },
+            context: { isHostActive: () => !activeWindow.document.hidden },
             API: {
                 addLog: vi.fn(),
                 addCommand: vi.fn(),

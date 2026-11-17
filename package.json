@@ -180,6 +180,7 @@
         "eslint-plugin-obsidianmd": "^0.5.1",
         "eslint-plugin-svelte": "^3.19.0",
         "events": "^3.3.0",
+        "fake-indexeddb": "6.2.5",
         "globals": "^14.0.0",
         "playwright": "^1.58.2",
         "postcss": "^8.5.6",

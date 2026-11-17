@@ -15,11 +15,12 @@ export class ObsidianServiceContext extends ServiceContext {
     readonly noticeGroups: ObsidianNoticeGroups;
 
     /**
-     * Read the current active document's visibility at the time of the operation.
-     * This is a document visibility signal, separate from focus, readiness, and user suspension;
-     * it does not establish the native application's suspension state.
+     * Whether the host is in its foreground activity phase for lifecycle work.
+     * Visibility transitions and database recovery use this to defer reopening and resumption
+     * while backgrounded. The Obsidian adapter reads the current active document; focus,
+     * plug-in readiness, explicit suspension, and database availability are separate conditions.
      */
-    isActiveDocumentVisible(): boolean {
+    isHostActive(): boolean {
         return !activeWindow.document.hidden;
     }
 

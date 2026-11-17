@@ -3,7 +3,7 @@ import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 import { createReplicationFeature } from "./replication";
 import { useBasicCommandsFeature } from "./basicCommands";
 import { composeCoreFeatures } from "./coreFeatures";
-import type { ReflectionRecoveryView } from "./replication/reflectionTargets";
+import type { ReflectionRecoveryView } from "./replication/reflectionRecoveryState";
 
 vi.mock("./replication", () => ({ createReplicationFeature: vi.fn() }));
 vi.mock("./basicCommands", () => ({ useBasicCommandsFeature: vi.fn() }));

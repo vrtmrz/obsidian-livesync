@@ -43,7 +43,7 @@ export type ReflectionSnapshot = {
     recoveryAttempts?: Pick<RecoveryAttempt, "documentId" | "revision" | "kind">[];
 };
 
-interface ReflectionTargetsContext {
+interface ReflectionRecoveryStateContext {
     canRetainFailures(): boolean;
     canRetryResource(resource: RecoveryResource): boolean;
     isApplicationReady(): boolean;
@@ -165,8 +165,8 @@ function targetScope(isCurrent: () => boolean): ReflectionTargetScope {
     };
 }
 
-/** Owns target identity and retry allowances; the processor owns queues and durable writes. */
-export class ReflectionTargets {
+/** Owns pending reflection records, retry allowances, scopes, and snapshot restoration. */
+export class ReflectionRecoveryState {
     private readonly pending = new Map<string, MutablePendingReflection>();
     private readonly attempts = new Map<string, MutableRecoveryAttempt>();
     private readonly listeners = new Set<() => void>();
@@ -176,7 +176,7 @@ export class ReflectionTargets {
     private changeVersion = 0;
     private stopped = false;
 
-    constructor(private readonly context: ReflectionTargetsContext) {}
+    constructor(private readonly context: ReflectionRecoveryStateContext) {}
 
     get version() {
         return this.changeVersion;
@@ -198,9 +198,9 @@ export class ReflectionTargets {
     }
 
     list(): readonly PendingReflection[] {
-        return this.candidates().map((target) => ({
-            ...target,
-            running: !!this.attempt(target.documentId, target.revision),
+        return this.candidates().map((record) => ({
+            ...record,
+            running: !!this.attempt(record.documentId, record.revision),
         }));
     }
 
@@ -230,13 +230,13 @@ export class ReflectionTargets {
         this.listeners.clear();
     }
 
-    /** Test target object ownership, rather than only matching its document and revision strings. */
-    isCurrent(target: PendingReflectionRecord): boolean {
-        return !this.stopped && this.pending.get(target.documentId) === target;
+    /** Test pending-record ownership, rather than only matching its document and revision strings. */
+    isCurrent(record: PendingReflectionRecord): boolean {
+        return !this.stopped && this.pending.get(record.documentId) === record;
     }
 
-    inspect(target: PendingReflectionRecord): ReflectionTargetScope {
-        return targetScope(() => this.isCurrent(target));
+    inspect(record: PendingReflectionRecord): ReflectionTargetScope {
+        return targetScope(() => this.isCurrent(record));
     }
 
     /** Issue before waiting for the document lock. Ordinary work does not create a pending record. */
@@ -274,7 +274,7 @@ export class ReflectionTargets {
     }
 
     /**
-     * Merge a failure into its current target without letting late I/O replace newer retained work.
+     * Merge a failure into its current pending record without letting late I/O replace newer work.
      * The captured generation, prior record, and observed revision constrain which updates are valid.
      * This changes memory and notifies listeners; the processor owns the durable write.
      */
@@ -311,7 +311,7 @@ export class ReflectionTargets {
             return;
         }
         const resources = [...new Set([...(sameTarget ? (previous?.resources ?? []) : []), ...failedResources])].sort();
-        const target: MutablePendingReflection =
+        const record: MutablePendingReflection =
             sameTarget && previous
                 ? previous
                 : {
@@ -323,47 +323,49 @@ export class ReflectionTargets {
                       resources,
                       reason: describeResources(resources),
                   };
-        target.resources = resources;
-        target.reason = failedResources.length === 0 ? "unavailable" : describeResources(resources);
+        record.resources = resources;
         if (failedResources.length === 0) {
-            target.state = "review";
-        } else if (!target.automaticAttempted && !attempt) {
-            target.state = "waiting";
+            this.moveRecordToReview(record, "unavailable");
+        } else {
+            record.reason = describeResources(resources);
+            if (!record.automaticAttempted && !attempt) {
+                record.state = "waiting";
+            }
         }
         if (attempt) {
-            attempt.failureReason = target.reason;
+            attempt.failureReason = record.reason;
         }
-        this.pending.set(target.documentId, target);
+        this.pending.set(record.documentId, record);
         this.notifyChanged();
-        return target;
+        return record;
     }
 
-    remove(target: PendingReflectionRecord): void {
-        if (this.pending.get(target.documentId) !== target) {
+    remove(record: PendingReflectionRecord): void {
+        if (this.pending.get(record.documentId) !== record) {
             return;
         }
-        this.pending.delete(target.documentId);
+        this.pending.delete(record.documentId);
         this.notifyChanged();
     }
 
-    /** Update a still-owned target's review reason and publish the change without saving it. */
-    markForReview(target: PendingReflectionRecord | undefined, reason: string): void {
-        const current = target && this.pending.get(target.documentId);
-        if (current && current === target) {
-            this.moveTargetToReview(current, reason);
+    /** Update a still-owned record's review reason and publish the change without saving it. */
+    markForReview(record: PendingReflectionRecord | undefined, reason: string): void {
+        const current = record && this.pending.get(record.documentId);
+        if (current && current === record) {
+            this.moveRecordToReview(current, reason);
         }
         this.notifyChanged();
     }
 
-    /** Update a target's review state and reason without publishing a change. */
-    private moveTargetToReview(target: MutablePendingReflection, reason: string): void {
-        target.state = "review";
-        target.reason = reason;
+    /** Update a record's review state and reason without publishing a change. */
+    private moveRecordToReview(record: MutablePendingReflection, reason: string): void {
+        record.state = "review";
+        record.reason = reason;
     }
 
     /** Require waiting state, an unused automatic allowance, and no remaining recovery dependencies. */
-    private automaticEligible(target: PendingReflectionRecord): boolean {
-        return target.state === "waiting" && !target.automaticAttempted && target.resources.length === 0;
+    private automaticEligible(record: PendingReflectionRecord): boolean {
+        return record.state === "waiting" && !record.automaticAttempted && record.resources.length === 0;
     }
 
     /** Mark one dependency as recovered before checking whether a retry can be admitted. */
@@ -372,30 +374,30 @@ export class ReflectionTargets {
             return false;
         }
         let changed = false;
-        for (const target of this.pending.values()) {
-            if (target.state !== "waiting" || target.automaticAttempted || !target.resources.includes(resource)) {
+        for (const record of this.pending.values()) {
+            if (record.state !== "waiting" || record.automaticAttempted || !record.resources.includes(resource)) {
                 continue;
             }
-            target.resources = target.resources.filter((required) => required !== resource);
-            target.reason = describeResources(target.resources);
+            record.resources = record.resources.filter((required) => required !== resource);
+            record.reason = describeResources(record.resources);
             changed = true;
         }
         if (changed) this.notifyChanged();
         return changed;
     }
 
-    canAdmit(target: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): boolean {
+    canAdmit(record: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): boolean {
         return (
-            this.pending.get(target.documentId) === target &&
-            !this.attempt(target.documentId, target.revision) &&
-            (kind !== "automatic" || this.automaticEligible(target))
+            this.pending.get(record.documentId) === record &&
+            !this.attempt(record.documentId, record.revision) &&
+            (kind !== "automatic" || this.automaticEligible(record))
         );
     }
 
     /** Reserve synchronously after Metadata inspection; the caller persists before enqueueing. */
-    admit(target: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): RecoveryAttempt | undefined {
-        const current = this.pending.get(target.documentId);
-        if (!current || !this.canAdmit(target, kind)) {
+    admit(record: PendingReflectionRecord, kind: RecoveryAttempt["kind"]): RecoveryAttempt | undefined {
+        const current = this.pending.get(record.documentId);
+        if (!current || !this.canAdmit(record, kind)) {
             return;
         }
         if (kind === "automatic") {
@@ -403,13 +405,13 @@ export class ReflectionTargets {
         }
         current.state = "review";
         const attempt: MutableRecoveryAttempt = {
-            documentId: target.documentId,
-            revision: target.revision,
+            documentId: record.documentId,
+            revision: record.revision,
             kind,
             target: current,
             started: false,
         };
-        this.attempts.set(recoveryKey(target.documentId, target.revision), attempt);
+        this.attempts.set(recoveryKey(record.documentId, record.revision), attempt);
         return attempt;
     }
 
@@ -431,16 +433,16 @@ export class ReflectionTargets {
         return attempt;
     }
 
-    /** Release only this reservation and retain its outcome on the still-current target for review. */
+    /** Release only this reservation and retain its outcome on the still-current record for review. */
     finishAttempt(attempt: RecoveryAttempt, reason = "reflection-failed"): void {
         const key = recoveryKey(attempt.documentId, attempt.revision);
         if (this.attempts.get(key) !== attempt) {
             return;
         }
         this.attempts.delete(key);
-        const target = this.pending.get(attempt.documentId);
-        if (target === attempt.target) {
-            this.moveTargetToReview(target, attempt.failureReason ?? reason);
+        const record = this.pending.get(attempt.documentId);
+        if (record === attempt.target) {
+            this.moveRecordToReview(record, attempt.failureReason ?? reason);
         }
         this.notifyChanged();
     }
@@ -450,9 +452,9 @@ export class ReflectionTargets {
         return {
             ...(this.pending.size > 0
                 ? {
-                      pendingReflections: this.candidates().map((target) => ({
-                          ...target,
-                          resources: [...target.resources],
+                      pendingReflections: this.candidates().map((record) => ({
+                          ...record,
+                          resources: [...record.resources],
                       })),
                   }
                 : {}),
@@ -469,7 +471,7 @@ export class ReflectionTargets {
     }
 
     /**
-     * Validate and migrate stored targets, preserving newer records and consumed automatic allowances.
+     * Validate and migrate stored pending records, preserving newer records and consumed allowances.
      * Return a queue filter so interrupted recovery attempts cannot replay as ordinary received work.
      */
     restore(snapshot: ReflectionSnapshot): (documentId: string, revision: string) => boolean {
@@ -489,29 +491,28 @@ export class ReflectionTargets {
                 : storedResourcesField === undefined
                   ? legacyResources(stored.reason)
                   : [];
-            const target: MutablePendingReflection = {
+            const record: MutablePendingReflection = {
                 ...stored,
                 resources: [...new Set(storedResources)].sort(),
             };
             if (!validResources && storedResourcesField !== undefined) {
-                target.reason = "unavailable";
+                record.reason = "unavailable";
             }
-            if (interrupted.has(recoveryKey(target.documentId, target.revision))) {
-                target.state = "review";
-                target.reason = "interrupted";
-            } else if (target.automaticAttempted) {
-                target.state = "review";
-            } else if (target.reason === "unavailable" || target.resources.length === 0) {
-                target.state = "review";
+            if (interrupted.has(recoveryKey(record.documentId, record.revision))) {
+                this.moveRecordToReview(record, "interrupted");
+            } else if (record.automaticAttempted) {
+                record.state = "review";
+            } else if (record.reason === "unavailable" || record.resources.length === 0) {
+                record.state = "review";
             } else {
-                target.state = "waiting";
+                record.state = "waiting";
             }
-            const existing = this.pending.get(target.documentId);
-            if (!existing) {
-                this.pending.set(target.documentId, target);
-            } else if (existing.revision === target.revision && target.automaticAttempted) {
-                existing.automaticAttempted = true;
-                existing.state = "review";
+            const existingPending = this.pending.get(record.documentId);
+            if (!existingPending) {
+                this.pending.set(record.documentId, record);
+            } else if (existingPending.revision === record.revision && record.automaticAttempted) {
+                existingPending.automaticAttempted = true;
+                existingPending.state = "review";
             }
         }
         return (documentId, revision) => !interrupted.has(recoveryKey(documentId, revision));
@@ -531,9 +532,9 @@ export class ReflectionTargets {
         return {
             keepQueued: (documentId: string, revision: string) => !interrupted.has(recoveryKey(documentId, revision)),
             rollback: () => {
-                for (const [key, target] of previousPending) {
+                for (const [key, record] of previousPending) {
                     if (!this.pending.has(key)) {
-                        this.pending.set(key, target);
+                        this.pending.set(key, record);
                     }
                 }
                 for (const [key, attempt] of previousAttempts) {

@@ -29,12 +29,13 @@ export interface ProbePouch {
 }
 
 export interface ProbePouchConstructor {
-    new (name: string, options: { adapter: "idb" }): ProbePouch;
+    new (name: string, options: { adapter: "idb" | "indexeddb" }): ProbePouch;
     readonly prefix?: string;
 }
 
 const ERROR_NAMES = new Set([
     "InvalidStateError",
+    "indexed_db_went_bad",
     "AbortError",
     "UnknownError",
     "VersionError",
@@ -53,6 +54,67 @@ export function databaseProbeErrorName(error: unknown): string {
         return "OtherError";
     }
     return typeof error.name === "string" && ERROR_NAMES.has(error.name) ? error.name : "OtherError";
+}
+
+/** Arm only this owned native handle and restore every borrowed method after its next read. */
+function abortNextFixtureRead(
+    database: IDBDatabase,
+    onError: (error: unknown) => void
+): { injected(): boolean; restore(): void } {
+    const removers: (() => void)[] = [];
+    let injected = false;
+    const restore = () => {
+        for (const remove of removers.splice(0).reverse()) {
+            remove();
+        }
+    };
+    const borrow = (object: object, key: string, replacement: unknown) => {
+        const descriptor = Object.getOwnPropertyDescriptor(object, key);
+        Object.defineProperty(object, key, { configurable: true, writable: true, value: replacement });
+        removers.push(() => {
+            if (Object.getOwnPropertyDescriptor(object, key)?.value !== replacement) {
+                return;
+            }
+            if (descriptor) {
+                Object.defineProperty(object, key, descriptor);
+            } else {
+                Reflect.deleteProperty(object, key);
+            }
+        });
+    };
+    const transaction = database.transaction.bind(database);
+    try {
+        borrow(database, "transaction", function (...args: Parameters<IDBDatabase["transaction"]>) {
+            const selected = transaction(...args);
+            const objectStore = selected.objectStore.bind(selected);
+            borrow(selected, "objectStore", function (name: string) {
+                const store = objectStore(name);
+                const get = store.get.bind(store);
+                borrow(store, "get", function (key: IDBValidKey | IDBKeyRange) {
+                    const request = get(key);
+                    if (key !== DOCUMENT_ID) {
+                        return request;
+                    }
+                    restore();
+                    queueMicrotask(() => {
+                        try {
+                            selected.abort();
+                            injected = true;
+                        } catch (error) {
+                            onError(error);
+                        }
+                    });
+                    return request;
+                });
+                return store;
+            });
+            return selected;
+        });
+    } catch (error) {
+        restore();
+        throw error;
+    }
+    return { injected: () => injected, restore };
 }
 
 function operationError(error: unknown): Error {
@@ -120,10 +182,25 @@ export interface DatabaseProbeBrowserOptions {
     readonly token: string;
     readonly emit: (event: DatabaseProbeEvent) => void;
     readonly signal: AbortSignal;
+    readonly adapter?: "idb" | "indexeddb";
+}
+
+export interface DatabaseAbortedRead {
+    readonly injected: boolean;
+    readonly outcome: "fulfilled" | "rejected" | "pending";
+    readonly drained: boolean;
+    readonly errorName?: string;
+}
+
+export interface DatabaseAbortProbeFixture extends DatabaseProbeFixture {
+    abortRead(signal: AbortSignal): Promise<DatabaseAbortedRead>;
+    verifyContents(signal: AbortSignal): Promise<{ contentMatches: boolean; revisionMatches: boolean }>;
 }
 
 /** Capture only this newly created fixture's native connections; never a Vault database. */
-export async function createDatabaseProbeFixture(options: DatabaseProbeBrowserOptions): Promise<DatabaseProbeFixture> {
+export async function createDatabaseProbeFixture(
+    options: DatabaseProbeBrowserOptions
+): Promise<DatabaseAbortProbeFixture> {
     const fixture = new BrowserDatabaseProbeFixture(options);
     try {
         await fixture.prepare();
@@ -143,7 +220,7 @@ export async function createDatabaseProbeFixture(options: DatabaseProbeBrowserOp
     }
 }
 
-class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
+class BrowserDatabaseProbeFixture implements DatabaseAbortProbeFixture {
     private readonly name: string;
     private readonly physicalName: string;
     private owned = false;
@@ -180,7 +257,7 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
                 this.options.emit({
                     source: "fixture-native",
                     name,
-                detail: nativeEventDetail(event),
+                    detail: nativeEventDetail(event),
                 });
             database.addEventListener(name, callback);
             this.removers.push(() => database.removeEventListener(name, callback));
@@ -219,7 +296,6 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
                 if (creating && event.oldVersion === 0) {
                     this.owned = true;
                 } else {
-                    // A diagnostic must neither migrate a pre-existing database nor recreate a missing one.
                     request.transaction?.abort();
                 }
             });
@@ -246,7 +322,7 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
         try {
             Object.defineProperty(factory, "open", { configurable: true, writable: true, value: wrapper });
             this.options.emit({ source: "probe", name: "native-open-capture", registration: "registered" });
-            const pouch = new PouchDB(this.name, { adapter: "idb" });
+            const pouch = new PouchDB(this.name, { adapter: this.options.adapter ?? "idb" });
             this.instances.add(pouch);
             this.watchPouch(pouch);
             await awaitDatabaseProbeOperation(pouch.info(), signal);
@@ -270,7 +346,10 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
     }
 
     async prepare(): Promise<void> {
-        this.emit("versions", "PouchDB adapter=idb; fixture=disposable; no remote replication");
+        this.emit(
+            "versions",
+            `PouchDB adapter=${this.options.adapter ?? "idb"}; fixture=disposable; no remote replication`
+        );
         this.pouch = await this.open(true, this.options.signal);
         const saved = await awaitDatabaseProbeOperation(
             this.pouch.put({
@@ -301,6 +380,63 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
             );
             this.options.emit({ source: "fixture-changes", name, registration: "registered" });
         }
+    }
+
+    /** Observe the real read promise and drain separately from the diagnostic deadline. */
+    async abortRead(signal: AbortSignal): Promise<DatabaseAbortedRead> {
+        this.changes?.cancel();
+        const connections = [...this.nativeConnections];
+        const native = connections[connections.length - 1];
+        if (!native || !this.pouch) {
+            throw new Error("The disposable native connection is unavailable.");
+        }
+        const hook = abortNextFixtureRead(native, (error) =>
+            this.emit("transaction-abort-injection-error", databaseProbeErrorName(error))
+        );
+        const result: { outcome: DatabaseAbortedRead["outcome"]; drained: boolean; errorName?: string } = {
+            outcome: "pending",
+            drained: false,
+        };
+        this.emit("transaction-abort-requested", "Only the disposable fixture read is aborted.");
+        try {
+            const read = this.pouch.get(DOCUMENT_ID);
+            const finished = read.then(
+                () => {
+                    result.outcome = "fulfilled";
+                },
+                (error: unknown) => {
+                    result.outcome = "rejected";
+                    result.errorName = databaseProbeErrorName(error);
+                }
+            );
+            const drained = Promise.allSettled([read]).then(() => {
+                result.drained = true;
+            });
+            try {
+                await awaitDatabaseProbeOperation(finished, signal);
+                await drained;
+            } catch (error) {
+                if (signal.aborted) {
+                    throw error;
+                }
+                this.emit("transaction-abort-deadline", databaseProbeErrorName(error));
+            }
+            return { injected: hook.injected(), ...result };
+        } finally {
+            hook.restore();
+        }
+    }
+
+    /** Read fixed fixture contents and the original revision without modifying the document. */
+    async verifyContents(signal: AbortSignal): Promise<{ contentMatches: boolean; revisionMatches: boolean }> {
+        if (!this.pouch) {
+            throw new Error("The disposable Pouch is unavailable.");
+        }
+        const document = await awaitDatabaseProbeOperation(this.pouch.get(DOCUMENT_ID), signal);
+        return {
+            contentMatches: document.owner === this.options.token && document.value === FIXTURE_VALUE,
+            revisionMatches: document._rev === this.expectedRevision,
+        };
     }
 
     closeNative(): void {
@@ -346,7 +482,7 @@ class BrowserDatabaseProbeFixture implements DatabaseProbeFixture {
         await inspect(this.pouch!, "retained");
         if (this.nativeClosed) {
             if (!this.comparison) {
-                this.comparison = new this.options.PouchDB(this.name, { adapter: "idb" });
+                this.comparison = new this.options.PouchDB(this.name, { adapter: this.options.adapter ?? "idb" });
                 this.instances.add(this.comparison);
                 this.watchPouch(this.comparison);
             }

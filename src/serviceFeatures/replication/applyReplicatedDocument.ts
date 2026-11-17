@@ -8,7 +8,7 @@ import {
 } from "@vrtmrz/livesync-commonlib/replication";
 import { isNotFoundError } from "@vrtmrz/livesync-commonlib/compat/common/utils.doc";
 import { LOG_LEVEL_DEBUG, LOG_LEVEL_VERBOSE, type LOG_LEVEL } from "@vrtmrz/livesync-commonlib/compat/common/logger";
-import type { ReflectionApplicationScope } from "./reflectionTargets";
+import type { ReflectionApplicationScope } from "./reflectionRecoveryState";
 
 export interface ReplicatedDocumentApplicationContext {
     getLocalDatabase(): Pick<LiveSyncBaseCore["localDatabase"], "getRaw" | "readDBEntryFromMeta">;

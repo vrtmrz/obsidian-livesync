@@ -7,7 +7,7 @@ import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/ser
 import { useBasicCommandsFeature } from "./basicCommands";
 import { useConflictResolutionFeature } from "./conflictResolution";
 import { createReplicationFeature } from "./replication";
-import type { ReflectionRecoveryView } from "./replication/reflectionTargets";
+import type { ReflectionRecoveryView } from "./replication/reflectionRecoveryState";
 import { useReplicationScheduling, type ReplicationSchedulingControl } from "./replicationScheduling";
 
 /** Focused feature views available while a host composes its own features and UI. */

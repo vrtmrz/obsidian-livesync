@@ -24,6 +24,7 @@ The command and view are registered only when developer tools are enabled. Disab
 | Vault fixture round trip | Automatic, explicit | Dedicated Vault fixtures | After explicit confirmation, creates, reads, modifies, renames, and removes one owned fixture tree. General Vault reflection remains covered by its separate real-Obsidian E2E workflow. |
 | Database connection-loss diagnostic | Guided, individual-only | Dedicated database fixtures | Explicitly closes a disposable native connection, checks the retained and same-name connections, and optionally tries an explicit reopen. This is diagnostic evidence, not automatic product recovery. |
 | Database background-events diagnostic | Guided, individual-only | Dedicated database fixtures | Observes registered event listeners and connection checks around an app background and foreground cycle. A run with no failure still records listener and event observations. |
+| Database transaction-abort diagnostic | Manual, individual-only | Dedicated database fixtures | Observes abort events and whether a read settles on each stock adapter, then offers a manual restart after the report is copied. |
 
 **Automatic** runs only Settings lifecycle. **Full review** visits the standard review suite, including the guided compatibility review and the two performance measurements, and asks before the Vault fixture scenario writes anything. The database diagnostics are individual-only and are excluded from both suite actions. Each scenario can also be run individually; a scenario's mode label does not by itself include it in the Automatic action.
 
@@ -60,9 +61,25 @@ The explicit native `close()` action is controlled test input. A **Passed** cont
 
 The **Finish observation** action ends observation and cleans up the fixture; it does not copy the report. A background run which observes no failure retains the **Not observed** result and still records listener registration, event-property presence, received counts, stages, and timestamps. No observed failure does not establish that a fix worked, and neither diagnostic attempts automatic LiveSync recovery. An explicit fixture reopen is recorded as a separate manual intervention; it is not evidence of automatic LiveSync recovery.
 
+#### C. Transaction abort on both adapters
+
+This development diagnostic uses unchanged PouchDB adapters and disposable database fixtures.
+
+1. Install the reviewed build and fully restart Obsidian before opening the Harness.
+2. Run **Database transaction-abort diagnostic** individually and confirm the disposable fixtures.
+3. Keep Obsidian in the foreground until the result appears. No app switch, sleep, or adapter setting change is needed; `idb` and `indexeddb` run in sequence.
+4. Select **Copy Markdown report**.
+5. Press **Restart Obsidian** after copying. Restart occurs only when this button is pressed; the diagnostic and report-copy action never restart the app automatically.
+
+**Observed** means abort injection and the read state were recorded. A fulfilled, rejected, or still-pending read is evidence, rather than a required success outcome. The existing eight-second observation window reports a pending read without treating it as completed drain. The report retains event registrations, received counts including zero, and timestamps. This scenario does not reopen the fixture or attempt recovery.
+
+For native-handle capture, the Harness temporarily wraps `indexedDB.open` and delegates every other database name unchanged. It restores that method in `finally`. The subsequent abort hook borrows methods only from the captured fixture handle, its transaction, and its object store, and restores them after the read starts. Fixture cleanup is attempted after each adapter. An unfinished Pouch operation can remain pending after cleanup, which is why the development workflow ends with the manual restart button.
+
+This scenario observes native transaction abort and adapter completion. It does not abort the active Vault database or reproduce an iOS operating-system suspension.
+
 ## Restart continuation
 
-The restart action writes a small device-local record under `review-harness-v1`, then asks Obsidian to reload. The record permits only:
+The compatibility review's **Restart and return** action writes a small device-local record under `review-harness-v1`, then asks Obsidian to reload. The record permits only:
 
 - the fixed `compatibility-review` scenario;
 - the fixed `awaiting-restart` stage;
@@ -90,7 +107,7 @@ Unexpected runtime errors are written to the local LiveSync log, while copied re
 
 `npm run test:browser-database-probe` exercises the real PouchDB adapter in Chromium and WebKit: native close, stale-handle access, an independent control connection, explicit reopen with preserved fixture content and revision, and cleanup. `DATABASE_PROBE_BROWSERS=chromium` selects only Chromium when the other runtime is unavailable; that run does not establish WebKit behaviour.
 
-`npm run test:e2e:obsidian:focused -- database-probe` builds the plug-in and checks both guides, their actions, mobile layout, read-only active-database checks, and copied observations in an isolated real Obsidian session. Its synthetic `pagehide` event checks the observation pipeline, not an iOS operating-system suspension.
+`npm run test:e2e:obsidian:focused -- database-probe` builds the plug-in and checks both connection guides, the transaction-abort scenario on both adapters, mobile layout, read-only active-database checks, and copied observations in an isolated real Obsidian session. Its synthetic `pagehide` event checks the observation pipeline, not an iOS operating-system suspension.
 
 External automation drives the stable `data-testid` attributes beginning with `review-harness-`. The dedicated workflow checks only Harness-owned behaviour: debug-only registration, consume-before-use continuation handling, fixed Vault fixture clean-up, report privacy, and mobile layout.
 

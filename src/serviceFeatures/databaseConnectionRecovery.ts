@@ -22,8 +22,8 @@ export interface DatabaseRecoveryDispatch {
 export interface DatabaseConnectionRecoveryContext {
     readonly services: RecoveryServices;
     readonly dispatch: DatabaseRecoveryDispatch;
-    /** Live document visibility, independent of readiness, focus, and explicit user suspension. */
-    readonly isHostVisible: () => boolean;
+    /** Host activity phase for recovery work; readiness and explicit suspension have separate owners. */
+    readonly isHostActive: () => boolean;
     readonly log: ReturnType<typeof createInstanceLogFunction>;
     running: Promise<boolean> | undefined;
     lostDatabase: LiveSyncLocalDB | undefined;
@@ -37,13 +37,13 @@ export interface DatabaseConnectionRecoveryContext {
 export function createDatabaseConnectionRecoveryContext(
     host: RecoveryHost,
     dispatch: DatabaseRecoveryDispatch,
-    isHostVisible: () => boolean
+    isHostActive: () => boolean
 ): DatabaseConnectionRecoveryContext {
     const { services } = host;
     return {
         services,
         dispatch,
-        isHostVisible,
+        isHostActive,
         log: createInstanceLogFunction("SF:DatabaseConnectionRecovery", services.API),
         running: undefined,
         lostDatabase: undefined,
@@ -72,7 +72,7 @@ async function resumePendingWork(
     context: DatabaseConnectionRecoveryContext,
     resumeReplication: boolean
 ): Promise<boolean> {
-    const isHostVisible = context.isHostVisible;
+    const isHostActive = context.isHostActive;
     if (context.stopping) {
         return false;
     }
@@ -90,7 +90,7 @@ async function resumePendingWork(
     if (!(await context.services.databaseEvents.onAfterDatabaseRecovery())) {
         return reportFailure(context);
     }
-    if (resumeReplication && isHostVisible() && !context.services.appLifecycle.isSuspended()) {
+    if (resumeReplication && isHostActive() && !context.services.appLifecycle.isSuspended()) {
         await context.services.appLifecycle.onResuming();
         await context.services.appLifecycle.onResumed();
     }
@@ -103,7 +103,7 @@ async function ensureDatabaseConnection(
     resumeReplication: boolean
 ): Promise<boolean> {
     const { services } = context;
-    const isHostVisible = context.isHostVisible;
+    const isHostActive = context.isHostActive;
     const log = context.log;
     if (
         context.stopping ||
@@ -117,21 +117,44 @@ async function ensureDatabaseConnection(
     if (!selected || (!selected.isReady && selected !== context.lostDatabase)) {
         return false;
     }
-    if (selected !== context.lostDatabase) {
-        try {
-            const healthy = await services.database.canReadCurrentDatabaseInfo();
-            return healthy && context.paused ? await resumePendingWork(context, resumeReplication) : healthy;
-        } catch (error) {
-            if (services.database.localDatabaseDirect !== selected) {
-                return false;
-            }
-            log(error, LOG_LEVEL_VERBOSE);
-            context.lostDatabase = selected;
-        }
+    if (selected === context.lostDatabase) {
+        return await replaceLostDatabase(context, selected, resumeReplication);
     }
+    let readable: boolean;
+    try {
+        readable = await services.database.canReadCurrentDatabaseInfo();
+    } catch (error) {
+        if (services.database.localDatabaseDirect !== selected) {
+            return false;
+        }
+        log(error, LOG_LEVEL_VERBOSE);
+        context.lostDatabase = selected;
+        return await replaceLostDatabase(context, selected, resumeReplication);
+    }
+    if (!readable) {
+        return false;
+    }
+    if (context.paused) {
+        return await resumePendingWork(context, resumeReplication);
+    }
+    // A failed transaction can settle while its connection remains usable. Publish that
+    // availability so retained work can use its existing allowance without replacing the Pouch.
+    if (isHostActive() && !(await services.databaseEvents.onAfterDatabaseRecovery())) {
+        return reportFailure(context);
+    }
+    return true;
+}
 
+/** Pause and drain only a failed owned connection before its existing serialised replacement. */
+async function replaceLostDatabase(
+    context: DatabaseConnectionRecoveryContext,
+    selected: LiveSyncLocalDB,
+    resumeReplication: boolean
+): Promise<boolean> {
+    const { services } = context;
     // Invalidate readiness without clearing application readiness: foreground events still need to run.
     selected.isReady = false;
+    selected.stopReads();
     context.paused = true;
     const dispatchedWork = context.dispatch.pauseDispatch();
     const suspended = await services.appLifecycle.onSuspending();
@@ -143,7 +166,7 @@ async function ensureDatabaseConnection(
     if (!suspended || !retired) {
         return reportFailure(context);
     }
-    if (!isHostVisible()) {
+    if (!context.isHostActive()) {
         return false;
     }
     if (context.attemptedSinceResume) {
@@ -225,9 +248,9 @@ function handleBeforeUnload(context: DatabaseConnectionRecoveryContext): Promise
 export function useDatabaseConnectionRecovery(
     host: RecoveryHost,
     dispatch: DatabaseRecoveryDispatch,
-    isHostVisible: () => boolean
+    isHostActive: () => boolean
 ): void {
-    const context = createDatabaseConnectionRecoveryContext(host, dispatch, isHostVisible);
+    const context = createDatabaseConnectionRecoveryContext(host, dispatch, isHostActive);
     const { services } = context;
 
     services.databaseEvents.onBeforeDatabaseResume.addHandler(() => handleBeforeDatabaseResume(context));
