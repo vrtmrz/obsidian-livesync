@@ -19,7 +19,7 @@ Obsidian (desktop / iOS / Android)
         │
         ▼
 [ CouchDB container ]  ◄── The only required service
-        │  initialized once by couchdb-init container
+        │  configured by couchdb-init on setup and subsequent starts
         ▼
 [ Named Docker Volume ]  ◄── All vault data stored here
 ```
@@ -262,7 +262,10 @@ A `524` can indicate that the origin did not respond or accept request data with
 
 ## Data & Backup
 
-The server database files live in the `couchdb-data` Docker named volume. Keep Vault backups, encryption passphrases, and ID recovery information separately. Back up the Compose configuration and CouchDB configuration as well; the database volume alone does not contain all of them.
+The server database files live in the `couchdb-data` Docker named volume. Runtime configuration, including authentication requirements and CORS settings, lives in `couchdb-config`, mounted at `/opt/couchdb/etc/local.d`, and survives container recreation. Keep Vault backups, encryption passphrases, and ID recovery information separately. Back up `couchdb-config`, `config/livesync.ini`, and the Compose configuration as well; the database volume alone does not contain all of them.
+
+> [!IMPORTANT]
+> When updating an existing stack which has no `couchdb-config` volume, please save its `/opt/couchdb/etc/local.d` contents before recreating CouchDB, and transfer them into the new volume before starting it. Adding the volume does not copy settings from the old container; custom settings and credentials stored there would otherwise be lost.
 
 The following example creates an archive while CouchDB is stopped. Verify the volume name before running it, especially if you have overridden the Compose project name:
 
@@ -350,7 +353,7 @@ See [Backing up CouchDB](https://docs.couchdb.org/en/stable/maintenance/backups.
 - The init service enables authenticated CouchDB access through the REST API. Verify that protected database endpoints reject unauthenticated requests before exposing the service.
 - Enable **End-to-End Encryption** passphrase in the Obsidian plugin — vault data is  
   encrypted before it ever leaves your device
-- The init container runs once and exits — it has no persistent access
+- The init container exits after setup and can run again on subsequent `docker compose up` commands.
 - Never expose CouchDB's admin interface (`/_utils`) to the public internet;  
   use a firewall rule or the path-based obfuscation trick from  
   [self-hosted-livesync-server](https://github.com/vrtmrz/self-hosted-livesync-server)
@@ -364,7 +367,7 @@ See [Backing up CouchDB](https://docs.couchdb.org/en/stable/maintenance/backups.
 docker compose logs -f couchdb
 docker compose logs couchdb-init
 
-# Re-run init (e.g. after changing credentials)
+# Re-apply settings using the existing container credentials
 docker compose restart couchdb-init
 
 # Stop without removing data
@@ -376,6 +379,8 @@ docker compose down -v
 # Open CouchDB admin UI (Fauxton) in browser
 open http://localhost:5984/_utils
 ```
+
+`docker compose restart` does not apply changes to `.env`. With persisted configuration, changing `COUCHDB_PASSWORD` alone does not replace an existing CouchDB administrator password. Update the password in CouchDB first, then update `.env` and the clients, and recreate the affected containers with `docker compose up -d`.
 
 ---
 
