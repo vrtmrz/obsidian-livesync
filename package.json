@@ -5,6 +5,7 @@
     "main": "main.js",
     "type": "module",
     "scripts": {
+        "postinstall": "patch-package",
         "dev": "node --env-file=.env esbuild.config.mjs",
         "build": "node esbuild.config.mjs production",
         "buildVite": "npx dotenv-cli -e .env  -- vite build --mode production",
@@ -177,7 +178,9 @@
         "eslint-plugin-obsidianmd": "^0.5.1",
         "eslint-plugin-svelte": "^3.19.0",
         "events": "^3.3.0",
+        "fake-indexeddb": "^6.2.8",
         "globals": "^14.0.0",
+        "patch-package": "^8.0.1",
         "playwright": "^1.58.2",
         "postcss": "^8.5.6",
         "pouchdb-adapter-http": "^9.0.0",

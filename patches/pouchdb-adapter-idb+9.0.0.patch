@@ -1,0 +1,494 @@
+diff --git a/node_modules/pouchdb-adapter-idb/lib/index.es.js b/node_modules/pouchdb-adapter-idb/lib/index.es.js
+index 0a699c8..e9b3b16 100644
+--- a/node_modules/pouchdb-adapter-idb/lib/index.es.js
++++ b/node_modules/pouchdb-adapter-idb/lib/index.es.js
+@@ -40,6 +40,28 @@ function idbError(callback) {
+   };
+ }
+ 
++// IDBDatabase connections this adapter has seen closed underneath it: closed by the
++// global-failure handler below, by a version change, or by the browser itself.
++// init() reopens such a connection before the next operation uses it.
++var closedConnections = new WeakSet();
++
++// iOS (WebKit) aborts transactions that are in progress when the app is suspended.
++// Several operations below only listen for request success or transaction completion,
++// so an aborted transaction left their callback pending forever. Settle the callback
++// with an IDB_ERROR when the transaction aborts; whichever outcome comes first wins.
++function settleOnAbort(txn, callback) {
++  var settled = false;
++  function settle(err, res) {
++    if (settled) {
++      return;
++    }
++    settled = true;
++    callback(err, res);
++  }
++  txn.addEventListener('abort', idbError(settle));
++  return settle;
++}
++
+ // Unfortunately, the metadata has to be stringified
+ // when it is put into the database, because otherwise
+ // IndexedDB can throw errors for deeply-nested objects.
+@@ -235,6 +257,9 @@ function openTransactionSafely(idb, stores, mode) {
+       txn: idb.transaction(stores, mode)
+     };
+   } catch (err) {
++    if (err && err.name === 'InvalidStateError') {
++      closedConnections.add(idb);
++    }
+     return {
+       error: err
+     };
+@@ -1456,6 +1481,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       txn = txnResult.txn;
++      callback = settleOnAbort(txn, callback);
+     }
+ 
+     function finish() {
+@@ -1514,6 +1540,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       txn = txnResult.txn;
++      callback = settleOnAbort(txn, callback);
+     }
+     var digest = attachment.digest;
+     var type = attachment.content_type;
+@@ -1535,6 +1562,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var txn = txnResult.txn;
++    callback = settleOnAbort(txn, callback);
+     txn.objectStore(META_STORE).get(META_STORE).onsuccess = function (e) {
+       docCount = e.target.result.docCount;
+     };
+@@ -1575,6 +1603,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var txn = txnResult.txn;
++    callback = settleOnAbort(txn, callback);
+     var req = txn.objectStore(DOC_STORE).get(docId);
+     req.onsuccess = function (event) {
+       var doc = decodeMetadata(event.target.result);
+@@ -1632,6 +1661,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var tx = txnResult.txn;
++    callback = settleOnAbort(tx, callback);
+     var req = tx.objectStore(LOCAL_STORE).get(id);
+ 
+     req.onerror = idbError(callback);
+@@ -1668,6 +1698,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       tx = txnResult.txn;
++      callback = settleOnAbort(tx, callback);
+       tx.onerror = idbError(callback);
+       tx.oncomplete = function () {
+         if (ret) {
+@@ -1723,6 +1754,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       tx = txnResult.txn;
++      callback = settleOnAbort(tx, callback);
+       tx.oncomplete = function () {
+         if (ret) {
+           callback(null, ret);
+@@ -1772,6 +1804,128 @@ function init(api, opts, callback) {
+     req.onerror = idbError(callback);
+   };
+ 
++  // When the connection was closed underneath this instance (see closedConnections),
++  // open a new one before running the operation, instead of failing every later call
++  // with "The database connection is closing" until the page is reloaded.
++  var reopenWaiters = null;
++
++  function reopenConnection(callback) {
++    var cached = cachedDBs.get(dbName);
++    if (cached && !closedConnections.has(cached.idb)) {
++      idb = cached.idb;
++      return callback();
++    }
++    if (reopenWaiters) {
++      reopenWaiters.push(callback);
++      return;
++    }
++    reopenWaiters = [callback];
++    function done(err) {
++      var waiters = reopenWaiters;
++      reopenWaiters = null;
++      waiters.forEach(function (waiter) {
++        waiter(err);
++      });
++    }
++    var req = indexedDB.open(dbName, ADAPTER_VERSION);
++    req.onupgradeneeded = function (e) {
++      // The database vanished or changed version while it was closed: do not
++      // create an empty one under the existing PouchDB instance.
++      e.target.transaction.abort();
++    };
++    req.onsuccess = function (e) {
++      idb = e.target.result;
++      watchConnection(idb);
++      idbGlobalFailureError = null;
++      cachedDBs.set(dbName, {
++        idb,
++        global: api._meta
++      });
++      guardedConsole('warn', 'Reopened IndexedDB database ' + dbName + ' after its connection was closed');
++      done();
++    };
++    req.onerror = function (e) {
++      var msg = (e.target.error && (e.target.error.name || e.target.error.message)) ||
++        'Failed to reopen indexedDB';
++      done(createError(IDB_ERROR, msg));
++    };
++  }
++
++  function lastFunction(args) {
++    for (var i = args.length - 1; i >= 0; i--) {
++      if (typeof args[i] === 'function') {
++        return args[i];
++      }
++    }
++  }
++
++  [
++    '_bulkDocs', '_get', '_getAttachment', '_info', '_allDocs', '_getRevisionTree',
++    '_doCompaction', '_getLocal', '_putLocal', '_removeLocal'
++  ].forEach(function (name) {
++    var operation = api[name];
++    api[name] = function () {
++      var args = arguments;
++      if (!idb || !closedConnections.has(idb)) {
++        return operation.apply(api, args);
++      }
++      reopenConnection(function (err) {
++        if (err) {
++          return lastFunction(args)(err);
++        }
++        operation.apply(api, args);
++      });
++    };
++  });
++
++  var changesOperation = api._changes;
++  api._changes = function (opts) {
++    if (!idb || !closedConnections.has(idb)) {
++      return changesOperation(opts);
++    }
++    var cancelled = false;
++    var feed = null;
++    reopenConnection(function (err) {
++      if (cancelled) {
++        return;
++      }
++      if (err) {
++        return opts.complete(err);
++      }
++      feed = changesOperation(opts);
++    });
++    return {
++      cancel: function () {
++        cancelled = true;
++        if (feed && feed.cancel) {
++          feed.cancel();
++        }
++      }
++    };
++  };
++
++  function watchConnection(db) {
++    db.onversionchange = function () {
++      closedConnections.add(db);
++      db.close();
++      cachedDBs.delete(dbName);
++    };
++
++    db.onabort = function (e) {
++      guardedConsole('error', 'Database has a global failure', e.target.error);
++      idbGlobalFailureError = e.target.error;
++      closedConnections.add(db);
++      db.close();
++      cachedDBs.delete(dbName);
++    };
++
++    // fired when the browser closes the connection itself
++    db.onclose = function () {
++      closedConnections.add(db);
++      cachedDBs.delete(dbName);
++    };
++  }
++
+   var cached = cachedDBs.get(dbName);
+ 
+   if (cached) {
+@@ -1827,17 +1981,7 @@ function init(api, opts, callback) {
+ 
+     idb = e.target.result;
+ 
+-    idb.onversionchange = function () {
+-      idb.close();
+-      cachedDBs.delete(dbName);
+-    };
+-
+-    idb.onabort = function (e) {
+-      guardedConsole('error', 'Database has a global failure', e.target.error);
+-      idbGlobalFailureError = e.target.error;
+-      idb.close();
+-      cachedDBs.delete(dbName);
+-    };
++    watchConnection(idb);
+ 
+     // Do a few setup operations (in parallel as much as possible):
+     // 1. Fetch meta doc
+diff --git a/node_modules/pouchdb-adapter-idb/lib/index.js b/node_modules/pouchdb-adapter-idb/lib/index.js
+index 3670257..7b5babd 100644
+--- a/node_modules/pouchdb-adapter-idb/lib/index.js
++++ b/node_modules/pouchdb-adapter-idb/lib/index.js
+@@ -42,6 +42,28 @@ function idbError(callback) {
+   };
+ }
+ 
++// IDBDatabase connections this adapter has seen closed underneath it: closed by the
++// global-failure handler below, by a version change, or by the browser itself.
++// init() reopens such a connection before the next operation uses it.
++var closedConnections = new WeakSet();
++
++// iOS (WebKit) aborts transactions that are in progress when the app is suspended.
++// Several operations below only listen for request success or transaction completion,
++// so an aborted transaction left their callback pending forever. Settle the callback
++// with an IDB_ERROR when the transaction aborts; whichever outcome comes first wins.
++function settleOnAbort(txn, callback) {
++  var settled = false;
++  function settle(err, res) {
++    if (settled) {
++      return;
++    }
++    settled = true;
++    callback(err, res);
++  }
++  txn.addEventListener('abort', idbError(settle));
++  return settle;
++}
++
+ // Unfortunately, the metadata has to be stringified
+ // when it is put into the database, because otherwise
+ // IndexedDB can throw errors for deeply-nested objects.
+@@ -237,6 +259,9 @@ function openTransactionSafely(idb, stores, mode) {
+       txn: idb.transaction(stores, mode)
+     };
+   } catch (err) {
++    if (err && err.name === 'InvalidStateError') {
++      closedConnections.add(idb);
++    }
+     return {
+       error: err
+     };
+@@ -1458,6 +1483,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       txn = txnResult.txn;
++      callback = settleOnAbort(txn, callback);
+     }
+ 
+     function finish() {
+@@ -1516,6 +1542,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       txn = txnResult.txn;
++      callback = settleOnAbort(txn, callback);
+     }
+     var digest = attachment.digest;
+     var type = attachment.content_type;
+@@ -1537,6 +1564,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var txn = txnResult.txn;
++    callback = settleOnAbort(txn, callback);
+     txn.objectStore(META_STORE).get(META_STORE).onsuccess = function (e) {
+       docCount = e.target.result.docCount;
+     };
+@@ -1577,6 +1605,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var txn = txnResult.txn;
++    callback = settleOnAbort(txn, callback);
+     var req = txn.objectStore(DOC_STORE).get(docId);
+     req.onsuccess = function (event) {
+       var doc = decodeMetadata(event.target.result);
+@@ -1634,6 +1663,7 @@ function init(api, opts, callback) {
+       return callback(txnResult.error);
+     }
+     var tx = txnResult.txn;
++    callback = settleOnAbort(tx, callback);
+     var req = tx.objectStore(LOCAL_STORE).get(id);
+ 
+     req.onerror = idbError(callback);
+@@ -1670,6 +1700,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       tx = txnResult.txn;
++      callback = settleOnAbort(tx, callback);
+       tx.onerror = idbError(callback);
+       tx.oncomplete = function () {
+         if (ret) {
+@@ -1725,6 +1756,7 @@ function init(api, opts, callback) {
+         return callback(txnResult.error);
+       }
+       tx = txnResult.txn;
++      callback = settleOnAbort(tx, callback);
+       tx.oncomplete = function () {
+         if (ret) {
+           callback(null, ret);
+@@ -1774,6 +1806,128 @@ function init(api, opts, callback) {
+     req.onerror = idbError(callback);
+   };
+ 
++  // When the connection was closed underneath this instance (see closedConnections),
++  // open a new one before running the operation, instead of failing every later call
++  // with "The database connection is closing" until the page is reloaded.
++  var reopenWaiters = null;
++
++  function reopenConnection(callback) {
++    var cached = cachedDBs.get(dbName);
++    if (cached && !closedConnections.has(cached.idb)) {
++      idb = cached.idb;
++      return callback();
++    }
++    if (reopenWaiters) {
++      reopenWaiters.push(callback);
++      return;
++    }
++    reopenWaiters = [callback];
++    function done(err) {
++      var waiters = reopenWaiters;
++      reopenWaiters = null;
++      waiters.forEach(function (waiter) {
++        waiter(err);
++      });
++    }
++    var req = indexedDB.open(dbName, ADAPTER_VERSION);
++    req.onupgradeneeded = function (e) {
++      // The database vanished or changed version while it was closed: do not
++      // create an empty one under the existing PouchDB instance.
++      e.target.transaction.abort();
++    };
++    req.onsuccess = function (e) {
++      idb = e.target.result;
++      watchConnection(idb);
++      idbGlobalFailureError = null;
++      cachedDBs.set(dbName, {
++        idb,
++        global: api._meta
++      });
++      pouchdbUtils.guardedConsole('warn', 'Reopened IndexedDB database ' + dbName + ' after its connection was closed');
++      done();
++    };
++    req.onerror = function (e) {
++      var msg = (e.target.error && (e.target.error.name || e.target.error.message)) ||
++        'Failed to reopen indexedDB';
++      done(pouchdbErrors.createError(pouchdbErrors.IDB_ERROR, msg));
++    };
++  }
++
++  function lastFunction(args) {
++    for (var i = args.length - 1; i >= 0; i--) {
++      if (typeof args[i] === 'function') {
++        return args[i];
++      }
++    }
++  }
++
++  [
++    '_bulkDocs', '_get', '_getAttachment', '_info', '_allDocs', '_getRevisionTree',
++    '_doCompaction', '_getLocal', '_putLocal', '_removeLocal'
++  ].forEach(function (name) {
++    var operation = api[name];
++    api[name] = function () {
++      var args = arguments;
++      if (!idb || !closedConnections.has(idb)) {
++        return operation.apply(api, args);
++      }
++      reopenConnection(function (err) {
++        if (err) {
++          return lastFunction(args)(err);
++        }
++        operation.apply(api, args);
++      });
++    };
++  });
++
++  var changesOperation = api._changes;
++  api._changes = function (opts) {
++    if (!idb || !closedConnections.has(idb)) {
++      return changesOperation(opts);
++    }
++    var cancelled = false;
++    var feed = null;
++    reopenConnection(function (err) {
++      if (cancelled) {
++        return;
++      }
++      if (err) {
++        return opts.complete(err);
++      }
++      feed = changesOperation(opts);
++    });
++    return {
++      cancel: function () {
++        cancelled = true;
++        if (feed && feed.cancel) {
++          feed.cancel();
++        }
++      }
++    };
++  };
++
++  function watchConnection(db) {
++    db.onversionchange = function () {
++      closedConnections.add(db);
++      db.close();
++      cachedDBs.delete(dbName);
++    };
++
++    db.onabort = function (e) {
++      pouchdbUtils.guardedConsole('error', 'Database has a global failure', e.target.error);
++      idbGlobalFailureError = e.target.error;
++      closedConnections.add(db);
++      db.close();
++      cachedDBs.delete(dbName);
++    };
++
++    // fired when the browser closes the connection itself
++    db.onclose = function () {
++      closedConnections.add(db);
++      cachedDBs.delete(dbName);
++    };
++  }
++
+   var cached = cachedDBs.get(dbName);
+ 
+   if (cached) {
+@@ -1829,17 +1983,7 @@ function init(api, opts, callback) {
+ 
+     idb = e.target.result;
+ 
+-    idb.onversionchange = function () {
+-      idb.close();
+-      cachedDBs.delete(dbName);
+-    };
+-
+-    idb.onabort = function (e) {
+-      pouchdbUtils.guardedConsole('error', 'Database has a global failure', e.target.error);
+-      idbGlobalFailureError = e.target.error;
+-      idb.close();
+-      cachedDBs.delete(dbName);
+-    };
++    watchConnection(idb);
+ 
+     // Do a few setup operations (in parallel as much as possible):
+     // 1. Fetch meta doc
