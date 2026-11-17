@@ -1118,7 +1118,8 @@ Offline Changed files: ${processFiles.length}`;
      */
     isNotIgnoredByCustomisationSync(path: string): boolean {
         const ignoredFiles = this.getCustomisationSynchronizationIgnoredFiles();
-        const result = !ignoredFiles.some((e) => path.startsWith(e));
+        const lowerCasePath = path.toLowerCase();
+        const result = !ignoredFiles.some((e) => lowerCasePath.startsWith(e));
         // console.warn(`Assertion: isNotIgnoredByCustomisationSync(${path}) = ${result}`);
         return result;
     }

@@ -40,6 +40,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD:?Set COUCHDB_PASSWORD in .env}
     volumes:
       - couchdb-data:/opt/couchdb/data
+      - couchdb-config:/opt/couchdb/etc/local.d
       # Mount to /opt/couchdb/etc/local.ini (NOT into local.d/).
       # Do NOT use :ro — the CouchDB entrypoint runs chmod on this file at startup
       # and will crash with EPERM if the file is read-only. The file is only read
@@ -68,7 +69,7 @@ services:
   # ---------------------------------------------------------------------------
   # One-shot init container — runs couchdb-init.sh after CouchDB is healthy.
   # Sets single-node cluster, auth requirements, CORS, size limits, creates DB.
-  # Restarts on failure (e.g. race at first boot) but won't re-run if already done.
+  # Exits after setup; subsequent compose up commands can run it again.
   # ---------------------------------------------------------------------------
   couchdb-init:
     image: curlimages/curl:latest
@@ -173,6 +174,8 @@ services:
 # =============================================================================
 volumes:
   couchdb-data:
+    driver: local
+  couchdb-config:
     driver: local
   caddy-data:
     driver: local
