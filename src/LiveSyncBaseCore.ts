@@ -216,8 +216,12 @@ export class LiveSyncBaseCore<
     }
 
     /**
-     * @obsolete Use services.database.localDatabase instead. Get the PouchDB database instance. Note that this is not the same as the local database instance, which is a wrapper around the PouchDB database.
-     * @returns The PouchDB database instance.
+     * Get the raw PouchDB handle for integrations which own their operation lifetime.
+     * Direct reads bypass the local database owner's caller-wait retirement.
+     *
+     * @obsolete Use services.database.localDatabase and choose getRaw(), allDocsRaw(),
+     * or readFromDatabase() for managed reads, or readDBEntry() for file contents.
+     * @returns The unwrapped PouchDB instance for replication, changes feeds, or maintenance.
      */
     getDatabase(): PouchDB.Database<EntryDoc> {
         return this.localDatabase.localDatabase;

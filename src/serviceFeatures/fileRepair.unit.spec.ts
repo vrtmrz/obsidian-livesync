@@ -2,6 +2,7 @@ import PouchDB from "pouchdb-core";
 import MemoryAdapter from "pouchdb-adapter-memory";
 PouchDB.plugin(MemoryAdapter);
 import { describe, expect, it, vi } from "vitest";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { discardLiveBranch, discardUnreadableLiveRevision, inspectFileRepair, repairRevisionSize } from "./fileRepair";
 
 function createCore() {
@@ -28,6 +29,10 @@ function createCore() {
         children: ["h:missing-conflict"],
     };
     const deleteRevisionFromDB = vi.fn(async () => true);
+    const get = vi.fn(async (_id: string, options?: { rev?: string }) =>
+        options?.rev === "2-conflict" ? conflict : current
+    );
+    const readFromDatabase = vi.fn<LiveSyncLocalDB["readFromDatabase"]>((operation) => operation({ get } as never));
     const core = {
         settings: {
             syncInternalFiles: false,
@@ -48,10 +53,9 @@ function createCore() {
         },
         localDatabase: {
             putRaw: vi.fn(async (_doc: unknown) => ({ ok: true, id: "f:note", rev: "4-repaired" })),
+            readFromDatabase,
             localDatabase: {
-                get: vi.fn(async (_id: string, options?: { rev?: string }) =>
-                    options?.rev === "2-conflict" ? conflict : current
-                ),
+                get,
             },
             allDocsRaw: vi.fn(async ({ keys }: { keys: string[] }) => ({
                 rows: keys.includes("h:current")
@@ -238,6 +242,19 @@ describe("recorded size repair", () => {
         fixture.current.size = 45;
         return fixture;
     }
+    it("does not write when the final owned revision read is retired", async () => {
+        const { core, current } = repairFixture();
+        const failure = new Error("Local database reads have stopped.");
+        core.localDatabase.readFromDatabase
+            .mockResolvedValueOnce(current)
+            .mockResolvedValueOnce(current)
+            .mockRejectedValueOnce(failure);
+
+        await expect(repairRevisionSize(core as never, "note.md", current._rev)).rejects.toBe(failure);
+
+        expect(core.localDatabase.putRaw).not.toHaveBeenCalled();
+    });
+
     it("writes a child changing only size and omitting response metadata", async () => {
         const { core, current } = repairFixture();
         expect(await repairRevisionSize(core as never, "note.md", current._rev)).toBe("repaired");
@@ -313,6 +330,7 @@ describe("size repair revision ancestry", () => {
             delete metadata._revs_info;
             const stored = await database.put({ ...metadata, size: 45 });
             core.localDatabase.localDatabase = database as never;
+            core.localDatabase.readFromDatabase.mockImplementation((operation) => operation(database as never));
             core.localDatabase.putRaw.mockImplementation((doc) => database.put(doc as never));
             core.localDatabase.getDBEntryFromMeta.mockImplementation(async (meta) => ({ ...meta, data: ["current"] }));
             expect(await repairRevisionSize(core as never, "note.md", stored.rev)).toBe("repaired");

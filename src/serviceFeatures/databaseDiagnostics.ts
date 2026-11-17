@@ -16,6 +16,7 @@ import {
 import { REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { StorageAccess } from "@vrtmrz/livesync-commonlib/compat/interfaces/StorageAccess";
 import type { NecessaryServicesInterfaces } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import commonlibPackage from "@vrtmrz/livesync-commonlib/package.json";
 import { LOG_LEVEL_INFO, Logger } from "octagonal-wheels/common/logger";
 
@@ -44,6 +45,20 @@ export interface DatabaseDiagnosticProgress {
     total?: number;
     totalIsFinal?: boolean;
     elapsedMs: number;
+}
+
+/** Retire diagnostic reads with their owner and refuse a replacement physical connection. */
+function readDiagnosticDatabase<T>(
+    owner: Pick<LiveSyncLocalDB, "readFromDatabase">,
+    selected: LiveSyncLocalDB["localDatabase"],
+    read: (database: LiveSyncLocalDB["localDatabase"]) => Promise<T>
+): Promise<T> {
+    return owner.readFromDatabase((database) => {
+        if (database !== selected) {
+            throw new Error("The local database changed during inspection.");
+        }
+        return read(database);
+    });
 }
 
 export async function readDiagnosticStorage(
@@ -89,7 +104,8 @@ export async function runDatabaseDiagnostic(
     const started = performance.now();
     const configuration = JSON.stringify(host.services.setting.currentSettings());
     const settings = JSON.parse(configuration) as ObsidianLiveSyncSettings;
-    const database = host.services.database.localDatabase.localDatabase;
+    const owner = host.services.database.localDatabase;
+    const database = owner.localDatabase;
     const isConfigurationCurrent = () =>
         JSON.stringify(host.services.setting.currentSettings()) === configuration &&
         host.services.database.localDatabase.localDatabase === database;
@@ -105,7 +121,11 @@ export async function runDatabaseDiagnostic(
         plugin: host.services.API.getPluginVersion(),
         application: host.services.API.getAppVersion(),
     };
-    const local = createLocalDiagnosticSource(database);
+    const local = createLocalDiagnosticSource({
+        info: () => readDiagnosticDatabase(owner, database, (pouch) => pouch.info()),
+        get: (id, options) => readDiagnosticDatabase(owner, database, (pouch) => pouch.get(id, options)),
+        allDocs: (options) => readDiagnosticDatabase(owner, database, (pouch) => pouch.allDocs(options)),
+    });
     if (kind === "usage") {
         const result = await analyseDatabaseUsage({
             source: local,

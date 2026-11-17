@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { checkCompromisedChunks, type CompromisedChunksDependencies } from "./compromisedChunks";
 
 vi.mock("@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation", () => ({
@@ -20,9 +21,13 @@ function createDependencies() {
     const performRestart = vi.fn();
     const getActiveReplicator = vi.fn((): object | undefined => undefined);
     const log = vi.fn();
+    const localDatabase: Pick<LiveSyncLocalDB, "readFromDatabase"> = {
+        readFromDatabase: (operation) => operation({} as never),
+    };
+    const readFromDatabase = vi.spyOn(localDatabase, "readFromDatabase");
     const dependencies: CompromisedChunksDependencies = {
         settings: { encrypt: true },
-        localDatabase: { localDatabase: {} as never },
+        localDatabase,
         isOnline: true,
         getActiveReplicator,
         confirm: { askSelectStringDialogue },
@@ -38,10 +43,22 @@ function createDependencies() {
         performRestart,
         scheduleFetch,
         scheduleRebuild,
+        readFromDatabase,
     };
 }
 
 describe("checkCompromisedChunks", () => {
+    it("does not continue start-up after the owned local read is retired", async () => {
+        const fixture = createDependencies();
+        vi.mocked(countCompromisedChunks).mockResolvedValue(0);
+        fixture.readFromDatabase.mockRejectedValue(new Error("Local database reads have stopped."));
+
+        await expect(checkCompromisedChunks(fixture.dependencies)).resolves.toBe(false);
+
+        expect(fixture.askSelectStringDialogue).not.toHaveBeenCalled();
+        expect(fixture.performRestart).not.toHaveBeenCalled();
+    });
+
     it("skips the database scan when encryption is disabled", async () => {
         const fixture = createDependencies();
         fixture.dependencies.settings.encrypt = false;

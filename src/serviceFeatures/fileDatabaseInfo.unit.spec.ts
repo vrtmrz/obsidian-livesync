@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import {
     buildFileDatabaseInfoReport,
     chooseAndCopyFileDatabaseInfo,
@@ -53,6 +54,10 @@ function createCore() {
     };
     const promptCopyToClipboard = vi.fn(async (_title: string, _value: string) => true);
     const askSelectString = vi.fn(async () => "db-only.md");
+    const get = vi.fn(async (_id: string, options?: { rev?: string }) =>
+        options?.rev === "2-conflict" ? conflict : current
+    );
+    const readFromDatabase = vi.fn<LiveSyncLocalDB["readFromDatabase"]>((operation) => operation({ get } as never));
     const core = {
         settings: {
             syncInternalFiles: false,
@@ -76,10 +81,9 @@ function createCore() {
                 data: ["loaded body"],
             })),
             getDBEntry: vi.fn(async () => current),
+            readFromDatabase,
             localDatabase: {
-                get: vi.fn(async (_id: string, options?: { rev?: string }) =>
-                    options?.rev === "2-conflict" ? conflict : current
-                ),
+                get,
             },
             allDocsRaw: vi.fn(async ({ keys }: { keys: string[] }) => ({
                 rows: [
@@ -127,6 +131,16 @@ function createCore() {
 }
 
 describe("file database information", () => {
+    it("propagates retirement of the owned Metadata read", async () => {
+        const { core } = createCore();
+        const failure = new Error("Local database reads have stopped.");
+        core.localDatabase.readFromDatabase.mockRejectedValue(failure);
+
+        await expect(inspectFileDatabaseInfo(core as never, "note.md")).rejects.toBe(failure);
+
+        expect(core.localDatabase.allDocsRaw).not.toHaveBeenCalled();
+    });
+
     it("reports document and chunk revisions without exposing file contents", async () => {
         const { core } = createCore();
 

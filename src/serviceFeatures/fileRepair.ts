@@ -166,8 +166,8 @@ export async function repairRevisionSize(
             : "unsafe";
     }
     const content = readAsBlob(winner.loadedEntry);
-    const raw = await core.localDatabase.localDatabase
-        .get(winner.metadata.documentId, { conflicts: true })
+    const raw = await core.localDatabase
+        .readFromDatabase((database) => database.get(winner.metadata.documentId, { conflicts: true }))
         .catch((error: unknown) => {
             if (isNotFoundError(error)) return false as const;
             throw error;

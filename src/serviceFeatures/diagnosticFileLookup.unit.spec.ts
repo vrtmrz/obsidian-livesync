@@ -1,5 +1,6 @@
 import { createDiagnosticNameMapper } from "@vrtmrz/livesync-commonlib/diagnostics";
 import { describe, expect, it, vi } from "vitest";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { buildPseudonymousFileReport, findDiagnosticFiles, showDiagnosticFileLookup } from "./diagnosticFileLookup";
 import type { DiagnosticFileLookupDialogOptions } from "./diagnosticFileLookupTypes";
 
@@ -27,6 +28,12 @@ async function* entries(documents: TestDocument[]) {
 function createCore(vaultPaths: string[] = [], documents: TestDocument[] = []) {
     const existingPaths = new Set(vaultPaths);
     const chunkRevisions = new Map([["h:secret-chunk", "1-secret-chunk-revision"]]);
+    const get = vi.fn(async (id: string) => {
+        const document = documents.find(({ _id }) => _id === id);
+        if (document) return document;
+        throw Object.assign(new Error("missing"), { status: 404 });
+    });
+    const readFromDatabase = vi.fn<LiveSyncLocalDB["readFromDatabase"]>((operation) => operation({ get } as never));
     const core = {
         settings: {},
         storageAccess: {
@@ -47,12 +54,9 @@ function createCore(vaultPaths: string[] = [], documents: TestDocument[] = []) {
             findAllDocs: vi.fn(() => entries(documents)),
             getDBEntryFromMeta: vi.fn(),
             getDBEntry: vi.fn(),
+            readFromDatabase,
             localDatabase: {
-                get: vi.fn(async (id: string) => {
-                    const document = documents.find(({ _id }) => _id === id);
-                    if (document) return document;
-                    throw Object.assign(new Error("missing"), { status: 404 });
-                }),
+                get,
             },
         },
         services: {
