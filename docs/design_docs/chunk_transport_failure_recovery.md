@@ -11,10 +11,11 @@ status: accepted
 
 Accepted on 16th November, 2026. The version fields identify the reviewed
 baseline and are not a claim about the current candidate. The revised integrated
-design is approved and has controlled Linux Obsidian verification. It requires
-an unpublished combined Commonlib package; published Self-hosted LiveSync 1.0.50
-and registry Commonlib 0.5.0 do not contain the combined content. The historical
-results below are labelled by the earlier candidate they exercised.
+design is approved and has controlled Linux Obsidian verification. Its required
+Commonlib APIs are [published in 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0)
+and pinned in the manifest and lockfile. Published Self-hosted LiveSync 1.0.50
+does not contain the host changes. The historical results below are labelled by
+the earlier candidate they exercised.
 
 [Issue #1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224) reports
 ordinary start-up reflection failing before CouchDB becomes reachable. With
@@ -236,11 +237,11 @@ same action is available beside Hatch's inspection controls. Waiting or running
 targets do not produce a needs-review notice; dismissing a notice retains the
 records, and restart allows the remaining issues to be presented again.
 
-Package publication and adoption of an exact released Commonlib dependency are
-pending. The required combined package is built from the Commonlib 0.5.0 reviewed
-baseline, but its contents are different from registry Commonlib 0.5.0. A fresh
-registry-only installation therefore does not contain the required combined
-changes. Validation of the revised integrated candidate is incomplete.
+Commonlib 0.6.0 is published and adopted through the exact registry dependency
+and lockfile. The reviewed Commonlib 0.5.0 version field retains its historical
+baseline; it does not identify the package selected by this branch. The host
+integration remains an unreleased implementation candidate. Historical runtime
+results retain the candidate revisions they exercised.
 
 ## Previous standalone candidate verification
 

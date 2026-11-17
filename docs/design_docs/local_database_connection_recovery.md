@@ -1,11 +1,11 @@
 # Local database connection recovery
 
-Status: unreleased implementation candidate for #1360. The revised design is
-approved and has controlled Linux Obsidian verification. It
-requires the matching unpublished combined Commonlib package. The reviewed
-baseline remains Self-hosted LiveSync 1.0.50 with Commonlib 0.5.0; the registry
-Commonlib 0.5.0 package does not contain the combined changes. Natural iOS
-background connection loss and recovery on a physical iPhone remain unverified.
+Status: unreleased host implementation candidate for #1360. The revised design
+is approved and has controlled Linux Obsidian verification. It uses published
+[Commonlib 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0),
+pinned in the manifest and lockfile. The reviewed baseline remains Self-hosted
+LiveSync 1.0.50 with Commonlib 0.5.0. Natural iOS background connection loss and
+recovery on a physical iPhone remain unverified.
 
 ## Detection and ownership
 
@@ -141,10 +141,10 @@ It also checks that later local file work is accepted. Unit regressions cover
 snapshot failure propagation, shutdown draining, stale targets, and a cleanup
 failure which must not register a completed reflection for retry.
 
-The matching combined Commonlib package remains unpublished. Natural iOS
-connection loss and recovery on a physical iPhone remain unverified. The
-controlled test establishes recovery from its injected failure, not removal of
-the operating-system trigger.
+The matching Commonlib APIs are published in version 0.6.0 and pinned in the
+lockfile. Natural iOS connection loss and recovery on a physical iPhone remain
+unverified. The controlled test establishes recovery from its injected failure,
+not removal of the operating-system trigger.
 
 The Review Harness keeps its active-database samples
 separate from disposable-fixture evidence, with sample time and diagnostic stage
