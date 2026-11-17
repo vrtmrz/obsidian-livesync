@@ -63,11 +63,12 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 ## Proposals and incomplete explanations
 
 The #1360/#1224 design revision is approved and has controlled Linux Obsidian
-verification. Package publication and physical iPhone verification remain
-outstanding. The verification sections distinguish revised-candidate results
-from historical results for earlier candidates.
+verification. Its Commonlib APIs are published in version 0.6.0 and pinned in
+this repository; the Self-hosted LiveSync host changes are not yet released.
+Physical iPhone recovery remains unverified. The verification sections
+distinguish revised-candidate results from historical results for earlier candidates.
 
-- [Local database connection recovery](design_docs/local_database_connection_recovery.md): current-owner database probe, bounded same-database recovery, and its diagnostic and verification limits. The combined Commonlib package is unpublished, and physical iPhone recovery remains unverified.
+- [Local database connection recovery](design_docs/local_database_connection_recovery.md): current-owner database probe, bounded same-database recovery, and its diagnostic and verification limits. The required Commonlib APIs are published in 0.6.0; physical iPhone recovery remains unverified.
 - [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): retain failures with explicit `resources[]`, use one allowance only after every required resource recovers, and keep unknown failures available for review. Previous standalone and integrated candidate results are labelled as historical evidence.
 
 Use these records as the accepted design reference and read their verification

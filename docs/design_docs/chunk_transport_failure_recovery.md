@@ -349,6 +349,6 @@ matching content, revision, and provenance. Unit regressions cover mixed
 resource failures, unknown failures, saved retry admission, snapshot failures,
 stale targets, and asynchronous cleanup.
 
-The matching combined Commonlib package remains unpublished. These tests use
-controlled failures; natural iOS connection loss and recovery on a physical
-iPhone remain unverified.
+The matching Commonlib APIs are published in version 0.6.0 and pinned in this
+repository. These tests use controlled failures; natural iOS connection loss
+and recovery on a physical iPhone remain unverified.
