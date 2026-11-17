@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - The Docker Compose sample can re-run initialisation on an already configured CouchDB server and retain authentication and CORS settings when the container is recreated. (#1356)
     - The initialisation check now authenticates, and a dedicated volume preserves runtime configuration. When updating an existing stack, please save and transfer its settings as described in [Data & Backup](docker/README.md#data--backup) before recreating CouchDB.
+- CLI file lookups avoid repeated full Vault scans when locating files which have not arrived locally or have already been deleted. (#1347)
+    - Applies to Legacy file identity (`pathNormalizationVersion: 0`) with case-insensitive file-name handling. Matching directory branches are listed instead of scanning unrelated Vault subtrees.
 
 ## 1.0.50
 
