@@ -1,6 +1,6 @@
 #!/bin/sh
 # Self-hosted LiveSync — CouchDB Initialization Script
-# Runs once on first startup via the couchdb-init service.
+# Runs via the couchdb-init service on initial setup and subsequent starts.
 # Configures single-node cluster, auth, CORS, and size limits.
 
 set -e
@@ -11,8 +11,8 @@ password="${COUCHDB_PASSWORD:?COUCHDB_PASSWORD is required}"
 node="${COUCHDB_NODE:-_local}"
 
 echo "==> Waiting for CouchDB at ${hostname} ..."
-# _up is publicly accessible (no auth required) — safe pre-auth wait
-until curl -sf "${hostname}/_up" 2>/dev/null | grep -q '"status":"ok"'; do
+# Authenticate because a previous run enables require_valid_user.
+until curl -sf --user "${username}:${password}" "${hostname}/_up" 2>/dev/null | grep -q '"status":"ok"'; do
     printf '.'
     sleep 2
 done
