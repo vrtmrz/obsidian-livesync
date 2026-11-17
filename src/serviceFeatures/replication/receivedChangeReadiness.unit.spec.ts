@@ -110,6 +110,10 @@ function setup() {
         },
         rebuilder: {},
         services,
+        serviceModules: {
+            storageAccess: { isExists: vi.fn(async () => false) },
+            fileHandler: { inspectCurrentFileProvenance: vi.fn(async () => false) },
+        },
     };
 
     useReplicationFeature(core as never);

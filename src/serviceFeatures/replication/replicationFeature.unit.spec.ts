@@ -193,17 +193,18 @@ function deletionRecoveryHarness(source: "received" | "scan" = "received") {
 }
 
 describe("reflection service resolution", () => {
-    it("does not resolve reflection-only service modules during composition", () => {
+    it("captures already initialised reflection service modules during composition", () => {
         const { core } = setup({ deferComposition: true });
+        const modules = core.serviceModules;
+        const lookup = vi.fn(() => modules);
         Object.defineProperty(core, "serviceModules", {
-            get() {
-                throw new Error("Unexpected eager service-module lookup");
-            },
+            get: lookup,
         });
-        expect(() => createReplicationFeature(core as never)).not.toThrow();
+        createReplicationFeature(core as never);
+        expect(lookup).toHaveBeenCalled();
     });
 
-    it("uses the current storage module when inspecting retained work", async () => {
+    it("keeps the composed storage capability when inspecting retained work", async () => {
         const { context, feature } = deletionRecoveryHarness();
         const previous = context.core.serviceModules.storageAccess;
         const current = { isExists: vi.fn(async () => true) };
@@ -211,9 +212,9 @@ describe("reflection service resolution", () => {
 
         await feature.recovery.reconcile();
 
-        expect(current.isExists).toHaveBeenCalledExactlyOnceWith("deleted-target.md");
-        expect(previous.isExists).not.toHaveBeenCalled();
-        expect(feature.recovery.list()).toHaveLength(1);
+        expect(previous.isExists).toHaveBeenCalledExactlyOnceWith("deleted-target.md");
+        expect(current.isExists).not.toHaveBeenCalled();
+        expect(feature.recovery.list()).toEqual([]);
     });
 });
 

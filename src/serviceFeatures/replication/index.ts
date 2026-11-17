@@ -35,11 +35,14 @@ function ownsLocalApplicationActivity(value: object): value is LocalApplicationA
  * Registration order is observable for equal-priority handlers. The host must
  * call the returned `register` after host serviceFeatures and add-ons are composed, but before
  * legacy modules are bound, so lifecycle handlers observe the required order.
+ * ServiceModules must already be constructed; their capabilities are retained
+ * for this feature's lifetime.
  */
 export function createReplicationFeature<TContext extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
     core: LiveSyncBaseCore<TContext, TCommands>
 ) {
     const { services } = core;
+    const { storageAccess, fileHandler } = core.serviceModules;
     const recoveryEnabled = core.startupDatabaseOptions?.recoverFileReflectionFailures === true;
     // Obsidian adds an application-activity owner to its ReplicatorService.
     // Generic hosts retain the former direct-execution fallback.
@@ -52,22 +55,15 @@ export function createReplicationFeature<TContext extends ServiceContext, TComma
         setting: services.setting,
         conflict: services.conflict,
         path: services.path,
-        // Preserve the former callbacks' deferred lookup of reflection service modules.
-        get storageAccess() {
-            return core.serviceModules.storageAccess;
-        },
+        storageAccess,
         getLocalDatabase: () => core.localDatabase,
-        get fileHandler() {
-            return core.serviceModules.fileHandler;
-        },
+        fileHandler,
         API: services.API,
     };
     const scannedDocumentContext = {
         scannerHost: core,
         path: services.path,
-        get storageAccess() {
-            return core.serviceModules.storageAccess;
-        },
+        storageAccess,
         API: services.API,
     };
     const resultProcessor = new ReplicateResultProcessor(
