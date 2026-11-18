@@ -1,11 +1,11 @@
 # Local database connection recovery
 
-Status: unreleased host implementation candidate for #1360. The revised design
-is approved and has controlled Linux Obsidian verification. It uses published
-[Commonlib 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0),
-pinned in the manifest and lockfile. The reviewed baseline remains Self-hosted
-LiveSync 1.0.50 with Commonlib 0.5.0. Natural iOS background connection loss and
-recovery on a physical iPhone remain unverified.
+Status: accepted implementation for #1360, included in Self-hosted LiveSync 1.0.51
+with [Commonlib 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0),
+pinned in the manifest and lockfile. The revised design is approved and has
+controlled Linux Obsidian verification. The reviewed baseline remains
+Self-hosted LiveSync 1.0.50 with Commonlib 0.5.0. Natural iOS background
+connection loss and recovery on a physical iPhone remain unverified.
 
 ## Detection and ownership
 
@@ -105,7 +105,7 @@ replication from reaching its later `info()` call. With the `indexeddb` adapter,
 a new operation may succeed while an earlier read remains unfinished. Neither
 case is covered by a claim of automatic recovery.
 
-The development Harness draft observes abort, operation settlement, and drain on
+The Review Harness observes abort, operation settlement, and drain on
 disposable fixtures. Its temporary method interception belongs to the diagnostic;
 it is not a replacement of the installed adapter. Copy the observations and
 restart Obsidian after the experiment. The diagnostic records a pending read as an observation and offers a manual
@@ -131,9 +131,9 @@ the real receiver without a remote server. It was run with
 Commonlib candidate and a discoverable Obsidian executable, and did not reproduce
 an iOS background termination. These results describe those candidates only.
 
-### Revised candidate verification
+### Revised implementation verification
 
-The revised candidate passes the controlled Linux Obsidian receiver test with
+The revised implementation (included in Self-hosted LiveSync 1.0.51) passes the controlled Linux Obsidian receiver test with
 the combined Commonlib package. The test closes the native connection during a
 received Metadata read, observes the retained snapshot before reopening, and
 checks automatic reflection with unchanged content, revision, and provenance.
