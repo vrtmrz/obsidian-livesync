@@ -30,6 +30,8 @@ Use these references for the area being changed, together with its relevant ADR.
 |---|---|
 | Overall synchronisation and terminology | [Technical overview](tech_info.md), [glossary](glossary.md), and [terminology conventions](terms.md) |
 | Recovering unapplied logical deletions | [Deletion recovery design](design_docs/database_to_vault_deletion_recovery.md): accepted implementation design; published in Self-hosted LiveSync 1.0.48 with Commonlib 0.4.2 |
+| Local database connection recovery | [Local database connection recovery](design_docs/local_database_connection_recovery.md): accepted implementation for #1360, included in 1.0.51 with Commonlib 0.6.0; physical iPhone recovery remains unverified |
+| File reflection recovery | [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): accepted implementation for #1224 and #1360, included in 1.0.51 with Commonlib 0.6.0; physical iPhone recovery remains unverified |
 | File writing, Vault reflection, and recovery ownership | [Write and reflection paths](design_docs/file_write_and_reflection_paths.md): entry policies, completion, retry ownership, and runtime access costs |
 | Metadata, Chunks, and database representations | [Data structures](datastructure.md) |
 | Conflict resolution, provenance, and history restoration | [Conflict and provenance contract](specs_conflict_resolution.md), [Document History restoration](design_docs/document_history_revision_restoration.md), and [local save completion](adr/2026_10_local_file_save_completion_and_batching.md) |
@@ -62,17 +64,7 @@ Read the decisions relevant to the change, rather than treating the whole ADR di
 
 ## Proposals and incomplete explanations
 
-The #1360/#1224 design revision is approved and has controlled Linux Obsidian
-verification. Its Commonlib APIs are published in version 0.6.0 and pinned in
-this repository; the Self-hosted LiveSync host changes are not yet released.
-Physical iPhone recovery remains unverified. The verification sections
-distinguish revised-candidate results from historical results for earlier candidates.
-
-- [Local database connection recovery](design_docs/local_database_connection_recovery.md): current-owner database probe, bounded same-database recovery, and its diagnostic and verification limits. The required Commonlib APIs are published in 0.6.0; physical iPhone recovery remains unverified.
-- [File reflection recovery](design_docs/chunk_transport_failure_recovery.md): retain failures with explicit `resources[]`, use one allowance only after every required resource recovers, and keep unknown failures available for review. Previous standalone and integrated candidate results are labelled as historical evidence.
-
-Use these records as the accepted design reference and read their verification
-sections before making claims about current runtime behaviour.
+These records are useful for design work. Their proposed representation or behaviour is not a current runtime contract.
 
 | Document | Recorded state |
 |---|---|
