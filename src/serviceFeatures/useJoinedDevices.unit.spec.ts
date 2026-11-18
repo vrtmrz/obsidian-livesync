@@ -42,7 +42,8 @@ function fixture(preferences = new Map<string, unknown>()) {
     );
     const notices = { setItem: vi.fn(), removeItem: vi.fn(), finish: vi.fn(), hide: vi.fn() };
     const palette: Array<{ id: string; checkCallback: (checking: boolean) => boolean }> = [];
-    const database = { localDatabase: { get: vi.fn(async () => ({ nodeid: "self" })) } };
+    const get = vi.fn(async () => ({ nodeid: "self" }));
+    const database = { getRaw: vi.fn(() => get()), localDatabase: { get } };
     const config = {
         getObject: vi.fn(async (key: string) => preferences.get(key)),
         setObject: vi.fn(async (key: string, value: unknown) => {
@@ -106,6 +107,20 @@ async function open(data: ReturnType<typeof fixture>) {
 }
 
 describe("joined devices service feature", () => {
+    it("does not create a remote resource when the owned identity read is retired", async () => {
+        const data = fixture();
+        const failure = new Error("Local database reads have stopped.");
+        data.database.getRaw.mockRejectedValue(failure);
+        const { options, pending } = await open(data);
+        try {
+            await expect(options.refresh()).rejects.toBe(failure);
+            expect(data.createResource).not.toHaveBeenCalled();
+        } finally {
+            data.close();
+            await pending;
+        }
+    });
+
     it("shows version Notices by default and leaves each device unchecked", async () => {
         const data = fixture();
         const { options, pending } = await open(data);

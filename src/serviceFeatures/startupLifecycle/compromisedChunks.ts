@@ -8,6 +8,7 @@ import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat
 import { countCompromisedChunks } from "@vrtmrz/livesync-commonlib/compat/pouchdb/negotiation";
 import type { Rebuilder } from "@vrtmrz/livesync-commonlib/compat/interfaces/DatabaseRebuilder";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { $msg } from "@/common/translation";
 
 interface CompromisedChunkCounter {
@@ -17,9 +18,7 @@ interface CompromisedChunkCounter {
 /** Focused collaborators for checking and recovering insecure chunks. */
 export interface CompromisedChunksDependencies {
     readonly settings: Pick<ObsidianLiveSyncSettings, "encrypt">;
-    readonly localDatabase: {
-        readonly localDatabase: Parameters<typeof countCompromisedChunks>[0];
-    };
+    readonly localDatabase: Pick<LiveSyncLocalDB, "readFromDatabase">;
     readonly isOnline: boolean | (() => boolean);
     readonly getActiveReplicator: () => object | undefined;
     readonly confirm: Pick<Confirm, "askSelectStringDialogue">;
@@ -49,7 +48,9 @@ export async function checkCompromisedChunks(dependencies: CompromisedChunksDepe
         return true;
     }
     // Check local database for compromised chunks
-    const localCompromised = await countCompromisedChunks(dependencies.localDatabase.localDatabase);
+    const localCompromised = await dependencies.localDatabase
+        .readFromDatabase(countCompromisedChunks)
+        .catch(() => false as const);
     const remote = dependencies.getActiveReplicator();
     const remoteCompromised =
         readOnline(dependencies.isOnline) && hasCompromisedChunkCounter(remote)

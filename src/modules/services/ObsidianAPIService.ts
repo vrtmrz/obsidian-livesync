@@ -5,6 +5,7 @@ import { ObsHttpHandler } from "@/modules/essentialObsidian/APILib/ObsHttpHandle
 import { ObsidianConfirm } from "./ObsidianConfirm";
 import type { Confirm } from "@vrtmrz/livesync-commonlib/compat/interfaces/Confirm";
 import { requestUrl, type RequestUrlParam } from "@/deps";
+import { RemoteRequestError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import { compatGlobal } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 import { createNativeRequestHeaders } from "./nativeRequestHeaders";
 // All Services will be migrated to be based on Plain Services, not Injectable Services.
@@ -192,11 +193,21 @@ export class ObsidianAPIService extends InjectableAPIService<ObsidianServiceCont
             headers: transformedHeaders,
             contentType: contentType,
         };
-        const r = await requestUrl({ ...requestParam, throw: false });
-        return new Response(r.arrayBuffer, {
-            headers: r.headers,
-            status: r.status,
-            statusText: `${r.status}`,
+        // Wrap only native request failures; Response conversion errors remain separate.
+        let response: Awaited<ReturnType<typeof requestUrl>>;
+        try {
+            response = await requestUrl({ ...requestParam, throw: false });
+        } catch (error) {
+            const signal = opts?.signal ?? (req instanceof Request ? req.signal : undefined);
+            if (signal?.aborted) {
+                throw error;
+            }
+            throw new RemoteRequestError("Remote request failed", { cause: error });
+        }
+        return new Response(response.arrayBuffer, {
+            headers: response.headers,
+            status: response.status,
+            statusText: `${response.status}`,
         });
     }
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RequestUrlParam } from "@/deps";
+import { RemoteRequestError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 
 const mocks = vi.hoisted(() => ({
     requestUrl: vi.fn<
@@ -73,6 +74,114 @@ describe("ObsidianAPIService.showWindowOnRight", () => {
             active: false,
         });
         expect(workspace.revealLeaf).toHaveBeenCalledWith(rightLeaf);
+    });
+});
+
+describe("ObsidianAPIService.nativeFetch failure boundary", () => {
+    const url = "https://couchdb.example.test/vault";
+
+    it("identifies a native request rejection while retaining its cause", async () => {
+        const cause = new Error("The network connection was lost");
+        mocks.requestUrl.mockRejectedValue(cause);
+        await expect(createService({}).nativeFetch(url)).rejects.toMatchObject({
+            name: "RemoteRequestError",
+            cause,
+        });
+    });
+
+    it("keeps cancellation out of request recovery", async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const cause = new DOMException("Cancelled", "AbortError");
+        mocks.requestUrl.mockRejectedValue(cause);
+        await expect(createService({}).nativeFetch(url, { signal: controller.signal })).rejects.toBe(cause);
+    });
+
+    it("wraps a name-only AbortError when neither request signal was aborted", async () => {
+        const cause = new DOMException("Unrelated abort-shaped failure", "AbortError");
+        mocks.requestUrl.mockRejectedValue(cause);
+
+        const operation = createService({}).nativeFetch(url);
+
+        await expect(operation).rejects.toBeInstanceOf(RemoteRequestError);
+        await expect(operation).rejects.toMatchObject({
+            message: "Remote request failed",
+            cause,
+        });
+    });
+
+    it.each([null, undefined])("preserves a %s rejection value as the cause", async (cause) => {
+        mocks.requestUrl.mockRejectedValue(cause);
+
+        let actual: unknown;
+        try {
+            await createService({}).nativeFetch(url);
+        } catch (error) {
+            actual = error;
+        }
+
+        expect(actual).toBeInstanceOf(RemoteRequestError);
+        expect(actual).toMatchObject({ message: "Remote request failed" });
+        expect(actual).toHaveProperty("cause", cause);
+    });
+
+    it("does not classify a rejected request as transport after its signal was cancelled", async () => {
+        const controller = new AbortController();
+        const cause = new Error("Native cancellation");
+        mocks.requestUrl.mockImplementation(async () => {
+            controller.abort();
+            throw cause;
+        });
+        await expect(createService({}).nativeFetch(new Request(url, { signal: controller.signal }))).rejects.toBe(
+            cause
+        );
+    });
+
+    it("uses the options signal when it overrides an aborted Request signal", async () => {
+        const original = new AbortController();
+        original.abort();
+        const replacement = new AbortController();
+        const cause = new Error("Native transport failure");
+        mocks.requestUrl.mockRejectedValue(cause);
+        await expect(
+            createService({}).nativeFetch(new Request(url, { signal: original.signal }), {
+                signal: replacement.signal,
+            })
+        ).rejects.toMatchObject({ name: "RemoteRequestError", cause });
+    });
+
+    it("preserves a rejection when the native request options signal was cancelled", async () => {
+        const controller = new AbortController();
+        const cause = new Error("Native cancellation");
+        mocks.requestUrl.mockImplementation(async () => {
+            controller.abort();
+            throw cause;
+        });
+
+        await expect(createService({}).nativeFetch(url, { signal: controller.signal })).rejects.toBe(cause);
+    });
+
+    it.each([401, 403, 500])("preserves an HTTP %s response", async (status) => {
+        mocks.requestUrl.mockResolvedValue({ status, headers: {}, arrayBuffer: new ArrayBuffer(0) });
+        const response = await createService({}).nativeFetch(url);
+        expect(response.status).toBe(status);
+    });
+
+    it("does not wrap failures while preparing the request", async () => {
+        const cause = new Error("Cannot read headers");
+        const headers = Object.defineProperty({}, "test", {
+            enumerable: true,
+            get: () => {
+                throw cause;
+            },
+        });
+        await expect(createService({}).nativeFetch(url, { headers })).rejects.toBe(cause);
+        expect(mocks.requestUrl).not.toHaveBeenCalled();
+    });
+
+    it("does not wrap failures while constructing the response", async () => {
+        mocks.requestUrl.mockResolvedValue({ status: 0, headers: {}, arrayBuffer: new ArrayBuffer(0) });
+        await expect(createService({}).nativeFetch(url)).rejects.toBeInstanceOf(RangeError);
     });
 });
 

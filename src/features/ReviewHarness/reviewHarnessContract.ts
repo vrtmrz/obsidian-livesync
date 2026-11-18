@@ -45,6 +45,30 @@ export const REVIEW_HARNESS_SCENARIOS = [
         mode: "manual",
         access: "read-only",
     },
+    {
+        id: "database-connection-loss",
+        title: "Database connection-loss diagnostic",
+        description:
+            "Guides an individual controlled database connection close, handle check, and reopen using a dedicated database fixture.",
+        mode: "guided",
+        access: "dedicated-database-fixtures",
+    },
+    {
+        id: "database-background-events",
+        title: "Database background-events diagnostic",
+        description:
+            "Guides an individual database event observation around an app background and foreground cycle using a dedicated database fixture.",
+        mode: "guided",
+        access: "dedicated-database-fixtures",
+    },
+    {
+        id: "database-transaction-abort",
+        title: "Database transaction-abort diagnostic",
+        description:
+            "Observes native abort events and whether a read settles on disposable stock-adapter fixtures. Keep Obsidian in the foreground, copy the report, then press Restart Obsidian. This does not assess whole-app LiveSync recovery.",
+        mode: "manual",
+        access: "dedicated-database-fixtures",
+    },
 ] as const;
 
 export const REVIEW_HARNESS_SCENARIO_IDS = REVIEW_HARNESS_SCENARIOS.map(({ id }) => id);
@@ -53,6 +77,14 @@ export type ReviewHarnessScenario = (typeof REVIEW_HARNESS_SCENARIOS)[number];
 export type ReviewHarnessScenarioId = ReviewHarnessScenario["id"];
 export type ReviewHarnessScenarioMode = ReviewHarnessScenario["mode"];
 export type ReviewHarnessScenarioAccess = ReviewHarnessScenario["access"];
+
+export const REVIEW_HARNESS_AUTOMATIC_SCENARIO_IDS = [
+    "settings-lifecycle",
+] as const satisfies readonly ReviewHarnessScenarioId[];
+export const REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS = REVIEW_HARNESS_SCENARIOS.filter(
+    ({ id }) =>
+        id !== "database-connection-loss" && id !== "database-background-events" && id !== "database-transaction-abort"
+).map(({ id }) => id);
 
 export const REVIEW_HARNESS_STATE_KEY = "review-harness-v1";
 

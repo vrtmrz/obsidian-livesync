@@ -20,6 +20,8 @@ const focusedScenarios = new Set([
     "configuration-encryption",
     "configuration-encryption-sync",
     "review-harness",
+    "database-probe",
+    "database-recovery",
     "p2p-pane",
     "replication-status",
     "vault-reflection",

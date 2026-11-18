@@ -18,6 +18,7 @@ import type { LiveSyncCore } from "@/main.ts";
 import { initialiseWorkerModule } from "@vrtmrz/livesync-commonlib/compat/worker/bgWorker";
 import { manifestVersion, packageVersion } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvVars";
 import { VaultScanResults } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/offlineScanner";
+import type { ReflectionTarget } from "@vrtmrz/livesync-commonlib/replication";
 
 const OBSIDIAN_PLATFORMS = new Set([
     "android-app",
@@ -33,6 +34,18 @@ const OBSIDIAN_PLATFORMS = new Set([
 
 function isObsidianPlatform(platform: string): boolean {
     return OBSIDIAN_PLATFORMS.has(platform);
+}
+
+/**
+ * Keep start-up scanning behind durable failure registration, and propagate registration errors.
+ * The scanner consumes completion only; the replication handler's boolean is not a scan result.
+ */
+async function retainStartupReflectionFailure(
+    services: { readonly replication: Pick<LiveSyncCore["services"]["replication"], "onFileReflectionFailed"> },
+    target: ReflectionTarget,
+    error: unknown
+): Promise<void> {
+    await services.replication.onFileReflectionFailed(target, error);
 }
 
 export class ModuleLiveSyncMain extends AbstractModule {
@@ -73,7 +86,14 @@ export class ModuleLiveSyncMain extends AbstractModule {
             false,
             ignoreSuspending,
             continueOnFileFailure,
-            { strictContentCheck }
+            {
+                strictContentCheck,
+                ...(continueOnFileFailure && this.core.startupDatabaseOptions.recoverFileReflectionFailures
+                    ? {
+                          onReflectionFailed: retainStartupReflectionFailure.bind(undefined, this.services),
+                      }
+                    : {}),
+            }
         );
         if (initialisationResult === VaultScanResults.FAILED) {
             this._log($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);

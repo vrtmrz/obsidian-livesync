@@ -17,32 +17,28 @@ import type { LiveSyncCouchDBReplicatorEnv } from "@vrtmrz/livesync-commonlib/co
 import type { CheckPointInfo } from "@vrtmrz/livesync-commonlib/compat/replication/journal/JournalSyncTypes";
 import type { LiveSyncAbstractReplicator } from "@vrtmrz/livesync-commonlib/compat/replication/LiveSyncAbstractReplicator";
 import type { ReplicatorInstance } from "@vrtmrz/livesync-commonlib/replication";
-import { useTargetFilters } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/targetFilter";
-import { useRemoteConfigurationMigration } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/remoteConfig";
 import type { ServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { AbstractModule } from "./modules/AbstractModule";
 import { ModuleResolvingMismatchedTweaks } from "./modules/coreFeatures/ModuleResolveMismatchedTweaks";
 import { ModuleLiveSyncMain } from "./modules/main/ModuleLiveSyncMain";
 import type { ServiceModules } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
-import { usePrepareDatabaseForUse } from "@vrtmrz/livesync-commonlib/compat/serviceFeatures/prepareDatabaseForUse";
 import type { Constructor } from "@vrtmrz/livesync-commonlib/compat/common/utils.type";
-import { useReplicationScheduling, type ReplicationSchedulingControl } from "./serviceFeatures/replicationScheduling";
 import { createCentralReplicatorProviderDefinitions } from "./common/core/replication/providers";
-import { useReplicationFeature } from "./serviceFeatures/replication";
-import { useConflictResolutionFeature } from "./serviceFeatures/conflictResolution";
-import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
-import { useBasicCommandsFeature } from "./serviceFeatures/basicCommands";
+import {
+    composeCoreFeatures,
+    initialiseSharedCoreFeatures,
+    type HostFeatureInitialiser,
+    type LiveSyncCoreFeatureViews,
+} from "./serviceFeatures/coreFeatures";
 
-/** Focused views returned by serviceFeatures which the host may consume during composition. */
-export interface LiveSyncCoreFeatureViews {
-    readonly replicationScheduling: ReplicationSchedulingControl;
-}
+export type { LiveSyncCoreFeatureViews } from "./serviceFeatures/coreFeatures";
 
 export interface StartupDatabaseOptions {
     readonly discardReplicationResultSnapshotOnReset?: boolean;
     readonly ignoreSuspending?: boolean;
     readonly continueOnFileFailure?: boolean;
+    readonly recoverFileReflectionFailures?: boolean;
 }
 
 type CompatibilityReplicatorView = ReplicatorInstance & Partial<LiveSyncAbstractReplicator>;
@@ -85,7 +81,7 @@ export class LiveSyncBaseCore<
         ) => ServiceModules,
         extraModuleInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => AbstractModule[],
         addOnsInitialiser: (core: LiveSyncBaseCore<T, TCommands>) => TCommands[],
-        featuresInitialiser: (core: LiveSyncBaseCore<T, TCommands>, coreFeatureViews: LiveSyncCoreFeatureViews) => void,
+        featuresInitialiser: HostFeatureInitialiser<LiveSyncBaseCore<T, TCommands>>,
         readonly startupDatabaseOptions: StartupDatabaseOptions = {}
     ) {
         this._services = serviceHub;
@@ -93,16 +89,11 @@ export class LiveSyncBaseCore<
         this._serviceModules = serviceModuleInitialiser(this, serviceHub);
         const extraModules = extraModuleInitialiser(this);
         this.registerModules(extraModules);
-        const coreFeatureViews = this.initialiseServiceFeatures();
-        featuresInitialiser(this, coreFeatureViews);
-        const addOns = addOnsInitialiser(this);
-        for (const addOn of addOns) {
-            this._registerAddOn(addOn);
-        }
-        // Compose late core features after host features and add-ons, then bind
-        // legacy modules so lifecycle handlers observe the required order.
-        useReplicationFeature(this);
-        useBasicCommandsFeature(this);
+        composeCoreFeatures(this, featuresInitialiser, () => {
+            for (const addOn of addOnsInitialiser(this)) {
+                this._registerAddOn(addOn);
+            }
+        });
         this.bindModuleFunctions();
     }
     /**
@@ -225,8 +216,12 @@ export class LiveSyncBaseCore<
     }
 
     /**
-     * @obsolete Use services.database.localDatabase instead. Get the PouchDB database instance. Note that this is not the same as the local database instance, which is a wrapper around the PouchDB database.
-     * @returns The PouchDB database instance.
+     * Get the raw PouchDB handle for integrations which own their operation lifetime.
+     * Direct reads bypass the local database owner's caller-wait retirement.
+     *
+     * @obsolete Use services.database.localDatabase and choose getRaw(), allDocsRaw(),
+     * or readFromDatabase() for managed reads, or readDBEntry() for file contents.
+     * @returns The unwrapped PouchDB instance for replication, changes feeds, or maintenance.
      */
     getDatabase(): PouchDB.Database<EntryDoc> {
         return this.localDatabase.localDatabase;
@@ -291,20 +286,8 @@ export class LiveSyncBaseCore<
      * Initialise ServiceFeatures.
      * (Please refer `serviceFeatures` for more details)
      */
-    initialiseServiceFeatures(): LiveSyncCoreFeatureViews {
-        useConflictResolutionFeature({
-            services: this.services,
-            serviceModules: this.serviceModules,
-            log: createInstanceLogFunction("SF:ConflictResolution", this.services.API),
-        });
-        useTargetFilters(this);
-        // enable target filter feature.
-        usePrepareDatabaseForUse(this);
-        // Migration to multiple remote configurations
-        useRemoteConfigurationMigration(this);
-        return Object.freeze({
-            replicationScheduling: useReplicationScheduling(this),
-        });
+    initialiseServiceFeatures(): Pick<LiveSyncCoreFeatureViews, "replicationScheduling"> {
+        return initialiseSharedCoreFeatures(this);
     }
 }
 

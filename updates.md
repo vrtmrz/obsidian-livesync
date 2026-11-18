@@ -30,6 +30,17 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
     - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.
 - We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. The choices are retained for this Vault on this device and can be reversed with **Unmute version notices**; synchronisation compatibility checks remain enabled. Device removal is available under **… → Forget device record…**. (#1349)
 
+### Recovery work in progress
+
+- An unavailable local database can be reopened before synchronisation resumes, after a read of its current connection fails. Local file dispatch is held during replacement; failed completion requests an Obsidian restart. (#1360)
+    - This candidate requires the combined Commonlib update. Controlled Linux Obsidian recovery tests pass; recovery on a physical iPhone remains unverified.
+- Ordinary files which could not be reflected are retained. Failures at known local database or remote content-read boundaries are eligible for one automatic retry after the required resources recover. Failures without an established retry condition and remaining failed attempts are available through 'Review files which could not be reflected', including the Hatch action. (#1224, #1360)
+    - Native request failures carry their origin without relying on their message text. Reopening the same local database preserves retained work and consumed retry allowances.
+
+### Developer tools
+
+- The Review Harness adds individual guided diagnostics for controlled database connection loss and app background events. They record observations only; a run with no observed failure does not establish that a fix worked or provide automatic product recovery.
+
 ## 1.0.50
 
 12th November, 2026

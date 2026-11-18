@@ -405,6 +405,8 @@ body.is-mobile .sls-onboarding-invitation-action {
     white-space: normal;
 }
 
+.sls-review-harness__database-guide,
+.sls-review-harness__observations,
 .sls-review-harness__result,
 .sls-review-harness__warning,
 .sls-review-harness__privacy,

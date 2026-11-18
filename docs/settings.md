@@ -1273,7 +1273,7 @@ Setting key: disableCheckingConfigMismatch
 
 Setting key: maxMTimeForReflectEvents
 
-Files with modification times greater than this value (in seconds since the Unix epoch) will not have their events reflected. Set to 0 to disable this limit.
+Files with modification times greater than this value (in milliseconds since the Unix epoch) will not have their events reflected. Set to 0 to disable this limit.
 
 ## 11. Maintenance
 

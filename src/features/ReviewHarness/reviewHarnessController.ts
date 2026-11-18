@@ -1,6 +1,8 @@
 import type { ObsidianLiveSyncSettings, SettingsMigrationState } from "@vrtmrz/livesync-commonlib/settings";
 import type { CompatibilityPause } from "@/serviceFeatures/compatibilityReview.evaluation.ts";
 import {
+    REVIEW_HARNESS_AUTOMATIC_SCENARIO_IDS,
+    REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS,
     REVIEW_HARNESS_SCENARIOS,
     REVIEW_HARNESS_STATE_KEY,
     formatReviewHarnessReport,
@@ -11,6 +13,12 @@ import {
     type ReviewHarnessScenarioId,
     type ReviewHarnessScenarioResult,
 } from "./reviewHarnessContract";
+import type {
+    DatabaseProbeAction,
+    DatabaseProbeMode,
+    DatabaseProbeSnapshot,
+    ReviewHarnessDatabaseProbe,
+} from "./reviewHarnessDatabaseProbeTypes";
 
 export interface ReviewHarnessRuntime {
     now(): Date;
@@ -23,6 +31,8 @@ export interface ReviewHarnessRuntime {
     runVaultRoundTrip(): Promise<ReviewHarnessScenarioResult>;
     runIdBenchmark(): Promise<ReviewHarnessScenarioResult>;
     runFileContentHashBenchmark(): Promise<ReviewHarnessScenarioResult>;
+    runDatabaseAbortDiagnostic(): Promise<ReviewHarnessScenarioResult>;
+    databaseProbe?: ReviewHarnessDatabaseProbe;
     readContinuation(): Promise<string | null>;
     writeContinuation(value: string): Promise<void>;
     deleteContinuation(): Promise<void>;
@@ -45,6 +55,7 @@ export interface ReviewHarnessSnapshot {
     readonly resumedRequestId: string | null;
     readonly continuationError: string | null;
     readonly transcript: readonly ReviewHarnessTranscriptEntry[];
+    readonly databaseProbe: DatabaseProbeSnapshot | null;
 }
 
 const idleResult = (): ReviewHarnessScenarioResult => ({
@@ -60,6 +71,30 @@ function initialResults(): Record<ReviewHarnessScenarioId, ReviewHarnessScenario
     >;
 }
 
+function databaseProbeScenarioId(mode: DatabaseProbeMode | null): ReviewHarnessScenarioId | null {
+    if (mode === "controlled") {
+        return "database-connection-loss";
+    }
+    if (mode === "background") {
+        return "database-background-events";
+    }
+    return null;
+}
+
+function copyDatabaseProbeSnapshot(snapshot: DatabaseProbeSnapshot): DatabaseProbeSnapshot {
+    return {
+        ...snapshot,
+        availableActions: [...snapshot.availableActions],
+        result: { ...snapshot.result, observations: [...snapshot.result.observations] },
+    };
+}
+
+function isDatabaseProbeScenarioId(
+    id: ReviewHarnessScenarioId | null
+): id is "database-connection-loss" | "database-background-events" {
+    return id === "database-connection-loss" || id === "database-background-events";
+}
+
 export class ReviewHarnessController {
     private readonly results = initialResults();
     private readonly transcript: ReviewHarnessTranscriptEntry[] = [];
@@ -69,8 +104,14 @@ export class ReviewHarnessController {
     private resumedRequestId: string | null = null;
     private continuationError: string | null = null;
     private continuationConsumption: Promise<void> | undefined;
+    private databaseProbeSnapshot: DatabaseProbeSnapshot | null;
+    private unsubscribeDatabaseProbe: (() => void) | undefined;
 
-    constructor(private readonly runtime: ReviewHarnessRuntime) {}
+    constructor(private readonly runtime: ReviewHarnessRuntime) {
+        this.databaseProbeSnapshot = runtime.databaseProbe?.snapshot() ?? null;
+        this.applyDatabaseProbeSnapshot(this.databaseProbeSnapshot);
+        this.unsubscribeDatabaseProbe = runtime.databaseProbe?.subscribe(() => this.refreshDatabaseProbeSnapshot());
+    }
 
     subscribe(listener: () => void): () => void {
         this.listeners.add(listener);
@@ -90,6 +131,52 @@ export class ReviewHarnessController {
         while (this.transcript.length > 100) this.transcript.shift();
     }
 
+    private applyDatabaseProbeSnapshot(snapshot: DatabaseProbeSnapshot | null): void {
+        this.databaseProbeSnapshot = snapshot;
+        const scenarioId = databaseProbeScenarioId(snapshot?.mode ?? null);
+        if (scenarioId && snapshot) {
+            this.results[scenarioId] = {
+                ...snapshot.result,
+                observations: [...snapshot.result.observations],
+            };
+        }
+    }
+
+    private refreshDatabaseProbeSnapshot(): void {
+        this.applyDatabaseProbeSnapshot(this.runtime.databaseProbe?.snapshot() ?? null);
+        const probe = this.databaseProbeSnapshot;
+        if (probe) this.record("database-probe-updated", `${probe.mode ?? "none"}:${probe.phase}`);
+        this.notify();
+    }
+
+    private refreshDatabaseProbeSnapshotWithoutNotification(): void {
+        this.applyDatabaseProbeSnapshot(this.runtime.databaseProbe?.snapshot() ?? null);
+    }
+
+    private isDatabaseProbeActive(): boolean {
+        const phase = this.databaseProbeSnapshot?.phase;
+        return phase === "preparing" || phase === "observing" || phase === "checking" || phase === "finishing";
+    }
+
+    private reportObservations(id: ReviewHarnessScenarioId): readonly string[] {
+        const result = this.results[id];
+        const observations = [...result.observations];
+        if (id === "database-connection-loss" || id === "database-background-events") {
+            observations.push(
+                "The diagnostic is observational; it does not perform or verify automatic LiveSync recovery."
+            );
+            if (result.status === "not-observed") {
+                observations.push("No observed failure does not establish that a fix worked.");
+            }
+        }
+        if (id === "database-connection-loss") {
+            observations.push(
+                "The controlled native close is diagnostic input and does not emit a native close event."
+            );
+        }
+        return observations;
+    }
+
     snapshot(): ReviewHarnessSnapshot {
         return {
             results: Object.fromEntries(
@@ -100,6 +187,7 @@ export class ReviewHarnessController {
             resumedRequestId: this.resumedRequestId,
             continuationError: this.continuationError,
             transcript: [...this.transcript],
+            databaseProbe: this.databaseProbeSnapshot ? copyDatabaseProbeSnapshot(this.databaseProbeSnapshot) : null,
         };
     }
 
@@ -140,11 +228,15 @@ export class ReviewHarnessController {
     }
 
     async runAutomaticScenarios(): Promise<void> {
-        await this.runScenario("settings-lifecycle");
+        for (const id of REVIEW_HARNESS_AUTOMATIC_SCENARIO_IDS) {
+            await this.runScenario(id);
+        }
     }
 
     async runAllScenarios(): Promise<void> {
-        for (const { id } of REVIEW_HARNESS_SCENARIOS) await this.runScenario(id);
+        for (const id of REVIEW_HARNESS_FULL_REVIEW_SCENARIO_IDS) {
+            await this.runScenario(id);
+        }
     }
 
     private inspectCompatibilityReview(): ReviewHarnessScenarioResult {
@@ -156,7 +248,9 @@ export class ReviewHarnessController {
     }
 
     async runScenario(id: ReviewHarnessScenarioId): Promise<void> {
-        if (this.running) return;
+        if (this.running || this.isDatabaseProbeActive()) {
+            return;
+        }
         this.running = true;
         this.current = id;
         this.results[id] = { status: "running", detail: "Running", observations: [] };
@@ -176,6 +270,10 @@ export class ReviewHarnessController {
                 result = await this.runtime.runIdBenchmark();
             } else if (id === "file-content-hash-performance") {
                 result = await this.runtime.runFileContentHashBenchmark();
+            } else if (id === "database-transaction-abort") {
+                result = await this.runtime.runDatabaseAbortDiagnostic();
+            } else if (id === "database-connection-loss" || id === "database-background-events") {
+                result = await this.startDatabaseProbe(id === "database-connection-loss" ? "controlled" : "background");
             } else {
                 const inspection = this.inspectCompatibilityReview();
                 result =
@@ -198,8 +296,34 @@ export class ReviewHarnessController {
         }
     }
 
+    private async startDatabaseProbe(mode: DatabaseProbeMode): Promise<ReviewHarnessScenarioResult> {
+        if (!this.runtime.databaseProbe) {
+            return {
+                status: "unsupported",
+                detail: "The database diagnostic is unavailable in this runtime.",
+                observations: [],
+            };
+        } else {
+            await this.runtime.databaseProbe.start(mode);
+            this.refreshDatabaseProbeSnapshotWithoutNotification();
+            const probeSnapshot = this.databaseProbeSnapshot;
+            return probeSnapshot?.mode === mode
+                ? {
+                      ...probeSnapshot.result,
+                      observations: [...probeSnapshot.result.observations],
+                  }
+                : {
+                      status: "failed",
+                      detail: "The database diagnostic did not enter the requested mode.",
+                      observations: [],
+                  };
+        }
+    }
+
     async openCompatibilityReview(): Promise<void> {
-        if (this.running) return;
+        if (this.running || this.isDatabaseProbeActive()) {
+            return;
+        }
         this.running = true;
         this.current = "compatibility-review";
         this.notify();
@@ -243,7 +367,24 @@ export class ReviewHarnessController {
         this.record("scenario-failed", id);
     }
 
+    /** Offer a manual restart after the diagnostic has finished; observing or copying never restarts. */
+    get canRestartAfterDatabaseAbortDiagnostic(): boolean {
+        const status = this.results["database-transaction-abort"].status;
+        return !this.running && !this.isDatabaseProbeActive() && (status === "observed" || status === "failed");
+    }
+
+    restartAfterDatabaseAbortDiagnostic(): void {
+        if (!this.canRestartAfterDatabaseAbortDiagnostic) {
+            return;
+        }
+        this.record("abort-diagnostic-restart-requested");
+        this.runtime.restart();
+    }
+
     async prepareCompatibilityReviewRestart(): Promise<void> {
+        if (this.running || this.isDatabaseProbeActive()) {
+            return;
+        }
         const requestedAt = this.runtime.now().toISOString();
         const pending = {
             formatVersion: 1,
@@ -273,7 +414,7 @@ export class ReviewHarnessController {
                 mode,
                 status: this.results[id].status,
                 detail: this.results[id].detail,
-                observations: this.results[id].observations,
+                observations: this.reportObservations(id),
             })),
             transcript: this.transcript,
         });
@@ -283,6 +424,59 @@ export class ReviewHarnessController {
         await this.runtime.copyText(this.createReport());
         this.record("report-copied");
         this.notify();
+    }
+
+    async performDatabaseProbeAction(action: DatabaseProbeAction): Promise<void> {
+        const probe = this.runtime.databaseProbe;
+        if (!probe) {
+            return;
+        }
+        const probeSnapshot = probe.snapshot();
+        if (!probeSnapshot.availableActions.includes(action)) {
+            return;
+        }
+        if (this.running && !(action === "cancel" && isDatabaseProbeScenarioId(this.current))) {
+            return;
+        }
+
+        const ownsRunningState = !this.running;
+        if (ownsRunningState) {
+            this.running = true;
+            this.current = databaseProbeScenarioId(probeSnapshot.mode);
+            this.notify();
+        }
+        let operationFailed = false;
+        try {
+            await probe.perform(action);
+        } catch (error) {
+            operationFailed = true;
+            this.runtime.reportError(error);
+            const latestSnapshot = probe.snapshot();
+            this.databaseProbeSnapshot = copyDatabaseProbeSnapshot(latestSnapshot);
+            const scenarioId = databaseProbeScenarioId(latestSnapshot.mode) ?? this.current;
+            if (isDatabaseProbeScenarioId(scenarioId)) {
+                const previous = this.results[scenarioId];
+                this.results[scenarioId] = {
+                    status: "failed",
+                    detail: "The database diagnostic failed unexpectedly. Review the in-app logs for diagnostic details.",
+                    observations: [...previous.observations],
+                };
+            }
+            this.record("database-probe-failed", scenarioId ?? undefined);
+        } finally {
+            if (!operationFailed) this.refreshDatabaseProbeSnapshotWithoutNotification();
+            if (ownsRunningState) {
+                this.running = false;
+                this.current = null;
+            }
+            this.notify();
+        }
+    }
+
+    dispose(): void {
+        this.unsubscribeDatabaseProbe?.();
+        this.unsubscribeDatabaseProbe = undefined;
+        this.listeners.clear();
     }
 }
 

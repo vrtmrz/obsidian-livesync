@@ -341,13 +341,11 @@ describe("ModuleLog service connection", () => {
                 },
                 APIService: services.API,
                 databaseService: {
-                    localDatabaseDirect: {
-                        onunload: vi.fn(() => services.API.addLog("database-unload")),
-                        close: vi.fn(() => {
-                            started();
-                            return closed;
-                        }),
-                    },
+                    closeDatabase: vi.fn(() => {
+                        services.API.addLog("database-unload");
+                        started();
+                        return closed;
+                    }),
                 },
             } as never);
 

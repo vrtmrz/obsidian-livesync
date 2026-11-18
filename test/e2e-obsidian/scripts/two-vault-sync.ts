@@ -779,7 +779,7 @@ async function runMetadataDeletionRestoration(
             "const store=core.services.keyValueDB.openSimpleStore(storeName);",
             "const base=await store.get(path);",
             "if(base?.revision!==originalMetadata._rev) throw new Error('The receiving Vault has no matching displayed base revision');",
-            "const fetchEntryMeta=access.fetchEntryMeta;",
+            "const readEntryMeta=access.readEntryMeta;",
             "const allDocs=db.allDocs;",
             "let latestReads=0;",
             "let restoredRevision='';",
@@ -791,7 +791,8 @@ async function runMetadataDeletionRestoration(
             "try{",
             // Keep the production reflection path; control only the arrival of a
             // real remote restoration after the final deleted-winner index read.
-            "access.fetchEntryMeta=async function(file,rev,...args){",
+            // Reflection uses readEntryMeta directly; fetchEntryMeta is a compatibility wrapper.
+            "access.readEntryMeta=async function(file,rev,...args){",
             "  const target=typeof file==='string'?file:file?.path;",
             "  if(target===path&&rev===undefined&&++latestReads===2){",
             "    db.allDocs=async function(...options){",
@@ -825,7 +826,7 @@ async function runMetadataDeletionRestoration(
             "      }catch(error){gateError=JSON.stringify({phase:gatePhase,name:error?.name,message:error?.message,status:error?.status,reason:error?.reason});throw error;}",
             "    };",
             "  }",
-            "  return await fetchEntryMeta.call(this,file,rev,...args);",
+            "  return await readEntryMeta.call(this,file,rev,...args);",
             "};",
             "await core.services.fileProcessing.commitPendingFileEvents();",
             "if(!(await core.services.replication.replicate(true))) throw new Error('Finite replication did not complete');",
@@ -847,7 +848,7 @@ async function runMetadataDeletionRestoration(
             "  await new Promise((resolve)=>setTimeout(resolve,100));",
             "}",
             "throw new Error(`The restoration race did not settle: ${JSON.stringify({latestReads,indexReads,restoredRevision,deletionEvents})}`);",
-            "}finally{access.fetchEntryMeta=fetchEntryMeta;db.allDocs=allDocs;app.vault.offref(ref);}",
+            "}finally{access.readEntryMeta=readEntryMeta;db.allDocs=allDocs;app.vault.offref(ref);}",
             "})()",
         ].join(""),
         session.cliEnv

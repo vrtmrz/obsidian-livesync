@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { eventHub } from "@/common/events";
 import { translateLiveSyncMessage } from "@/common/translation";
@@ -8,6 +8,16 @@ import { ObsidianServiceContext } from "./ObsidianServiceContext";
 const TRANSLATION_KEY = "Replicator.Message.InitialiseFatalError";
 
 describe("ObsidianServiceContext contract", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("reads visibility from the current active document without retaining the original window", () => {
+        const context = Object.create(ObsidianServiceContext.prototype) as ObsidianServiceContext;
+        vi.stubGlobal("activeWindow", { document: { hidden: false } });
+        expect(context.isHostActive()).toBe(true);
+        vi.stubGlobal("activeWindow", { document: { hidden: true } });
+        expect(context.isHostActive()).toBe(false);
+    });
+
     it("preserves the plug-in capabilities and host-neutral API results", () => {
         type Parameters = ConstructorParameters<typeof ObsidianServiceContext>;
         const app = {} as Parameters[0];

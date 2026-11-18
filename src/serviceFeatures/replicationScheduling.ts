@@ -11,6 +11,7 @@ import {
     type UnattendedOneShotRequest,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor";
+import { secondsToMilliseconds } from "@/common/core/time";
 
 type ReplicationSchedulingSettings = Pick<
     ObsidianLiveSyncSettings,
@@ -104,7 +105,7 @@ function reconcilePeriodic(context: ReplicationSchedulingContext): void {
     const { dependencies } = context;
     const settings = dependencies.currentSettings();
     if (canRunPeriodic(context, settings)) {
-        dependencies.timer.enable(settings.periodicReplicationInterval * 1000);
+        dependencies.timer.enable(secondsToMilliseconds(settings.periodicReplicationInterval));
     } else {
         dependencies.timer.disable();
     }

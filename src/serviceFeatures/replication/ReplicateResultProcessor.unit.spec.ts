@@ -1,13 +1,22 @@
+import * as semaphoreModule from "octagonal-wheels/concurrency/semaphore_v2";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { describe, expect, it, vi } from "vitest";
 import {
     VERSIONING_DOCID,
     type EntryDoc,
+    type DocumentID,
     type FilePathWithPrefix,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import * as replicationCompatibility from "@vrtmrz/livesync-commonlib/replication";
-import { ENCRYPTED_INTERNAL_METADATA_FEATURE, REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    ContentReadError,
+    ENCRYPTED_INTERNAL_METADATA_FEATURE,
+    REMOTE_FEATURE_GENERATION,
+    type FileReflectionResult,
+    type ReflectionOperationContext,
+} from "@vrtmrz/livesync-commonlib/replication";
 import {
     isValidFilenameInAndroid,
     isValidFilenameInWidows,
@@ -15,11 +24,16 @@ import {
 import {
     defaultLogger,
     LOG_LEVEL_DEBUG,
+    LOG_LEVEL_INFO,
     LOG_LEVEL_NOTICE,
     LOG_LEVEL_VERBOSE,
     setGlobalLogFunction,
 } from "octagonal-wheels/common/logger";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
+
+vi.mock("octagonal-wheels/concurrency/semaphore_v2", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("octagonal-wheels/concurrency/semaphore_v2")>()),
+}));
 
 function note(id: string): PouchDB.Core.ExistingDocument<EntryDoc> {
     return {
@@ -40,12 +54,19 @@ type SetupOptions = {
     waitForDatabaseReset?: boolean;
     onVaultReflectionFailure?: () => void;
     getRaw?: (id: string) => Promise<unknown>;
-    getDBEntryFromMeta?: (entry: object) => Promise<unknown>;
+    readDBEntryFromMeta?: (entry: object, ...args: unknown[]) => Promise<unknown>;
+    canRetainFailedReflection?: () => boolean;
+    canRetryResource?: (resource: "local-database" | "remote") => boolean;
+    inspectReflection?: (entry: object) => Promise<"reflected" | "policy" | "pending">;
+    reconcileScannedDocument?: (entry: object, operation: ReflectionOperationContext) => Promise<unknown>;
     applicationReady?: boolean;
     databaseReady?: boolean;
     maxMTimeForReflectEvents?: number;
     isValidPath?: (path: string) => boolean;
-    processSynchroniseResult?: (entry: unknown) => Promise<boolean>;
+    processSynchroniseResult?: (
+        entry: unknown,
+        operation: ReflectionOperationContext
+    ) => Promise<FileReflectionResult | undefined>;
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
     getSnapshot?: (key: string) => Promise<unknown>;
     localVersionInfo?: unknown;
@@ -55,20 +76,31 @@ type SetupOptions = {
 };
 
 function setup(options: SetupOptions = {}) {
-    const processSynchroniseResult = vi.fn(options.processSynchroniseResult ?? (async () => true));
+    const processSynchroniseResult = vi.fn(
+        options.processSynchroniseResult ?? (async (): Promise<FileReflectionResult> => ({ status: "completed" }))
+    );
     const setSnapshot = vi.fn(options.setSnapshot ?? (async () => undefined));
+    const onLocalDatabaseError = vi.fn(async () => true);
     const runBoundedLocalApplicationActivity = vi.fn(async (task: () => Promise<void>) => await task());
     const onCloseActiveReplication = vi.fn(async () => true);
     const isReady = vi.fn(() => options.applicationReady ?? true);
     const isValidPath = vi.fn(options.isValidPath ?? (() => true));
-    const getDBEntryFromMeta = vi.fn(options.getDBEntryFromMeta ?? (async (entry: object) => ({ ...entry, data: "x" })));
+    const readDBEntryFromMeta = vi.fn(
+        options.readDBEntryFromMeta ?? (async (entry: object) => ({ ...entry, data: "x" }))
+    );
     const localPhysicalDatabase = {
         ...(options.databaseId ? { id: vi.fn(async () => options.databaseId) } : {}),
     } as PouchDB.Database<EntryDoc>;
     const core = {
         services: {
             appLifecycle: { isReady, isSuspended: () => false },
-            database: { isDatabaseReady: () => options.databaseReady ?? true },
+            database: {
+                isDatabaseReady: () => options.databaseReady ?? true,
+                get localDatabaseDirect(): LiveSyncLocalDB {
+                    return core.localDatabase as unknown as LiveSyncLocalDB;
+                },
+                onLocalDatabaseError,
+            },
             path: { getPath: (entry: { path: string }) => entry.path },
             replication: {
                 databaseQueueCount: reactiveSource(0),
@@ -94,14 +126,18 @@ function setup(options: SetupOptions = {}) {
                     return options.localVersionInfo;
                 }
                 if (options.getRaw) return await options.getRaw(id);
-                return { _id: id, _rev: "1-test" };
+                return note(id);
             }),
-            getDBEntryFromMeta,
+            readDBEntryFromMeta,
         },
     };
     const processor = new ReplicateResultProcessor(
         {
             onVaultReflectionFailure: options.onVaultReflectionFailure,
+            canRetainFailedReflection: options.canRetainFailedReflection ?? (() => true),
+            canRetryResource: options.canRetryResource ?? (() => true),
+            inspectReflection: options.inspectReflection,
+            reconcileScannedDocument: options.reconcileScannedDocument,
             currentSettings: () => ({
                 maxMTimeForReflectEvents: options.maxMTimeForReflectEvents ?? 0,
                 suspendParseReplicationResult: false,
@@ -118,7 +154,9 @@ function setup(options: SetupOptions = {}) {
         options.waitForDatabaseReset
     );
     return {
-        getDBEntryFromMeta,
+        readDBEntryFromMeta,
+        setSnapshot,
+        onLocalDatabaseError,
         isTargetFile: core.services.vault.isTargetFile,
         localPhysicalDatabase,
         localDatabase: core.localDatabase,
@@ -132,7 +170,1122 @@ function setup(options: SetupOptions = {}) {
     };
 }
 
+type FailedResource = "local-database" | "remote";
+type ContentReadFailureInput = {
+    documentId: string;
+    revision?: string;
+    resources: readonly FailedResource[];
+    cause: unknown;
+};
+
+function contentReadError(failure: ContentReadFailureInput): Error {
+    return new ContentReadError({ ...failure, documentId: failure.documentId as DocumentID });
+}
+
+function failedContentRead(resources: readonly FailedResource[] = ["remote"], revision?: string) {
+    return vi.fn(async (entry: object, ..._args: unknown[]) => {
+        const meta = entry as { _id: string; _rev: string };
+        throw contentReadError({
+            documentId: meta._id,
+            revision: revision ?? meta._rev,
+            resources,
+            cause: new Error("Required content could not be read"),
+        });
+    });
+}
+
+function registerFailure(
+    processor: ReplicateResultProcessor,
+    entry: { _id: string; _rev: string },
+    resources: readonly FailedResource[],
+    source: "scan" | "received",
+    cause: unknown = new Error("Required content could not be read"),
+    failureRevision = entry._rev
+) {
+    return processor.registerReflectionFailure(
+        { documentId: entry._id as DocumentID, revision: entry._rev },
+        contentReadError({ documentId: entry._id, revision: failureRevision, resources, cause }),
+        source
+    );
+}
+
+describe("bounded reflection recovery", () => {
+    it("retains an unclassified terminal reflection failure for review", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            processSynchroniseResult: async () => {
+                throw new Error("reflection did not finish");
+            },
+        });
+        await processor.parseDocumentChange(note("unknown-failure"));
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: "unknown-failure",
+                revision: "1-test",
+                state: "review",
+                resources: [],
+                reason: "unavailable",
+                automaticAttempted: false,
+            }),
+        ]);
+    });
+
+    it("returns the original persistence failure after retaining unfinished work", async () => {
+        const saveError = new Error("KV write unavailable");
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: failedContentRead(),
+            setSnapshot: async () => {
+                throw saveError;
+            },
+        });
+        await expect(processor.parseDocumentChange(note("unsaved-work"))).rejects.toBe(saveError);
+        expect(processor.recovery.list()[0]).toMatchObject({ state: "review", reason: "snapshot-save-failed" });
+    });
+
+    it("does not overwrite unread recovery records when shutdown follows a restore failure", async () => {
+        const readError = new Error("KV read unavailable");
+        const { processor, setSnapshot } = setup({
+            getSnapshot: async () => {
+                throw readError;
+            },
+        });
+        await expect(processor.restoreFromSnapshotOnce()).rejects.toBe(readError);
+        await expect(processor.stop()).rejects.toBe(readError);
+        expect(setSnapshot).not.toHaveBeenCalled();
+    });
+
+    it("probes a failed pending Metadata read and preserves its unused allowance", async () => {
+        const readError = new Error("The selected local store could not be read");
+        let unavailable = true;
+        const { processor, onLocalDatabaseError, localDatabase, processSynchroniseResult } = setup({
+            getRaw: async (id) => {
+                if (unavailable) throw readError;
+                return note(id);
+            },
+            inspectReflection: async () => "pending",
+        });
+        await registerFailure(processor, note("pending-read"), ["remote"], "received");
+        await processor.retryWaitingReflections("remote");
+        expect(onLocalDatabaseError).toHaveBeenCalledWith(localDatabase, readError);
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "waiting",
+            resources: ["local-database"],
+            automaticAttempted: false,
+        });
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        unavailable = false;
+        await processor.retryWaitingReflections("local-database");
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+    });
+
+    it("propagates cleanup failure without retaining a completed reflection", async () => {
+        const releaseError = new Error("release failed");
+        const createSemaphore = semaphoreModule.Semaphore;
+        const replacement = vi.spyOn(semaphoreModule, "Semaphore").mockImplementation((limit) => {
+            const semaphore = createSemaphore(limit);
+            const acquire = semaphore.acquire.bind(semaphore);
+            semaphore.acquire = async (...args) => {
+                const release = await acquire(...args);
+                return () => {
+                    release();
+                    throw releaseError;
+                };
+            };
+            return semaphore;
+        });
+        try {
+            const { processor, processSynchroniseResult } = setup();
+            await expect(processor.parseDocumentChange(note("cleanup-failed"))).rejects.toBe(releaseError);
+            expect(processSynchroniseResult).toHaveBeenCalledOnce();
+            expect(processor.recovery.list()).toEqual([]);
+        } finally {
+            replacement.mockRestore();
+        }
+    });
+
+    it("does not retain failures while the remediation gate is closed", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => false,
+            readDBEntryFromMeta: failedContentRead(["remote"]),
+        });
+        await processor.parseDocumentChange(note("remediation-disabled"));
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it("settles started reflection work before finishing shutdown", async () => {
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const { processor } = setup({
+            processSynchroniseResult: async () => {
+                entered.resolve();
+                await release.promise;
+                return { status: "completed" };
+            },
+        });
+        const applying = processor.parseDocumentChange(note("writing-at-shutdown"));
+        await entered.promise;
+        let stopped = false;
+        const stopping = processor.stop().then(() => {
+            stopped = true;
+        });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(stopped).toBe(false);
+        release.resolve();
+        await Promise.all([applying, stopping]);
+        expect(stopped).toBe(true);
+    });
+
+    it("re-evaluates a retained Metadata failure after the same database resumes", async () => {
+        const entry = note("metadata-reopened");
+        let databaseAvailable = false;
+        let applied = false;
+        const options: SetupOptions = {
+            databaseReady: false,
+            canRetainFailedReflection: () => true,
+            canRetryResource: () => true,
+            getRaw: async () => {
+                if (!databaseAvailable) {
+                    throw new DOMException("Connection closed", "InvalidStateError");
+                }
+                return entry;
+            },
+            processSynchroniseResult: async () => {
+                applied = true;
+                return { status: "completed" };
+            },
+            inspectReflection: async () => (applied ? "reflected" : "pending"),
+        };
+        const { processor, processSynchroniseResult } = setup(options);
+        await processor.parseDocumentChange(entry);
+        expect(processor.recovery.list()[0]).toMatchObject({ reason: "local-database", automaticAttempted: false });
+        await processor.pauseForDatabaseRecovery();
+        databaseAvailable = true;
+        options.databaseReady = true;
+        processor.resumeAfterDatabaseRecovery();
+        await processor.retryWaitingReflections("local-database");
+        await vi.waitFor(() => {
+            expect(processSynchroniseResult).toHaveBeenCalledOnce();
+            expect(processor.recovery.list()).toEqual([]);
+        });
+    });
+
+    it("does not extend local database recovery to Hidden File Metadata", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => {
+                throw new DOMException("Connection closed", "InvalidStateError");
+            },
+        });
+        await processor.parseDocumentChange(note("i:hidden-file"));
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it("does not retain an unclassified failure for Hidden File Metadata", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: failedContentRead([]),
+        });
+        await processor.parseDocumentChange(note("i:hidden-file"));
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it("does not infer a local database origin from an unclassified storage InvalidStateError", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            processSynchroniseResult: async () => {
+                throw new DOMException("Storage operation failed", "InvalidStateError");
+            },
+        });
+        await processor.parseDocumentChange(note("unclassified-storage-error"));
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: "unclassified-storage-error",
+                state: "review",
+                resources: [],
+                reason: "unavailable",
+                automaticAttempted: false,
+            }),
+        ]);
+    });
+
+    it("retains typed resource evidence thrown by the reflection operation", async () => {
+        const entry = note("typed-reflection-failure");
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            processSynchroniseResult: async () => {
+                throw contentReadError({
+                    documentId: entry._id,
+                    revision: entry._rev,
+                    resources: ["local-database"],
+                    cause: new DOMException("Connection closed", "InvalidStateError"),
+                });
+            },
+        });
+        await processor.parseDocumentChange(entry);
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: entry._id,
+                revision: entry._rev,
+                resources: ["local-database"],
+                reason: "local-database",
+                state: "waiting",
+            }),
+        ]);
+    });
+
+    it("preserves a different pending revision when local Metadata cannot establish the current target", async () => {
+        const entry = note("unknown-current");
+        const retained = { ...entry, _rev: "2-retained" };
+        let databaseAvailable = true;
+        const { processor, localDatabase } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => {
+                if (!databaseAvailable) {
+                    throw new DOMException("Connection closed", "InvalidStateError");
+                }
+                return retained;
+            },
+        });
+        await registerFailure(processor, { _id: retained._id, _rev: retained._rev }, ["remote"], "received");
+        localDatabase.getRaw.mockClear();
+        databaseAvailable = false;
+        await processor.parseDocumentChange(entry);
+        expect(localDatabase.getRaw).toHaveBeenCalledOnce();
+        expect(processor.recovery.list()[0]).toMatchObject({
+            revision: retained._rev,
+            resources: ["remote"],
+            reason: "remote",
+            automaticAttempted: false,
+        });
+    });
+
+    it("retains a typed local database failure thrown after the initial content read", async () => {
+        const entry = note("late-database-failure");
+        const { processor, readDBEntryFromMeta } = setup({
+            canRetainFailedReflection: () => true,
+            canRetryResource: () => true,
+            processSynchroniseResult: async (value) => {
+                const target = value as { _id: string; _rev: string };
+                throw contentReadError({
+                    documentId: target._id,
+                    revision: target._rev,
+                    resources: ["local-database"],
+                    cause: new DOMException("Connection closed", "InvalidStateError"),
+                });
+            },
+        });
+        await processor.parseDocumentChange(entry);
+        expect(readDBEntryFromMeta).toHaveBeenCalledOnce();
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: entry._id,
+                revision: entry._rev,
+                reason: "local-database",
+                state: "waiting",
+            }),
+        ]);
+    });
+
+    it("does not infer a local database failure from an ordinary reflection refusal", async () => {
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            processSynchroniseResult: async () => ({ status: "cancelled" }),
+        });
+        await processor.parseDocumentChange(note("ordinary-refusal"));
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it.each([true, false])(
+        "delegates logical deletion recovery to the ordinary policy (allowed: %s)",
+        async (allowed) => {
+            const entry = { ...note("local-deletion"), deleted: true };
+            let databaseAvailable = false;
+            let applied = false;
+            const { processor, readDBEntryFromMeta, processSynchroniseResult } = setup({
+                canRetainFailedReflection: () => true,
+                canRetryResource: () => true,
+                getRaw: async () => {
+                    if (!databaseAvailable) {
+                        throw new DOMException("Connection closed", "InvalidStateError");
+                    }
+                    return entry;
+                },
+                processSynchroniseResult: async () => {
+                    applied = allowed;
+                    return { status: allowed ? "completed" : "policy" };
+                },
+                inspectReflection: async () => (applied ? "reflected" : "pending"),
+            });
+            await processor.parseDocumentChange(entry);
+            expect(processor.recovery.list()[0]).toMatchObject({ state: "waiting", reason: "local-database" });
+            databaseAvailable = true;
+            await processor.retryWaitingReflections("local-database");
+            await vi.waitFor(() => {
+                expect(processSynchroniseResult).toHaveBeenCalledExactlyOnceWith(
+                    expect.objectContaining({ deleted: true, data: "" }),
+                    expect.objectContaining({
+                        target: { documentId: entry._id, revision: entry._rev },
+                        source: "received",
+                    })
+                );
+                expect(processor.recovery.list().some((target) => target.running)).toBe(false);
+            });
+            expect(readDBEntryFromMeta).not.toHaveBeenCalled();
+            if (allowed) {
+                expect(processor.recovery.list()).toEqual([]);
+            } else {
+                expect(processor.recovery.list()[0]).toMatchObject({ state: "review", automaticAttempted: true });
+            }
+        }
+    );
+
+    it.each(["reset", "stop"])("coordinates an in-flight content read with %s", async (transition) => {
+        const reading = promiseWithResolvers<void>();
+        const releaseRead = promiseWithResolvers<void>();
+        const { processor, processSynchroniseResult } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: async (entry) => {
+                reading.resolve();
+                await releaseRead.promise;
+                return { ...entry, data: "late content" };
+            },
+        });
+        const applying = processor.parseDocumentChange(note("late-content"));
+        await reading.promise;
+        const ending = transition === "reset" ? processor.completeStartupDatabaseReset() : processor.stop();
+        let ended = false;
+        void ending.then(() => {
+            ended = true;
+        });
+        await Promise.resolve();
+        if (transition === "stop") {
+            expect(ended).toBe(false);
+        }
+        releaseRead.resolve();
+        await Promise.all([applying, ending]);
+        if (transition === "reset") {
+            expect(processSynchroniseResult).not.toHaveBeenCalled();
+        } else {
+            expect(processSynchroniseResult).toHaveBeenCalledOnce();
+            expect(ended).toBe(true);
+        }
+    });
+
+    it("serialises overlapping automatic and manual admission before their Metadata checks", async () => {
+        const entry = note("serial-admission");
+        const checking = promiseWithResolvers<void>();
+        const releaseCheck = promiseWithResolvers<void>();
+        let holdChecks = false;
+        const { processor, localDatabase } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => {
+                if (holdChecks) {
+                    checking.resolve();
+                    await releaseCheck.promise;
+                }
+                return entry;
+            },
+            readDBEntryFromMeta: failedContentRead(),
+        });
+        await registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "received");
+        localDatabase.getRaw.mockClear();
+        holdChecks = true;
+        const automatic = processor.retryWaitingReflections();
+        await checking.promise;
+        const manual = processor.recovery.retry([entry._id]);
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(localDatabase.getRaw).toHaveBeenCalledOnce();
+        } finally {
+            holdChecks = false;
+            releaseCheck.resolve();
+            await Promise.all([automatic, manual]);
+        }
+        await vi.waitFor(() => expect(processor.recovery.list().every((target) => !target.running)).toBe(true));
+    });
+
+    it("does not replace a restored different target with a scan failure observed before restoration", async () => {
+        const entry = note("scan-restored-target");
+        const loaded = promiseWithResolvers<unknown>();
+        const { processor, localDatabase } = setup({
+            canRetainFailedReflection: () => true,
+            getSnapshot: async () => loaded.promise,
+            getRaw: async () => {
+                throw new DOMException("Connection is closing", "InvalidStateError");
+            },
+        });
+        const registration = registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "scan");
+        loaded.resolve({
+            queued: [],
+            processing: [],
+            pendingReflections: [
+                {
+                    documentId: entry._id,
+                    revision: "2-retained",
+                    source: "received",
+                    state: "waiting",
+                    automaticAttempted: false,
+                    reason: "local-database",
+                },
+            ],
+        });
+        await registration;
+        expect(localDatabase.getRaw).not.toHaveBeenCalled();
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({ revision: "2-retained", reason: "local-database", automaticAttempted: false }),
+        ]);
+    });
+
+    it("continues ordinary queued work held by database recovery without spending an allowance", async () => {
+        const { processor, processSynchroniseResult } = setup({
+            canRetainFailedReflection: () => true,
+            canRetryResource: () => true,
+        });
+        await processor.pauseForDatabaseRecovery();
+        processor.enqueueAll([note("held-ordinary")]);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(processor.recovery.list()).toEqual([]);
+        processor.resumeAfterDatabaseRecovery();
+        await processor.retryWaitingReflections("local-database");
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it.each(["reset", "stop"])(
+        "does not enqueue an admission after %s wins its snapshot acknowledgement",
+        async (transition) => {
+            const saved = promiseWithResolvers<void>();
+            const releaseSave = promiseWithResolvers<void>();
+            const read = failedContentRead();
+            const { processor, replicationResultCount } = setup({
+                canRetainFailedReflection: () => true,
+                readDBEntryFromMeta: read,
+                setSnapshot: async (_key, value) => {
+                    if ((value as { recoveryAttempts?: unknown[] }).recoveryAttempts?.length) {
+                        saved.resolve();
+                        await releaseSave.promise;
+                    }
+                },
+            });
+            await processor.parseDocumentChange(note("transition-protected"));
+            const admission = processor.retryWaitingReflections();
+            await saved.promise;
+            const ending = transition === "reset" ? processor.completeStartupDatabaseReset() : processor.stop();
+            releaseSave.resolve();
+            await Promise.all([admission, ending]);
+            expect(read).toHaveBeenCalledOnce();
+            expect(replicationResultCount.value).toBe(0);
+            if (transition === "reset") {
+                expect(processor.recovery.list()).toEqual([]);
+            } else {
+                expect(processor.recovery.list()[0]).toMatchObject({
+                    state: "review",
+                    automaticAttempted: true,
+                    running: false,
+                });
+            }
+        }
+    );
+
+    it("retains a known revision when its Metadata read loses the local database without re-reading it", async () => {
+        const entry = note("metadata-lost");
+        const failure = new DOMException("Connection is closing", "InvalidStateError");
+        const { processor, localDatabase, readDBEntryFromMeta } = setup({
+            canRetainFailedReflection: () => true,
+            canRetryResource: () => true,
+            getRaw: async () => {
+                throw failure;
+            },
+        });
+        await processor.parseDocumentChange(entry);
+        expect(localDatabase.getRaw).toHaveBeenCalledOnce();
+        expect(readDBEntryFromMeta).not.toHaveBeenCalled();
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: entry._id,
+                revision: entry._rev,
+                source: "received",
+                state: "waiting",
+                reason: "local-database",
+                automaticAttempted: false,
+                running: false,
+            }),
+        ]);
+    });
+
+    it("records a known content-read target without requiring another Metadata read", async () => {
+        const entry = note("known-target");
+        const cause = new Error("Request failed");
+        const snapshots: unknown[] = [];
+        const { processor, localDatabase } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => {
+                throw cause;
+            },
+            setSnapshot: async (_key, value) => {
+                snapshots.push(structuredClone(value));
+            },
+        });
+        await registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "received", cause);
+        expect(localDatabase.getRaw).not.toHaveBeenCalled();
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "waiting",
+            reason: "remote",
+            resources: ["remote"],
+        });
+        const pending = (snapshots[snapshots.length - 1] as { pendingReflections: unknown[] }).pendingReflections[0];
+        expect(pending).not.toHaveProperty("cause");
+    });
+
+    it("waits for every failed resource before automatic admission and consumes only one attempt", async () => {
+        const fail = vi.fn(async (entry: object) => {
+            const meta = entry as { _id: string; _rev: string };
+            throw contentReadError({
+                documentId: meta._id,
+                revision: meta._rev,
+                resources: fail.mock.calls.length === 1 ? ["local-database", "remote"] : ["remote"],
+                cause: new Error("Required content could not be read"),
+            });
+        });
+        const { processor, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: fail,
+        });
+        await processor.parseDocumentChange(note("resource-specific"));
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "waiting",
+            automaticAttempted: false,
+            resources: ["local-database", "remote"],
+        });
+        await processor.retryWaitingReflections("local-database");
+        expect(fail).toHaveBeenCalledOnce();
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "waiting",
+            automaticAttempted: false,
+            resources: ["remote"],
+        });
+        await processor.retryWaitingReflections("remote");
+        await vi.waitFor(() => {
+            expect(fail).toHaveBeenCalledTimes(2);
+            expect(replicationResultCount.value).toBe(0);
+            expect(processor.recovery.list()[0]).toMatchObject({
+                reason: "remote",
+                resources: ["remote"],
+                state: "review",
+                automaticAttempted: true,
+                running: false,
+            });
+        });
+        await processor.retryWaitingReflections();
+        await processor.pauseForDatabaseRecovery();
+        processor.resumeAfterDatabaseRecovery();
+        await processor.retryWaitingReflections("local-database");
+        await processor.retryWaitingReflections("remote");
+        expect(fail).toHaveBeenCalledTimes(2);
+    });
+
+    it("admits one batch at a time without holding admission through file inspection or execution", async () => {
+        const firstInspection = promiseWithResolvers<void>();
+        const releaseInspection = promiseWithResolvers<void>();
+        const inspected = vi.fn(async () => {
+            firstInspection.resolve();
+            await releaseInspection.promise;
+            return "pending" as const;
+        });
+        const { processor, readDBEntryFromMeta } = setup({
+            canRetainFailedReflection: () => true,
+            inspectReflection: inspected,
+        });
+        for (const id of ["admitted-first", "admitted-second"]) {
+            await registerFailure(processor, { _id: note(id)._id, _rev: "1-test" }, ["remote"], "received");
+        }
+        let admitted = false;
+        const admission = processor.retryWaitingReflections().then(() => {
+            admitted = true;
+        });
+        try {
+            await firstInspection.promise;
+            await vi.waitFor(() => expect(admitted).toBe(true));
+            expect(processor.recovery.list()).toEqual([
+                expect.objectContaining({ documentId: "admitted-first", automaticAttempted: true, running: true }),
+                expect.objectContaining({ documentId: "admitted-second", automaticAttempted: true, running: true }),
+            ]);
+            expect(readDBEntryFromMeta).not.toHaveBeenCalled();
+        } finally {
+            releaseInspection.resolve();
+            await admission;
+        }
+        await vi.waitFor(() => expect(processor.recovery.list().every((target) => !target.running)).toBe(true));
+    });
+
+    it("retains the newer target when an older ordinary read reports its failure late", async () => {
+        const oldEntry = note("ordinary-advancing");
+        let current = oldEntry;
+        const reading = promiseWithResolvers<void>();
+        const releaseRead = promiseWithResolvers<void>();
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => current,
+            readDBEntryFromMeta: async (entry, ...args) => {
+                reading.resolve();
+                await releaseRead.promise;
+                return await failedContentRead()(entry, ...args);
+            },
+        });
+        const applying = processor.parseDocumentChange(oldEntry);
+        await reading.promise;
+        current = { ...oldEntry, _rev: "2-current" };
+        await registerFailure(processor, { _id: current._id, _rev: current._rev }, ["remote"], "received");
+        releaseRead.resolve();
+        await applying;
+        expect(processor.recovery.list()[0]).toMatchObject({ revision: current._rev, automaticAttempted: false });
+    });
+
+    it("keeps ordinary restored work in the shutdown snapshot without starting it", async () => {
+        const load = promiseWithResolvers<unknown>();
+        const saved: unknown[] = [];
+        const { processor, processSynchroniseResult, runBoundedLocalApplicationActivity } = setup({
+            getSnapshot: async () => load.promise,
+            setSnapshot: async (_key, value) => {
+                saved.push(structuredClone(value));
+            },
+        });
+        const restoring = processor.restoreFromSnapshotOnce();
+        const stopping = processor.stop();
+        const entry = note("held-on-shutdown");
+        load.resolve({ queued: [entry], processing: [] });
+        await Promise.all([restoring, stopping]);
+
+        expect(saved[saved.length - 1]).toMatchObject({ queued: [entry], processing: [] });
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(runBoundedLocalApplicationActivity).not.toHaveBeenCalled();
+    });
+
+    it("does not refill a restored allowance when the startup scan reports the same revision again", async () => {
+        const entry = note("restored-review");
+        const { processor, readDBEntryFromMeta } = setup({
+            canRetainFailedReflection: () => true,
+            getSnapshot: async () => ({
+                queued: [],
+                processing: [],
+                pendingReflections: [
+                    {
+                        documentId: entry._id,
+                        revision: entry._rev,
+                        source: "received",
+                        state: "review",
+                        automaticAttempted: true,
+                        reason: "transport",
+                    },
+                ],
+            }),
+        });
+        await registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "scan");
+        await processor.retryWaitingReflections();
+        expect(readDBEntryFromMeta).not.toHaveBeenCalled();
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "review",
+            automaticAttempted: true,
+            running: false,
+        });
+    });
+
+    it("serialises an old waiting snapshot before consumption so a late write cannot refund it", async () => {
+        const entry = note("ordered-save");
+        const firstWriteStarted = promiseWithResolvers<void>();
+        const releaseFirstWrite = promiseWithResolvers<void>();
+        let first = true;
+        let activeWrites = 0;
+        let maximumWrites = 0;
+        let persisted: { pendingReflections?: { automaticAttempted: boolean }[] } | undefined;
+        const read = failedContentRead();
+        const { processor, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            setSnapshot: async (_key, value) => {
+                activeWrites++;
+                maximumWrites = Math.max(maximumWrites, activeWrites);
+                if (first) {
+                    first = false;
+                    firstWriteStarted.resolve();
+                    await releaseFirstWrite.promise;
+                }
+                persisted = structuredClone(value) as typeof persisted;
+                activeWrites--;
+            },
+        });
+        const registration = registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "scan");
+        await firstWriteStarted.promise;
+        const scheduling = processor.retryWaitingReflections();
+        await vi.waitFor(() => expect(processor.recovery.list()[0]?.automaticAttempted).toBe(true));
+        expect(read).not.toHaveBeenCalled();
+        releaseFirstWrite.resolve();
+        await Promise.all([registration, scheduling]);
+        await vi.waitFor(() => expect(replicationResultCount.value).toBe(0));
+        expect(maximumWrites).toBe(1);
+        expect(persisted?.pendingReflections?.[0]?.automaticAttempted).toBe(true);
+    });
+
+    it("reconciles a successful independent scan without another content request", async () => {
+        let reflected = false;
+        const read = failedContentRead();
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            inspectReflection: async () => (reflected ? "reflected" : "pending"),
+        });
+        const entry = note("manual-scan-resolved");
+        await processor.parseDocumentChange(entry);
+        reflected = true;
+        await processor.reconcilePendingDocument(entry._id);
+        expect(read).toHaveBeenCalledOnce();
+        expect(processor.recovery.list()).toEqual([]);
+    });
+
+    it("consumes one automatic attempt even when finite success notifications overlap or repeat", async () => {
+        const read = failedContentRead();
+        const { processor, replicationResultCount, runBoundedLocalApplicationActivity } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+        });
+        await processor.parseDocumentChange(note("retry-once"));
+
+        await Promise.all([processor.retryWaitingReflections(), processor.retryWaitingReflections()]);
+        await vi.waitFor(() => {
+            expect(read).toHaveBeenCalledTimes(2);
+            expect(replicationResultCount.value).toBe(0);
+            expect(processor.recovery.list()[0]).toMatchObject({
+                state: "review",
+                automaticAttempted: true,
+                running: false,
+            });
+        });
+        await processor.retryWaitingReflections();
+        await processor.retryWaitingReflections();
+
+        expect(read).toHaveBeenCalledTimes(2);
+        await Promise.all(runBoundedLocalApplicationActivity.mock.results.map(({ value }) => value));
+    });
+
+    it("clears a recovered revision only after reflection is confirmed", async () => {
+        let applied = false;
+        const fail = failedContentRead(["remote"]);
+        const read = vi.fn(async (entry: object, ...args: unknown[]) => {
+            if (read.mock.calls.length === 1) {
+                return await fail(entry, ...args);
+            }
+            return { ...entry, data: "x" };
+        });
+        const { processor, processSynchroniseResult, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            processSynchroniseResult: async () => {
+                applied = true;
+                return { status: "completed" };
+            },
+            inspectReflection: async () => (applied ? "reflected" : "pending"),
+        });
+        await processor.parseDocumentChange(note("recover"));
+        await processor.retryWaitingReflections("remote");
+
+        await vi.waitFor(() => {
+            expect(processSynchroniseResult).toHaveBeenCalledExactlyOnceWith(
+                expect.objectContaining({ _id: "recover", _rev: "1-test", data: "x" }),
+                expect.objectContaining({
+                    target: { documentId: "recover", revision: "1-test" },
+                    source: "received",
+                })
+            );
+            expect(processor.recovery.list()).toEqual([]);
+            expect(replicationResultCount.value).toBe(0);
+        });
+    });
+
+    it("does not equate a true file-handler result with confirmed reflection", async () => {
+        const entry = note("inconclusive");
+        const { processor, processSynchroniseResult } = setup({
+            canRetainFailedReflection: () => true,
+            inspectReflection: async () => "pending",
+        });
+        await registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "received");
+        await processor.retryWaitingReflections();
+
+        await vi.waitFor(() => {
+            expect(processSynchroniseResult).toHaveBeenCalledOnce();
+            expect(processor.recovery.list()[0]).toMatchObject({
+                state: "review",
+                automaticAttempted: true,
+                running: false,
+            });
+        });
+    });
+
+    it("does not replay consumed recovery work after restart, while ordinary queued work still runs", async () => {
+        const entry = note("interrupted");
+        const ordinary = note("ordinary");
+        const read = vi.fn(async (value: object) => ({ ...value, data: "x" }));
+        const { processor, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            getSnapshot: async () => ({
+                queued: [entry, ordinary],
+                processing: [entry],
+                pendingReflections: [
+                    {
+                        documentId: entry._id,
+                        revision: entry._rev,
+                        source: "received",
+                        state: "review",
+                        automaticAttempted: true,
+                        reason: "transport",
+                    },
+                ],
+                recoveryAttempts: [{ documentId: entry._id, revision: entry._rev, kind: "automatic" }],
+            }),
+        });
+        await processor.restoreFromSnapshotOnce();
+        await processor.retryWaitingReflections();
+
+        await vi.waitFor(() => expect(replicationResultCount.value).toBe(0));
+        expect(read).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ _id: ordinary._id }), false, true);
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: entry._id,
+                state: "review",
+                automaticAttempted: true,
+                reason: "interrupted",
+                running: false,
+            }),
+        ]);
+    });
+
+    it("waits for the durable allowance acknowledgement before starting the recovery read", async () => {
+        const saveStarted = promiseWithResolvers<void>();
+        const allowSave = promiseWithResolvers<void>();
+        const read = failedContentRead();
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            setSnapshot: async (_key, value) => {
+                if ((value as { recoveryAttempts?: unknown[] }).recoveryAttempts?.length) {
+                    saveStarted.resolve();
+                    await allowSave.promise;
+                }
+            },
+        });
+        await processor.parseDocumentChange(note("save-first"));
+        const scheduling = processor.retryWaitingReflections();
+        await saveStarted.promise;
+        expect(read).toHaveBeenCalledTimes(1);
+        allowSave.resolve();
+        await scheduling;
+        await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+        await vi.waitFor(() => expect(processor.recovery.list()[0]?.running).toBe(false));
+    });
+
+    it("retains review work without making an unrecorded automatic request when saving fails", async () => {
+        const read = failedContentRead();
+        const { processor, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: read,
+            setSnapshot: async (_key, value) => {
+                if ((value as { recoveryAttempts?: unknown[] }).recoveryAttempts?.length) {
+                    throw new Error("store unavailable");
+                }
+            },
+        });
+        await processor.parseDocumentChange(note("save-fails"));
+        await expect(processor.retryWaitingReflections()).rejects.toThrow("store unavailable");
+        await processor.retryWaitingReflections();
+
+        expect(read).toHaveBeenCalledTimes(1);
+        expect(replicationResultCount.value).toBe(0);
+        expect(processor.recovery.list()[0]).toMatchObject({
+            state: "review",
+            automaticAttempted: true,
+            reason: "snapshot-save-failed",
+            running: false,
+        });
+    });
+
+    it("uses the ordinary scanner policy for scanner-origin recovery", async () => {
+        let resolved = false;
+        const reconcileScannedDocument = vi.fn(async () => {
+            resolved = true;
+        });
+        const entry = note("scan-origin");
+        const { processor, readDBEntryFromMeta, processSynchroniseResult } = setup({
+            canRetainFailedReflection: () => true,
+            inspectReflection: async () => (resolved ? "reflected" : "pending"),
+            reconcileScannedDocument,
+        });
+        await registerFailure(processor, { _id: entry._id, _rev: entry._rev }, ["remote"], "scan");
+        await processor.retryWaitingReflections();
+
+        await vi.waitFor(() => expect(processor.recovery.list()).toEqual([]));
+        expect(reconcileScannedDocument).toHaveBeenCalledOnce();
+        expect(readDBEntryFromMeta).not.toHaveBeenCalled();
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+    });
+
+    it("keeps a newer revision's unused allowance when the old attempt finishes late", async () => {
+        const oldEntry = note("advancing");
+        let current = oldEntry;
+        const oldReadStarted = promiseWithResolvers<void>();
+        const finishOldRead = promiseWithResolvers<void>();
+        const fail = failedContentRead();
+        const read = vi.fn(async (entry: object, ...args: unknown[]) => {
+            if (read.mock.calls.length === 2) {
+                oldReadStarted.resolve();
+                await finishOldRead.promise;
+            }
+            return await fail(entry, ...args);
+        });
+        const { processor, replicationResultCount } = setup({
+            canRetainFailedReflection: () => true,
+            getRaw: async () => current,
+            readDBEntryFromMeta: read,
+        });
+        await processor.parseDocumentChange(oldEntry);
+        await processor.retryWaitingReflections();
+        await oldReadStarted.promise;
+        current = { ...oldEntry, _rev: "2-current" };
+        await registerFailure(processor, { _id: current._id, _rev: current._rev }, ["remote"], "received");
+        finishOldRead.resolve();
+
+        await vi.waitFor(() => expect(replicationResultCount.value).toBe(0));
+        expect(processor.recovery.list()[0]).toMatchObject({
+            revision: current._rev,
+            state: "waiting",
+            automaticAttempted: false,
+            running: false,
+        });
+        await vi.waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    });
+
+    it("allows explicit manual retry without replenishing an exhausted allowance", async () => {
+        const read = failedContentRead();
+        const { processor } = setup({ canRetainFailedReflection: () => true, readDBEntryFromMeta: read });
+        const entry = note("manual");
+        await processor.parseDocumentChange(entry);
+        await processor.retryWaitingReflections();
+        await vi.waitFor(() => expect(processor.recovery.list()[0]?.running).toBe(false));
+        await processor.recovery.retry([entry._id]);
+        await vi.waitFor(() => {
+            expect(read).toHaveBeenCalledTimes(3);
+            expect(processor.recovery.list()[0]).toMatchObject({
+                state: "review",
+                automaticAttempted: true,
+                running: false,
+            });
+        });
+        await processor.retryWaitingReflections();
+        expect(read).toHaveBeenCalledTimes(3);
+    });
+
+    it("retains an unclassified content failure for review without automatic retry", async () => {
+        const { processor, readDBEntryFromMeta } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: failedContentRead([]),
+        });
+        await processor.parseDocumentChange(note("unclassified-content"));
+        expect(readDBEntryFromMeta).toHaveBeenCalledOnce();
+        expect(processor.recovery.list()).toEqual([
+            expect.objectContaining({
+                documentId: "unclassified-content",
+                state: "review",
+                resources: [],
+                reason: "unavailable",
+                automaticAttempted: false,
+            }),
+        ]);
+    });
+
+    it("preserves retained targets when reset acknowledgement cannot be saved", async () => {
+        let savingFails = false;
+        const { processor } = setup({
+            canRetainFailedReflection: () => true,
+            readDBEntryFromMeta: failedContentRead(),
+            setSnapshot: async () => {
+                if (savingFails) {
+                    throw new Error("store unavailable");
+                }
+            },
+        });
+        await processor.parseDocumentChange(note("reset-protected"));
+        const before = processor.recovery.list();
+        savingFails = true;
+        await expect(processor.completeStartupDatabaseReset()).rejects.toThrow("store unavailable");
+        expect(processor.recovery.list()).toEqual(before);
+        savingFails = false;
+        await processor.completeStartupDatabaseReset();
+        expect(processor.recovery.list()).toEqual([]);
+    });
+});
+
 describe("ReplicateResultProcessor", () => {
+    it("holds new reflection while a database pause waits for already started work", async () => {
+        let finish!: () => void;
+        const first = new Promise<void>((resolve) => {
+            finish = resolve;
+        });
+        const { processor, processSynchroniseResult } = setup({
+            processSynchroniseResult: async () => {
+                await first;
+                return { status: "completed" };
+            },
+        });
+        const applying = processor.parseDocumentChange(note("running"));
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
+        let paused = false;
+        const pause = processor.pauseForDatabaseRecovery().then(() => {
+            paused = true;
+        });
+        processor.enqueueAll([note("held")]);
+        await Promise.resolve();
+        expect(paused).toBe(false);
+        expect(processor.isSuspended).toBe(true);
+        finish();
+        await applying;
+        await pause;
+        expect(processSynchroniseResult).toHaveBeenCalledOnce();
+        processor.resumeAfterDatabaseRecovery();
+        await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledTimes(2));
+    });
+
+    it("retains a terminal transport read failure outside the active queue", async () => {
+        const entry = note("pending");
+        const snapshots: unknown[] = [];
+        const { processor, replicationResultCount, processSynchroniseResult } = setup({
+            canRetainFailedReflection: () => true,
+            setSnapshot: async (_key, value) => {
+                snapshots.push(structuredClone(value));
+            },
+            readDBEntryFromMeta: failedContentRead(["remote"]),
+        });
+
+        await processor.parseDocumentChange(entry);
+
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+        expect(replicationResultCount.value).toBe(0);
+        expect(snapshots[snapshots.length - 1]).toMatchObject({
+            queued: [],
+            processing: [],
+            pendingReflections: [
+                {
+                    documentId: entry._id,
+                    revision: entry._rev,
+                    source: "received",
+                    state: "waiting",
+                    automaticAttempted: false,
+                    resources: ["remote"],
+                    reason: "remote",
+                },
+            ],
+        });
+    });
+
     it("does not restore old reflection work while waiting for database replacement", async () => {
         const getSnapshot = vi.fn(async () => ({ queued: [note("old")], processing: [] }));
         const setSnapshot = vi.fn(async () => undefined);
@@ -172,7 +1325,10 @@ describe("ReplicateResultProcessor", () => {
         expect(getSnapshot).not.toHaveBeenCalled();
         processor.enqueueAll([note("new")]);
         await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
-        expect(processSynchroniseResult).toHaveBeenCalledWith(expect.objectContaining({ path: "new.md" }));
+        expect(processSynchroniseResult).toHaveBeenCalledWith(
+            expect.objectContaining({ path: "new.md" }),
+            expect.objectContaining({ target: { documentId: "new", revision: "1-test" }, source: "received" })
+        );
     });
 
     it("keeps reflection blocked if persisting snapshot invalidation fails", async () => {
@@ -189,14 +1345,22 @@ describe("ReplicateResultProcessor", () => {
         await processor.completeStartupDatabaseReset();
         processor.enqueueAll([note("after-retry")]);
         await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledOnce());
-        expect(processSynchroniseResult).toHaveBeenCalledWith(expect.objectContaining({ path: "after-retry.md" }));
+        expect(processSynchroniseResult).toHaveBeenCalledWith(
+            expect.objectContaining({ path: "after-retry.md" }),
+            expect.objectContaining({
+                target: { documentId: "after-retry", revision: "1-test" },
+                source: "received",
+            })
+        );
     });
 
     it("reports an IndexedDB read error as failed reflection", async () => {
         const onVaultReflectionFailure = vi.fn();
         const { processor, processSynchroniseResult } = setup({
             onVaultReflectionFailure,
-            getRaw: async () => { throw new Error("IndexedDB read failed"); },
+            getRaw: async () => {
+                throw new Error("IndexedDB read failed");
+            },
         });
         processor.enqueueAll([note("unreadable")]);
         await vi.waitFor(() => expect(onVaultReflectionFailure).toHaveBeenCalledOnce());
@@ -207,7 +1371,9 @@ describe("ReplicateResultProcessor", () => {
         const onVaultReflectionFailure = vi.fn();
         const { processor } = setup({
             onVaultReflectionFailure,
-            getDBEntryFromMeta: async () => { throw new Error("Cannot read chunks"); },
+            readDBEntryFromMeta: async () => {
+                throw new Error("Cannot read chunks");
+            },
         });
         processor.enqueueAll([note("missing-chunks")]);
         await vi.waitFor(() => expect(onVaultReflectionFailure).toHaveBeenCalledOnce());
@@ -237,7 +1403,9 @@ describe("ReplicateResultProcessor", () => {
         const onVaultReflectionFailure = vi.fn();
         const { processor, processSynchroniseResult } = setup({
             onVaultReflectionFailure,
-            processSynchroniseResult: async () => false,
+            processSynchroniseResult: async () => {
+                throw new Error("File name too long");
+            },
         });
         processor.enqueueAll([note("unreflected")]);
         await vi.waitFor(() => expect(processSynchroniseResult).toHaveBeenCalledTimes(1));
@@ -277,7 +1445,7 @@ describe("ReplicateResultProcessor", () => {
     ])("does not reflect a replicated colon path into the %s Vault", async (_platform, validatePath) => {
         const path = "Folder/Poem: Example.md" as FilePathWithPrefix;
         const document = { ...note("colon-path"), path };
-        const { getDBEntryFromMeta, isValidPath, processor, processSynchroniseResult } = setup({
+        const { readDBEntryFromMeta, isValidPath, processor, processSynchroniseResult } = setup({
             isValidPath: validatePath,
         });
 
@@ -285,16 +1453,16 @@ describe("ReplicateResultProcessor", () => {
 
         await vi.waitFor(() => expect(isValidPath).toHaveBeenCalledWith(path));
         await vi.waitFor(() => expect(processor["_processingChanges"]).toHaveLength(0));
-        expect(getDBEntryFromMeta).toHaveBeenCalledWith(expect.objectContaining({ path }), false, true);
+        expect(readDBEntryFromMeta).toHaveBeenCalledWith(expect.objectContaining({ path }), false, true);
         expect(processSynchroniseResult).not.toHaveBeenCalled();
     });
 
     it("resumes another document after in-flight updates to one document fill the application slots", async () => {
-        const hotGate = promiseWithResolvers<boolean>();
+        const hotGate = promiseWithResolvers<FileReflectionResult>();
         const { processor, processSynchroniseResult } = setup({
             processSynchroniseResult: async (entry) => {
                 if ((entry as { _id: string })._id === "hot-queue") return await hotGate.promise;
-                return true;
+                return { status: "completed" };
             },
         });
         try {
@@ -311,7 +1479,7 @@ describe("ReplicateResultProcessor", () => {
             });
             expect(processor["_queuedChanges"].map((entry) => entry._id)).toEqual(["unrelated-queue"]);
         } finally {
-            hotGate.resolve(true);
+            hotGate.resolve({ status: "completed" });
             await vi.waitFor(() => {
                 expect(processor["_processingChanges"]).toHaveLength(0);
                 expect(processor["_queuedChanges"]).toHaveLength(0);
@@ -379,23 +1547,34 @@ describe("ReplicateResultProcessor", () => {
     });
 
     it("still skips a document modified after the limit while the application is unready", async () => {
-        const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
-        const { processor, processSynchroniseResult } = setup({
-            applicationReady: false,
-            maxMTimeForReflectEvents,
-        });
+        const logger = vi.fn();
+        setGlobalLogFunction(logger);
+        try {
+            const maxMTimeForReflectEvents = Date.parse("2026-09-01T00:00:00Z");
+            const { processor, processSynchroniseResult } = setup({
+                applicationReady: false,
+                maxMTimeForReflectEvents,
+            });
 
-        const tooRecent = {
-            ...note("too-recent"),
-            mtime: maxMTimeForReflectEvents + 1,
-        } as PouchDB.Core.ExistingDocument<EntryDoc>;
-        processor.enqueueAll([tooRecent]);
+            const tooRecent = {
+                ...note("too-recent"),
+                mtime: maxMTimeForReflectEvents + 1,
+            } as PouchDB.Core.ExistingDocument<EntryDoc>;
+            processor.enqueueAll([tooRecent]);
 
-        await vi.waitFor(() => {
-            expect(processor["_queuedChanges"]).toHaveLength(0);
-            expect(processor["_processingChanges"]).toHaveLength(0);
-        });
-        expect(processSynchroniseResult).not.toHaveBeenCalled();
+            await vi.waitFor(() => {
+                expect(processor["_queuedChanges"]).toHaveLength(0);
+                expect(processor["_processingChanges"]).toHaveLength(0);
+            });
+            expect(processSynchroniseResult).not.toHaveBeenCalled();
+            expect(logger).toHaveBeenCalledWith(
+                expect.stringContaining("modification time (2026-09-01T00:00:00.001Z) exceeding the limit"),
+                LOG_LEVEL_INFO,
+                undefined
+            );
+        } finally {
+            setGlobalLogFunction(defaultLogger);
+        }
     });
 
     it("retires active ownership when a newer remote version is observed", async () => {
@@ -553,7 +1732,7 @@ describe("ReplicateResultProcessor", () => {
     });
 
     it("keeps one local application activity until every replicated document has been applied", async () => {
-        const applying = promiseWithResolvers<boolean>();
+        const applying = promiseWithResolvers<FileReflectionResult>();
         let activityFinished = false;
         const { processor, processSynchroniseResult, runBoundedLocalApplicationActivity } = setup({
             processSynchroniseResult: async () => applying.promise,
@@ -572,7 +1751,7 @@ describe("ReplicateResultProcessor", () => {
         });
         expect(activityFinished).toBe(false);
 
-        applying.resolve(true);
+        applying.resolve({ status: "completed" });
 
         await vi.waitFor(() => expect(activityFinished).toBe(true));
     });
@@ -593,7 +1772,7 @@ describe("ReplicateResultProcessor", () => {
     });
 
     it("releases and reacquires local application activity around processing suspension", async () => {
-        const applying = promiseWithResolvers<boolean>();
+        const applying = promiseWithResolvers<FileReflectionResult>();
         let completedActivities = 0;
         const { processor, processSynchroniseResult, runBoundedLocalApplicationActivity } = setup({
             processSynchroniseResult: async () => applying.promise,
@@ -611,18 +1790,19 @@ describe("ReplicateResultProcessor", () => {
         processor.resume();
         await vi.waitFor(() => expect(runBoundedLocalApplicationActivity).toHaveBeenCalledTimes(2));
 
-        applying.resolve(true);
+        applying.resolve({ status: "completed" });
         await vi.waitFor(() => expect(completedActivities).toBe(2));
     });
 
-    it.each([
-        ["returns false", async () => false, undefined],
-        ["throws", async () => Promise.reject(new Error("File name too long")), "File name too long"],
-    ])("reports when Vault reflection %s", async (_description, processSynchroniseResult, errorMessage) => {
+    it("reports a thrown Vault reflection failure", async () => {
         const log = vi.fn((_message: unknown, _level?: number) => undefined);
         setGlobalLogFunction(log);
         try {
-            const { processor } = setup({ processSynchroniseResult });
+            const { processor } = setup({
+                processSynchroniseResult: async () => {
+                    throw new Error("File name too long");
+                },
+            });
 
             processor.enqueueAll([note("unreflectable")]);
 
@@ -638,13 +1818,11 @@ describe("ReplicateResultProcessor", () => {
                 LOG_LEVEL_VERBOSE,
                 undefined
             );
-            if (errorMessage !== undefined) {
-                expect(log).toHaveBeenCalledWith(
-                    expect.objectContaining({ message: errorMessage }),
-                    LOG_LEVEL_VERBOSE,
-                    undefined
-                );
-            }
+            expect(log).toHaveBeenCalledWith(
+                expect.objectContaining({ message: "File name too long" }),
+                LOG_LEVEL_VERBOSE,
+                undefined
+            );
             expect(log).not.toHaveBeenCalledWith(
                 expect.stringContaining("Processed: unreflectable.md"),
                 LOG_LEVEL_DEBUG,

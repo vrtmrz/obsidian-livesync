@@ -118,7 +118,7 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
         };
         const ownId = async () => {
             assertCurrent();
-            const info = await database.localDatabase.get<EntryNodeInfo>(NODEINFO_DOCID);
+            const info = await database.getRaw<EntryNodeInfo>(NODEINFO_DOCID);
             assertCurrent();
             if (typeof info.nodeid !== "string" || !info.nodeid) throw new Error("Device identity is unavailable");
             return info.nodeid;

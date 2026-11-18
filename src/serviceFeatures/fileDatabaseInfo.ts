@@ -26,7 +26,7 @@ type DatabaseMeta = LoadedEntry & {
 export type FileDatabaseInfoCore = {
     localDatabase: Pick<
         LiveSyncLocalDB,
-        "allDocsRaw" | "findAllDocs" | "getDBEntryFromMeta" | "getDBEntry" | "localDatabase"
+        "allDocsRaw" | "findAllDocs" | "getDBEntryFromMeta" | "getDBEntry" | "readFromDatabase"
     >;
     services: {
         path: Pick<IPathService, "path2id">;
@@ -152,7 +152,7 @@ async function getLocalDatabaseMeta(
     checkInspectionCancelled(target?.signal);
     let raw: RawDatabaseDocument;
     try {
-        raw = await core.localDatabase.localDatabase.get(documentId, options);
+        raw = await core.localDatabase.readFromDatabase((database) => database.get(documentId, options));
     } catch (error) {
         checkInspectionCancelled(target?.signal);
         if (isNotFoundError(error)) {

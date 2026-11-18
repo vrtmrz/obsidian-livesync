@@ -14,6 +14,16 @@ export class ObsidianServiceContext extends ServiceContext {
     readonly notices: KeyedNoticeManager;
     readonly noticeGroups: ObsidianNoticeGroups;
 
+    /**
+     * Whether the host is in its foreground activity phase for lifecycle work.
+     * Visibility transitions and database recovery use this to defer reopening and resumption
+     * while backgrounded. The Obsidian adapter reads the current active document; focus,
+     * plug-in readiness, explicit suspension, and database availability are separate conditions.
+     */
+    isHostActive(): boolean {
+        return !activeWindow.document.hidden;
+    }
+
     constructor(
         app: App,
         plugin: Plugin,

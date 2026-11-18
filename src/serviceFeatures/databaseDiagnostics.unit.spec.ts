@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { LiveSyncLocalDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/LiveSyncLocalDB";
 import {
     DEFAULT_SETTINGS,
     REMOTE_COUCHDB,
@@ -68,19 +69,22 @@ function fixture() {
         statHidden: vi.fn(async () => ({ type: "file" as const, ctime: 1, mtime: 1, size: bytes.byteLength })),
         readHiddenFileBinary: vi.fn(async () => bytes.buffer),
     };
+    const database = {
+        info,
+        get,
+        put,
+        allDocs: vi.fn(async () => ({
+            rows: Object.keys(documents).map((id) => ({ id, value: { rev: "1-current" } })),
+        })),
+    };
+    const readFromDatabase = vi.fn<LiveSyncLocalDB["readFromDatabase"]>((operation) => operation(database as never));
     const host = {
         services: {
             setting: { currentSettings: () => settings, applyPartial },
             database: {
                 localDatabase: {
-                    localDatabase: {
-                        info,
-                        get,
-                        put,
-                        allDocs: vi.fn(async () => ({
-                            rows: Object.keys(documents).map((id) => ({ id, value: { rev: "1-current" } })),
-                        })),
-                    },
+                    localDatabase: database,
+                    readFromDatabase,
                 },
             },
             path: {
@@ -96,10 +100,45 @@ function fixture() {
         },
         serviceModules: { storageAccess: storage },
     } as unknown as DatabaseDiagnosticHost;
-    return { host, settings, path, body, bytes, get, info, put, applyPartial, fetch, storage };
+    return { host, settings, path, body, bytes, get, info, put, applyPartial, fetch, storage, readFromDatabase };
 }
 
 describe("database diagnostic host composition", () => {
+    it("does not read a replacement physical database during inspection", async () => {
+        const data = fixture();
+        const owner = data.host.services.database.localDatabase;
+        const replacement = {
+            ...owner.localDatabase,
+            info: vi.fn(),
+            get: vi.fn(),
+            allDocs: vi.fn(),
+        };
+        data.readFromDatabase.mockImplementation((read) => read(owner.localDatabase));
+        data.info.mockImplementationOnce(async () => {
+            owner.localDatabase = replacement;
+            return { update_seq: "1-stable" };
+        });
+
+        const result = await runDatabaseDiagnostic(data.host, "usage", "pseudonym");
+
+        expect(result.status).toBe("partial");
+        expect(replacement.info).not.toHaveBeenCalled();
+        expect(replacement.get).not.toHaveBeenCalled();
+        expect(replacement.allDocs).not.toHaveBeenCalled();
+    });
+
+    it("reports incomplete Usage when owned local reads are retired", async () => {
+        const data = fixture();
+        data.readFromDatabase.mockRejectedValue(new Error("Local database reads have stopped."));
+
+        const result = await runDatabaseDiagnostic(data.host, "usage", "pseudonym");
+
+        expect(result.status).toBe("partial");
+        expect(result.artifacts.map((artifact) => artifact.format)).toEqual(["json"]);
+        expect(data.get).not.toHaveBeenCalled();
+        expect(data.put).not.toHaveBeenCalled();
+    });
+
     it("passes growing Usage totals and the separate accounting phase to the dialogue", async () => {
         const onProgress = vi.fn();
         await runDatabaseDiagnostic(fixture().host, "usage", "pseudonym", { onProgress });
