@@ -28,6 +28,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - We can see when automatic synchronisation is disabled, including after Fetch or Rebuild. (#1361)
     - A framed badge in the status bar and editor overlay shows the configured LiveSync, periodic, event, or manual-only mode alongside the current transfer status.
     - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.
+- We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. The choices are retained for this Vault on this device and can be reversed with **Unmute version notices**; synchronisation compatibility checks remain enabled. Device removal is available under **… → Forget device record…**. (#1349)
 
 ## 1.0.50
 

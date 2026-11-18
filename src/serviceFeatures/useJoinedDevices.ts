@@ -20,10 +20,11 @@ import { differentDeviceVersions, joinedDevicesView } from "./joinedDevices/view
 import type { JoinedDevicesDialogOptions } from "./joinedDevices/types";
 
 type JoinedDevicesHost = NecessaryServices<
-    "API" | "UI" | "setting" | "database" | "replicator" | "replication" | "appLifecycle",
+    "API" | "UI" | "setting" | "database" | "replicator" | "replication" | "appLifecycle" | "config",
     never
 >;
 const noticeGroup = "joined-device-versions";
+const hiddenVersionNoticeDeviceIdsKey = "joined-devices-hidden-version-notice-device-ids";
 
 function remoteIdentity(settings: RemoteDBSettings): string | undefined {
     if (settings.remoteType === REMOTE_COUCHDB && settings.couchDB_URI && settings.couchDB_DBNAME) {
@@ -48,10 +49,20 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
         services.database.isDatabaseReady() &&
         remoteIdentity(services.setting.currentSettings()) !== undefined;
 
-    const notify = (snapshot: JoinedDevicesSnapshot, ownId: string, identity: string) => {
+    const getHiddenVersionNoticeDeviceIds = async (): Promise<string[]> => {
+        const stored = await services.config.getObject(hiddenVersionNoticeDeviceIdsKey);
+        return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : [];
+    };
+
+    const notify = (
+        snapshot: JoinedDevicesSnapshot,
+        ownId: string,
+        identity: string,
+        hiddenDeviceIds: readonly string[]
+    ) => {
         if (disposed || identity !== remoteIdentity(services.setting.currentSettings())) return;
         const version = services.API.getPluginVersion();
-        const differences = differentDeviceVersions(snapshot, ownId, version);
+        const differences = differentDeviceVersions(snapshot, ownId, version, hiddenDeviceIds);
         const seen = notified.get(identity) ?? new Set<string>();
         notified.set(identity, seen);
         let updated = false;
@@ -113,6 +124,22 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
             return info.nodeid;
         };
         return {
+            setVersionNoticesHidden: async (id, hidden) => {
+                if (id === (await ownId())) {
+                    throw new Error("Version Notices cannot be hidden for this device");
+                }
+                const hiddenIds = new Set(await getHiddenVersionNoticeDeviceIds());
+                assertCurrent();
+                if (hidden) {
+                    hiddenIds.add(id);
+                } else {
+                    hiddenIds.delete(id);
+                }
+                await services.config.setObject(hiddenVersionNoticeDeviceIdsKey, [...hiddenIds]);
+                assertCurrent();
+                notified.delete(identity!);
+                notices.hide(noticeGroup);
+            },
             refresh: async () => {
                 const id = await ownId();
                 const resource = await services.replicator.createRemoteResource(
@@ -123,14 +150,19 @@ export function useJoinedDevicesFeature(host: JoinedDevicesHost, notices: Obsidi
                 return withOwnedRemoteResource(resource, async (ownedResource) => {
                     assertCurrent();
                     const snapshot = await ownedResource.read();
+                    const hiddenIds = await getHiddenVersionNoticeDeviceIds().catch((): string[] => []);
                     assertCurrent();
-                    notify(snapshot, id, identity!);
-                    return joinedDevicesView(snapshot, {
-                        id,
-                        platform: services.API.getPlatform(),
-                        pluginVersion: services.API.getPluginVersion(),
-                        appVersion: services.API.getAppVersion(),
-                    });
+                    notify(snapshot, id, identity!, hiddenIds);
+                    return joinedDevicesView(
+                        snapshot,
+                        {
+                            id,
+                            platform: services.API.getPlatform(),
+                            pluginVersion: services.API.getPluginVersion(),
+                            appVersion: services.API.getAppVersion(),
+                        },
+                        hiddenIds
+                    );
                 });
             },
             forget: async (id) => {
