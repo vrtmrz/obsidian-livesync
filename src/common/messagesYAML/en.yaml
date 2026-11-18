@@ -2415,6 +2415,17 @@ Ui:
             ProceedNext: Proceed to the next step.
             Question: Please select your situation.
             Title: "Mostly Complete: Decision Required"
+        OutroExistingUser:
+            Next: Next
+            RestartConfirmationTitle: Before restarting
+            FetchSyncGuidance: |-
+                Fetch disables **automatic synchronisation** on this device.
+
+                After restarting, follow the Fetch prompts. Wait for the files to appear in the Vault and review them before choosing a synchronisation mode or triggers in **Sync Settings**.
+            P2PFetchSyncGuidance: |-
+                Fetch disables **P2P auto-start and change announcements** on this device.
+
+                After restarting, follow the Fetch prompts. Wait for the files to appear in the Vault and review them. Test manual synchronisation in **P2P Status** before re-enabling automatic options.
         OutroNewUser:
             GuidancePrimary: The connection to the server has been configured successfully. As the next step, the synchronisation data on the server will be built from the current data on this device.
             GuidanceWarning: After restarting, the data on this device will be uploaded to the server as the master copy. Please note that any unintended data currently on the server will be completely overwritten.

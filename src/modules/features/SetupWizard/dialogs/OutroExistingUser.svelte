@@ -44,17 +44,6 @@
             {translateMessage("Restart this device, then choose the source device when P2P Rebuild opens.")}
         </Question>
     </Instruction>
-    {#if enableUnencryptedContent}
-        <PlaintextReceiptWarning />
-    {/if}
-    <UserDecisions>
-        <Decision
-            title={translateMessage("Restart and Select Source Device")}
-            important={true}
-            commit={() => setResult(TYPE_APPLY)}
-        />
-        <Decision title={translateMessage("No, please take me back")} commit={() => setResult(TYPE_CANCELLED)} />
-    </UserDecisions>
 {:else}
     <DialogHeader title={translateMessage("Setup Complete: Preparing to Fetch Synchronisation Data")} />
     <Guidance>
@@ -74,22 +63,16 @@
             )}
         </p>
     </Guidance>
-    <Instruction>
-        <Question
-            >{translateMessage(
-                "Please select the button below to restart and proceed to the data fetching confirmation."
-            )}</Question
-        >
-    </Instruction>
-    {#if enableUnencryptedContent}
-        <PlaintextReceiptWarning />
-    {/if}
-    <UserDecisions>
-        <Decision
-            title={translateMessage("Restart and Fetch Data")}
-            important={true}
-            commit={() => setResult(TYPE_APPLY)}
-        />
-        <Decision title={translateMessage("No, please take me back")} commit={() => setResult(TYPE_CANCELLED)} />
-    </UserDecisions>
 {/if}
+
+{#if enableUnencryptedContent}
+    <PlaintextReceiptWarning />
+{/if}
+<UserDecisions>
+    <Decision
+        title={translateMessage("Ui.SetupWizard.OutroExistingUser.Next")}
+        important={true}
+        commit={() => setResult(TYPE_APPLY)}
+    />
+    <Decision title={translateMessage("No, please take me back")} commit={() => setResult(TYPE_CANCELLED)} />
+</UserDecisions>

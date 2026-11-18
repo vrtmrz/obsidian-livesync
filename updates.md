@@ -25,6 +25,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Improved
 
+- When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
 - We can see when automatic synchronisation is disabled, including after Fetch or Rebuild. (#1361)
     - A framed badge in the status bar and editor overlay shows the configured LiveSync, periodic, event, or manual-only mode alongside the current transfer status.
     - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.

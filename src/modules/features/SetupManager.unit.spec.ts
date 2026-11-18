@@ -108,6 +108,7 @@ function createSetupManager() {
     } as any;
     const core: any = {
         _services: services,
+        confirm: { confirmWithMessage: vi.fn() },
         rebuilder: {
             scheduleRebuild: vi.fn(async (prepareBeforeRestart?: () => Promise<void>) => {
                 await prepareBeforeRestart?.();
@@ -505,11 +506,10 @@ describe("SetupManager", () => {
         const nextIdKey = "78".repeat(32);
         setting.settings = currentSettings;
         const applyPartial = vi.spyOn(setting, "applyPartial");
-        core.confirm = {
-            askSelectStringDialogue: vi.fn(() =>
-                Promise.resolve("Enable without rebuilding — update every other device first")
-            ),
-        };
+        core.confirm.askSelectStringDialogue = vi.fn(() =>
+            Promise.resolve("Enable without rebuilding — update every other device first")
+        );
+        core.confirm.confirmWithMessage.mockResolvedValueOnce("Restart and Fetch Data");
         dialogManager.openWithExplicitCancel
             .mockResolvedValueOnce({
                 ...currentSettings,
@@ -576,6 +576,96 @@ describe("SetupManager", () => {
             isP2P: true,
             enableUnencryptedContent: false,
         });
+    });
+
+    it.each([
+        {
+            name: "CouchDB",
+            remoteType: REMOTE_COUCHDB,
+            restart: "Restart and Fetch Data",
+            settingsPage: "Sync Settings",
+        },
+        {
+            name: "Object Storage",
+            remoteType: REMOTE_MINIO,
+            restart: "Restart and Fetch Data",
+            settingsPage: "Sync Settings",
+        },
+        {
+            name: "P2P",
+            remoteType: REMOTE_P2P,
+            restart: "Restart and Select Source Device",
+            settingsPage: "P2P Status",
+        },
+    ])(
+        "waits for the restart confirmation before reserving Fetch for $name",
+        async ({ remoteType, restart, settingsPage }) => {
+            const { manager, setting, dialogManager, core } = createSetupManager();
+            const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+            const extra = vi.fn();
+            dialogManager.openWithExplicitCancel.mockResolvedValueOnce("apply");
+            core.confirm.confirmWithMessage.mockImplementationOnce(async () => {
+                expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+                expect(applyExternalSettings).not.toHaveBeenCalled();
+                expect(extra).not.toHaveBeenCalled();
+                return restart;
+            });
+
+            await manager.onConfirmApplySettingsFromWizard(
+                { ...createLegacyRemoteSetting(), isConfigured: true, remoteType },
+                UserMode.ExistingUser,
+                true,
+                extra
+            );
+
+            expect(core.confirm.confirmWithMessage).toHaveBeenCalledExactlyOnceWith(
+                "Before restarting",
+                expect.stringContaining(settingsPage),
+                [restart, "Cancel"],
+                restart
+            );
+            expect(core.rebuilder.scheduleFetch).toHaveBeenCalledOnce();
+            expect(applyExternalSettings).toHaveBeenCalledOnce();
+            expect(extra).toHaveBeenCalledOnce();
+        }
+    );
+
+    it.each(["Cancel", false])("leaves settings and Fetch alone when the restart dialogue returns %s", async (action) => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        const applyExternalSettings = vi.spyOn(setting, "applyExternalSettings");
+        const extra = vi.fn();
+        dialogManager.openWithExplicitCancel.mockResolvedValueOnce("apply");
+        core.confirm.confirmWithMessage.mockResolvedValueOnce(action);
+
+        await expect(
+            manager.onConfirmApplySettingsFromWizard(
+                { ...createLegacyRemoteSetting(), isConfigured: true },
+                UserMode.ExistingUser,
+                true,
+                extra
+            )
+        ).resolves.toBe(false);
+
+        expect(dialogManager.openWithExplicitCancel).toHaveBeenCalledOnce();
+        expect(core.confirm.confirmWithMessage).toHaveBeenCalledOnce();
+        expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
+        expect(applyExternalSettings).not.toHaveBeenCalled();
+        expect(extra).not.toHaveBeenCalled();
+    });
+
+    it("does not add a migrated remote profile to the current settings when cancelling a legacy Setup URI", async () => {
+        const { manager, setting, dialogManager, core } = createSetupManager();
+        const before = structuredClone(setting.currentSettings());
+        dialogManager.openWithExplicitCancel
+            .mockResolvedValueOnce({ isConfigured: true, remoteType: REMOTE_COUCHDB, couchDB_URI: "http://localhost:5984" })
+            .mockResolvedValueOnce("apply");
+        core.confirm.confirmWithMessage.mockResolvedValueOnce("Cancel");
+
+        await expect(manager.onUseSetupURI(UserMode.ExistingUser, "mock-config://settings")).resolves.toBe(false);
+
+        expect(setting.currentSettings()).toEqual(before);
+        expect(setting.saveSettingData).not.toHaveBeenCalled();
+        expect(core.rebuilder.scheduleFetch).not.toHaveBeenCalled();
     });
 
     it("reserves Fetch when compatible imported settings activate an unconfigured device", async () => {
@@ -729,7 +819,7 @@ describe("SetupManager", () => {
     );
 
     it("adds and activates a manually configured CouchDB without replacing existing profiles", async () => {
-        const { manager, setting, dialogManager } = createSetupManager();
+        const { manager, setting, dialogManager, core } = createSetupManager();
         setting.settings = {
             ...setting.currentSettings(),
             customChunkSize: 60,
@@ -759,7 +849,8 @@ describe("SetupManager", () => {
                 jwtExpDuration: 5,
                 useRequestAPI: false,
             })
-            .mockResolvedValueOnce(true);
+            .mockResolvedValueOnce("apply");
+        core.confirm.confirmWithMessage.mockResolvedValueOnce("Restart and Fetch Data");
 
         await manager.onCouchDBManualSetup(UserMode.ExistingUser, setting.currentSettings());
 
@@ -807,7 +898,7 @@ describe("SetupManager", () => {
     );
 
     it("adds and activates a manually configured Object Storage profile without replacing existing profiles", async () => {
-        const { manager, setting, dialogManager } = createSetupManager();
+        const { manager, setting, dialogManager, core } = createSetupManager();
         setting.settings = {
             ...setting.currentSettings(),
             isConfigured: true,
@@ -833,7 +924,8 @@ describe("SetupManager", () => {
                 bucketCustomHeaders: "",
                 forcePathStyle: true,
             })
-            .mockResolvedValueOnce(true);
+            .mockResolvedValueOnce("apply");
+        core.confirm.confirmWithMessage.mockResolvedValueOnce("Restart and Fetch Data");
 
         await manager.onBucketManualSetup(UserMode.ExistingUser, setting.currentSettings());
 
