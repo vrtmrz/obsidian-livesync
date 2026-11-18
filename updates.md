@@ -23,6 +23,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - Hidden File Sync now respects Customisation Sync's **Ignore** and **Selective** selections for registered paths containing uppercase letters.
     - While Customisation Sync is enabled, the exclusion check compares both paths in lowercase, restoring the previous matching behaviour.
 
+### Improved
+
+- We can see when automatic synchronisation is disabled, including after Fetch or Rebuild. (#1361)
+    - A framed badge in the status bar and editor overlay shows the configured LiveSync, periodic, event, or manual-only mode alongside the current transfer status.
+    - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.
+
 ## 1.0.50
 
 12th November, 2026

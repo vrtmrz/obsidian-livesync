@@ -137,7 +137,9 @@ On the next start, LiveSync:
 2. asks which remote to use when more than one remote profile exists;
 3. asks how to treat existing Vault files;
 4. discards and reconstructs the local LiveSync database from the selected remote; and
-5. resumes only after the scheduled operation has completed or been cancelled safely.
+5. allows ordinary start-up to continue only after the scheduled operation has completed or been cancelled safely.
+
+Fetch disables the ordinary automatic synchronisation triggers on this device. Completing the operation does not restore the previous mode, and conflicts can remain for review. Please review the resulting Vault and any conflicts before enabling the intended triggers under **Sync Settings** → **Synchronization Method**. For CouchDB and S3-compatible Object Storage, the [configured automatic synchronisation badge](tips/status-display.md#configured-automatic-synchronisation) shows 🛎 while those triggers are disabled.
 
 Fast Setup retains its fetch flag, last successfully stored remote position, and selected data-processing method when an error while decrypting data, reading the remote response, or writing to the local database stops the reconstruction. File watching and database reflection remain suspended. Review the first specific error in **Show log**, correct its cause, then restart Obsidian to retry from the retained state. Do not remove the fetch flag or resume the Scram switches while you intend to continue the operation. If the same error remains, leave LiveSync suspended and [collect a report](troubleshooting.md#collect-a-report).
 
@@ -154,6 +156,8 @@ The readable flag is `flag_rebuild.md`; the legacy name `redflag2.md` remains ac
 For CouchDB and Object Storage, this is destructive to the selected remote state. Other devices may still contain revisions or files which are not present in the authoritative Vault, so keep them stopped until the new remote has been verified and then reset them from that remote.
 
 For a P2P-only setup, there is no central remote database to overwrite. Preparing the first device instead rebuilds its local LiveSync database from its Vault.
+
+Rebuild also leaves the ordinary automatic synchronisation triggers disabled on this device. Please review the reconstructed state before re-enabling them, as described under [Reset synchronisation on this device](#reset-synchronisation-on-this-device).
 
 ## Garbage Collection is not Rebuild
 

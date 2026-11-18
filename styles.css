@@ -928,12 +928,23 @@ body.is-mobile .livesync-compatibility-review-notice {
     font-variant-numeric: tabular-nums;
 }
 
+.livesync-stat-sync-mode {
+    display: inline-block;
+    padding-inline: 0.3em;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+}
+
 .livesync-stat-item.livesync-stat-inactive {
     display: none;
 }
 
 .syncstatusbar .livesync-stat-item {
     white-space: pre;
+}
+
+.syncstatusbar .livesync-stat-sync-mode {
+    margin-inline-end: 0.5em;
 }
 
 .livesync-status-statusline
