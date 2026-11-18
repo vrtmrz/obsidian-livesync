@@ -10,12 +10,14 @@ status: accepted
 ## Status and purpose
 
 Accepted on 16th November, 2026. The version fields identify the reviewed
-baseline and are not a claim about the current candidate. The revised integrated
-design is approved and has controlled Linux Obsidian verification. Its required
-Commonlib APIs are [published in 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0)
-and pinned in the manifest and lockfile. Published Self-hosted LiveSync 1.0.50
-does not contain the host changes. The historical results below are labelled by
-the earlier candidate they exercised.
+baseline (`1.0.50` with Commonlib `0.5.0`) rather than the release containing this
+change. The revised integrated implementation is included in Self-hosted
+LiveSync `1.0.51`, using
+[Commonlib 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0)
+pinned in the manifest and lockfile, and has controlled Linux Obsidian
+verification. Natural iOS connection loss and recovery on a physical iPhone
+remain unverified. The historical results below are labelled by the earlier
+candidate they exercised.
 
 [Issue #1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224) reports
 ordinary start-up reflection failing before CouchDB becomes reachable. With
@@ -238,10 +240,10 @@ targets do not produce a needs-review notice; dismissing a notice retains the
 records, and restart allows the remaining issues to be presented again.
 
 Commonlib 0.6.0 is published and adopted through the exact registry dependency
-and lockfile. The reviewed Commonlib 0.5.0 version field retains its historical
-baseline; it does not identify the package selected by this branch. The host
-integration remains an unreleased implementation candidate. Historical runtime
-results retain the candidate revisions they exercised.
+and lockfile. The reviewed Commonlib 0.5.0 and Self-hosted LiveSync 1.0.50
+version fields retain their historical baseline; the host integration is
+included in Self-hosted LiveSync 1.0.51. Historical runtime results retain the
+candidate revisions they exercised.
 
 ## Previous standalone candidate verification
 
@@ -333,9 +335,9 @@ content, revision, and provenance. Unit tests for that candidate covered its
 shared allowance, snapshot ordering, restart, concurrent revision changes, and
 reset boundaries. These results describe the previous candidate only.
 
-## Revised candidate verification
+## Revised implementation verification
 
-With the same combined Commonlib package, controlled Linux Obsidian tests pass
+With the same combined Commonlib package (included in Self-hosted LiveSync 1.0.51), controlled Linux Obsidian tests pass
 for offline start-up, a connection drop while online, and delayed Chunk arrival.
 For both outages, the initial scan reports `completed-with-file-failures` and
 leaves the file without successful provenance. After connectivity returns and
