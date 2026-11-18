@@ -476,7 +476,8 @@ export class ConfigSync extends LiveSyncCommands {
     }
 
     getFileCategory(
-        filePath: string
+        filePath: string,
+        includePluginEtc = this.useV2 && this.useSyncPluginEtc
     ): "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA" | "" {
         if (filePath.split("/").length == 2 && filePath.endsWith(".json")) return "CONFIG";
         if (filePath.split("/").length == 4 && filePath.startsWith(`${this.configDir}/themes/`)) return "THEME";
@@ -492,7 +493,7 @@ export class ConfigSync extends LiveSyncCommands {
                 return "PLUGIN_DATA";
             } else {
                 // Planned at v0.19.0, realised v0.23.18!
-                return this.useV2 && this.useSyncPluginEtc ? "PLUGIN_ETC" : "";
+                return includePluginEtc ? "PLUGIN_ETC" : "";
             }
             // return "PLUGIN";
         }
@@ -624,9 +625,8 @@ export class ConfigSync extends LiveSyncCommands {
         },
     });
 
-    filenameToUnifiedKey(path: string, termOverRide?: string) {
+    filenameToUnifiedKey(path: string, termOverRide?: string, category = this.getFileCategory(path)) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
-        const category = this.getFileCategory(path);
         const name =
             category == "CONFIG" || category == "SNIPPET"
                 ? path.split("/").slice(-1)[0]
@@ -636,9 +636,8 @@ export class ConfigSync extends LiveSyncCommands {
         return `${ICXHeader}${term}/${category}/${name}.md` as FilePathWithPrefix;
     }
 
-    filenameWithUnifiedKey(path: string, termOverRide?: string) {
+    filenameWithUnifiedKey(path: string, termOverRide?: string, category = this.getFileCategory(path)) {
         const term = termOverRide || this.services.setting.getDeviceAndVaultName();
-        const category = this.getFileCategory(path);
         const name =
             category == "CONFIG" || category == "SNIPPET" ? path.split("/").slice(-1)[0] : path.split("/").slice(-2)[0];
         const baseName = category == "CONFIG" || category == "SNIPPET" ? name : path.split("/").slice(3).join("/");
@@ -1516,17 +1515,26 @@ export class ConfigSync extends LiveSyncCommands {
     }
     private pendingOptionalSaves?: PendingConfigSaves;
 
+    private getFilesExcludedFromConfigSync(): string[] {
+        const configDir = normalizePath(this.configDir);
+        return Object.values(this.settings.pluginSyncExtendedSetting)
+            .filter((entry) => entry.mode !== MODE_SELECTIVE && entry.mode !== MODE_SHINY)
+            .flatMap((entry) => entry.files)
+            .map((file) => `${configDir}/${file}`);
+    }
+
+    private isFileExcludedFromConfigSync(path: string, excludedFiles = this.getFilesExcludedFromConfigSync()): boolean {
+        return excludedFiles.some((file) => file.toLowerCase().startsWith(path.toLowerCase()));
+    }
+
     async _processOptionalFileEventWithResult(
         path: FilePath,
         options?: OptionalFileEventOptions
     ): Promise<HandlerOutcome<void, string>> {
         if (!this.isThisModuleEnabled() || !this.isTargetPath(path)) return { kind: "not-applicable" };
-        const configDir = normalizePath(this.configDir);
-        const handledElsewhere = Object.values(this.settings.pluginSyncExtendedSetting)
-            .filter((entry) => entry.mode !== MODE_SELECTIVE && entry.mode !== MODE_SHINY)
-            .flatMap((entry) => entry.files)
-            .some((file) => `${configDir}/${file}`.toLowerCase().startsWith(path.toLowerCase()));
-        if (handledElsewhere) return { kind: "not-applicable" };
+        if (this.isFileExcludedFromConfigSync(path)) {
+            return { kind: "not-applicable" };
+        }
         if (!this._isDatabaseReady()) return { kind: "veto", value: "database-not-ready" };
         const term = this.services.setting.getDeviceAndVaultName();
         if (!term) return { kind: "veto", value: "device-name-not-configured" };
@@ -1559,13 +1567,7 @@ export class ConfigSync extends LiveSyncCommands {
         // Make sure that target is a file.
         if (stat && stat.type != "file") return false;
 
-        const configDir = normalizePath(this.configDir);
-        const synchronisedInConfigSync = Object.values(this.settings.pluginSyncExtendedSetting)
-            .filter((e) => e.mode != MODE_SELECTIVE && e.mode != MODE_SHINY)
-            .map((e) => e.files)
-            .flat()
-            .map((e) => `${configDir}/${e}`.toLowerCase());
-        if (synchronisedInConfigSync.some((e) => e.startsWith(path.toLowerCase()))) {
+        if (this.isFileExcludedFromConfigSync(path)) {
             this._log(`Customization file skipped: ${path}`, LOG_LEVEL_VERBOSE);
             // This file could be handled by the other module.
             return false;
@@ -1599,6 +1601,20 @@ export class ConfigSync extends LiveSyncCommands {
                 return;
             }
             const filesAll = await this.scanInternalFiles();
+            const excludedFiles = this.getFilesExcludedFromConfigSync();
+            // Protect saved documents even when their excluded files are no longer on disk.
+            const excludedKeys = new Set(
+                excludedFiles
+                    .flatMap((file) => {
+                        // Saved categories survive changes to the current collection settings.
+                        const category = this.getFileCategory(file, true);
+                        return [
+                            this.filenameToUnifiedKey(file, term, category),
+                            this.filenameWithUnifiedKey(file, term, category),
+                        ];
+                    })
+                    .map((key) => key.toLowerCase())
+            );
             if (this.useV2) {
                 const filesAllUnified = filesAll
                     .filter((e) => this.isTargetPath(e))
@@ -1610,7 +1626,9 @@ export class ConfigSync extends LiveSyncCommands {
                 });
                 const databaseEntries: { _id: string; path: FilePathWithPrefix }[] = [];
                 for await (const item of entries) {
-                    if (item.path.indexOf("%") === -1) databaseEntries.push(item);
+                    if (item.path.indexOf("%") === -1 && !excludedKeys.has(item.path.toLowerCase())) {
+                        databaseEntries.push(item);
+                    }
                 }
                 await withScope({ term, localFileMap }, async (scope) => {
                     await forEachInScope(scope, databaseEntries, { concurrency: 10 }, async (item, ctx) => {
@@ -1618,7 +1636,9 @@ export class ConfigSync extends LiveSyncCommands {
                             const unifiedFilenameWithKey = `${item._id}` as FilePathWithPrefix;
                             const localPath = ctx.value.localFileMap.get(unifiedFilenameWithKey);
                             if (localPath) {
-                                await this.storeCustomisationFileV2(localPath, ctx.value.term);
+                                if (!this.isFileExcludedFromConfigSync(localPath, excludedFiles)) {
+                                    await this.storeCustomisationFileV2(localPath, ctx.value.term);
+                                }
                                 ctx.value.localFileMap.delete(unifiedFilenameWithKey);
                             } else {
                                 await this.deleteConfigOnDatabase(unifiedFilenameWithKey);
@@ -1629,6 +1649,9 @@ export class ConfigSync extends LiveSyncCommands {
                         }
                     });
                     await forEachInScope(scope, localFileMap.values(), { concurrency: 10 }, async (filePath, ctx) => {
+                        if (this.isFileExcludedFromConfigSync(filePath, excludedFiles)) {
+                            return;
+                        }
                         try {
                             await this.storeCustomisationFileV2(filePath, ctx.value.term);
                         } catch (ex) {
@@ -1654,14 +1677,16 @@ export class ConfigSync extends LiveSyncCommands {
                 ).filter((e) => !e.deleted);
                 let deleteCandidate = filesOnDB
                     .map((e) => this.getPath(e))
-                    .filter((e) => e.startsWith(`${ICXHeader}${term}/`));
+                    .filter((e) => e.startsWith(`${ICXHeader}${term}/`) && !excludedKeys.has(e.toLowerCase()));
                 for (const vp of virtualPathsOfLocalFiles) {
                     const p = files.find((e) => e.key == vp)?.file;
                     if (!p) {
                         this._log(`scanAllConfigFiles - File not found: ${vp}`, LOG_LEVEL_VERBOSE);
                         continue;
                     }
-                    await this.storeCustomizationFiles(p);
+                    if (!this.isFileExcludedFromConfigSync(p, excludedFiles)) {
+                        await this.storeCustomizationFiles(p);
+                    }
                     deleteCandidate = deleteCandidate.filter((e) => e != vp);
                 }
                 for (const vp of deleteCandidate) {

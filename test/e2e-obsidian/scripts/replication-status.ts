@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { startObsidianLiveSyncSession, type ObsidianLiveSyncSession } from "../runner/session.ts";
-import { withObsidianPage } from "../runner/ui.ts";
+import { captureObsidianPage, withObsidianPage } from "../runner/ui.ts";
 import { createTemporaryVault } from "../runner/vault.ts";
 import type { Page } from "playwright";
 import { setObsidianMobileTestModeBeforePluginStart } from "../runner/mobileUi.ts";
+import type { P2PReplicationProgress } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
 
 const fixturePath = "replication-status-e2e.md";
 const uiTimeoutMs = Number(process.env.E2E_OBSIDIAN_UI_TIMEOUT_MS ?? 10000);
@@ -47,7 +48,7 @@ type TestLogModule = {
     adjustStatusDivPosition?: () => void;
     statusLog?: WritableSource<string>;
     activeFileStatus?: WritableSource<string>;
-    p2pLogCollector?: { p2pReplicationLine: WritableSource<string> };
+    p2pLogCollector?: { p2pReplicationStats: WritableSource<readonly P2PReplicationProgress[]> };
     statusDiv?: HTMLElement;
     statusLine?: HTMLElement;
     statusLineRenderer?: { render?: (parts: readonly unknown[]) => void };
@@ -58,7 +59,10 @@ type TestLogModule = {
 type TestCore = {
     modules?: unknown[];
     services?: {
-        setting?: { currentSettings?: () => Record<string, unknown> };
+        setting?: {
+            currentSettings?: () => Record<string, unknown>;
+            applyPartial?: (settings: Record<string, unknown>, saveImmediately: boolean) => Promise<void>;
+        };
         replicator?: {
             replicationStatics?: WritableSource<TestReplicationStatics>;
         };
@@ -974,7 +978,7 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
             { key: "queue-conflicts", mark: "🔩", source: services.conflict.conflictProcessQueueCount, value: 8 },
         ];
         const warning = moduleLog.activeFileStatus;
-        const p2p = moduleLog.p2pLogCollector.p2pReplicationLine;
+        const p2p = moduleLog.p2pLogCollector.p2pReplicationStats;
         const labels = moduleLog.statusBarLabels;
         const previous = {
             counters: counters.map(({ source }) => source.value),
@@ -982,7 +986,7 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
             p2p: p2p.value,
             hideFileWarningNotice: settings.hideFileWarningNotice,
         };
-        const peerLine = "⚡ E2E peer ↑ 11/12 ↓ 13/14";
+        const peerLine = "⚡ E2E peer ↑ seq 11 (12) ↓ seq 13 (14)";
         const wait = {
             async until(condition: () => boolean, message: string) {
                 const deadline = Date.now() + timeout;
@@ -994,7 +998,14 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
         };
         try {
             for (const { source, value } of counters) source.value = value;
-            p2p.value = peerLine;
+            p2p.value = [
+                {
+                    peerId: "e2e-status-peer",
+                    peerName: "E2E peer",
+                    sending: { current: 11, max: 12, isActive: true },
+                    fetching: { current: 13, max: 14, isActive: true },
+                },
+            ];
             settings.hideFileWarningNotice = false;
             warning.value = "E2E file warning";
             await wait.until(
@@ -1013,8 +1024,12 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
             );
             await wait.until(
                 () =>
-                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p")?.textContent?.trim() ===
-                        peerLine &&
+                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer")
+                        ?.textContent === "⚡ E2E peer" &&
+                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-sending")
+                        ?.textContent === " ↑ seq 11 (12)" &&
+                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-fetching")
+                        ?.textContent === " ↓ seq 13 (14)" &&
                     document
                         .querySelector(".livesync-status-messagearea")
                         ?.textContent?.includes("⚠️ E2E file warning") === true,
@@ -1042,7 +1057,7 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
                         ?.textContent?.includes("E2E file warning") === false,
                 "The file warning did not switch to its existing compact icon."
             );
-            p2p.value = "";
+            p2p.value = [];
             await wait.until(
                 () =>
                     document.querySelector(".syncstatusbar .livesync-stat-file-skip")?.textContent?.trim() ===
@@ -1059,6 +1074,115 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
         }
     }, uiTimeoutMs);
     console.log("Queue counts, P2P text, file warnings, and plain-text status remain available.");
+}
+
+async function assertSyncModeBadge(page: Page, port: number, mobile: boolean): Promise<void> {
+    const previous = await page.evaluate(() => {
+        const settings = (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core?.services
+            ?.setting;
+        const current = settings?.currentSettings?.();
+        if (!current || !settings?.applyPartial) {
+            throw new Error("LiveSync settings are unavailable.");
+        }
+        const keys = [
+            "isConfigured",
+            "liveSync",
+            "periodicReplication",
+            "syncOnSave",
+            "syncOnEditorSave",
+            "syncOnStart",
+            "syncOnFileOpen",
+            "syncAfterMerge",
+        ];
+        return Object.fromEntries(keys.map((key) => [key, current[key]]));
+    });
+    const apply = async (patch: Record<string, unknown>) => {
+        await page.evaluate(async (patch) => {
+            const settings = (globalThis as TestWindow).app?.plugins?.plugins?.["obsidian-livesync"]?.core?.services
+                ?.setting;
+            if (!settings?.applyPartial) {
+                throw new Error("LiveSync settings are unavailable.");
+            }
+            await settings.applyPartial(patch, true);
+        }, patch);
+    };
+    try {
+        const invitation = page.locator(".notice").filter({ has: page.locator(".sls-onboarding-invitation-action") });
+        await invitation.evaluateAll((notices) => {
+            for (const notice of notices) {
+                const closeButton = notice.querySelector<HTMLElement>(".notice-close-button");
+                (closeButton ?? (notice as HTMLElement)).click();
+            }
+        });
+        await invitation.first().waitFor({ state: "hidden", timeout: uiTimeoutMs });
+        const automaticOff = {
+            isConfigured: true,
+            liveSync: false,
+            periodicReplication: false,
+            syncOnSave: false,
+            syncOnEditorSave: false,
+            syncOnStart: false,
+            syncOnFileOpen: false,
+            syncAfterMerge: false,
+        };
+        const cases = [
+            { text: "🔗", patch: { ...automaticOff, liveSync: true } },
+            { text: "⏰ ✨", patch: { ...automaticOff, periodicReplication: true, syncOnFileOpen: true } },
+            { text: "✨", patch: { ...automaticOff, syncAfterMerge: true } },
+            { text: "🛎", patch: automaticOff },
+        ];
+        for (const { text, patch } of cases) {
+            await apply(patch);
+            await page.waitForFunction(
+                (expected) => {
+                    const overlay = document.querySelector(".livesync-status-statusline");
+                    if (!overlay) {
+                        return false;
+                    }
+                    const roots = [overlay, document.querySelector(".syncstatusbar")].filter((root) => root !== null);
+                    return roots.every(
+                        (root) =>
+                            root.querySelector(".livesync-stat-sync-mode:not(.livesync-stat-inactive)")?.textContent ===
+                            expected
+                    );
+                },
+                text,
+                { timeout: uiTimeoutMs }
+            );
+            const framed = await page
+                .locator(".livesync-status-statusline .livesync-stat-sync-mode")
+                .evaluate((element) => {
+                    const style = getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return (
+                        style.borderTopStyle === "solid" &&
+                        Number.parseFloat(style.borderTopWidth) > 0 &&
+                        Number.parseFloat(style.borderTopLeftRadius) > 0 &&
+                        rect.width > 0 &&
+                        rect.height > 0
+                    );
+                });
+            failUnless(framed, `The ${text} mode badge has no visible rounded frame.`);
+        }
+        const screenshot = await captureObsidianPage(
+            port,
+            `sync-mode-${mobile ? "mobile" : "desktop"}.png`,
+            async (page) => {
+                await page
+                    .locator(".livesync-status-statusline .livesync-stat-sync-mode")
+                    .waitFor({ state: "visible" });
+            }
+        );
+        console.log(
+            `Configured sync mode badges and frames passed (${mobile ? "mobile emulation" : "desktop"}): ${screenshot}`
+        );
+        await apply({ isConfigured: false });
+        await page
+            .locator(".livesync-status-statusline .livesync-stat-sync-mode")
+            .waitFor({ state: "hidden", timeout: uiTimeoutMs });
+    } finally {
+        await apply(previous);
+    }
 }
 
 async function runStatusScenario(session: ObsidianLiveSyncSession): Promise<void> {
@@ -1281,7 +1405,8 @@ async function main(): Promise<void> {
                 "The LiveSync plug-in did not become ready."
             );
             if (!mobile) await runStatusScenario(session);
-            await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            const statusPort = session.remoteDebuggingPort;
+            await withObsidianPage(statusPort, async (page) => {
                 await installFixtureFile(page);
                 if (mobile) {
                     await page.evaluate(() => {
@@ -1306,6 +1431,7 @@ async function main(): Promise<void> {
                 }
                 await assertEditorItemSpacing(page, mobile);
                 if (mobile) await assertDirectionalComparison(page);
+                await assertSyncModeBadge(page, statusPort, mobile);
                 await assertDocumentedAnimation(page);
             });
         } finally {

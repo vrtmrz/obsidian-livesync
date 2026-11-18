@@ -31,6 +31,21 @@ Use [General Settings](../settings.md#2-general-settings) to choose whether sync
 
 To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.
 
+## Configured automatic synchronisation
+
+A framed badge before `Sync:` shows the automatic synchronisation configured for a CouchDB or S3-compatible Object Storage remote. It appears in both the status bar and editor overlay when their respective displays are enabled:
+
+| Symbol | Configured triggers |
+| --- | --- |
+| 🔗 | LiveSync mode |
+| ⏰ | Periodic synchronisation |
+| ✨ | At least one event trigger: file save, editor save, start-up, file open, or file merge |
+| 🛎 | Manual synchronisation only; all ordinary automatic triggers are disabled |
+
+Enabled groups appear together: `⏰ ✨` means periodic and event synchronisation are configured. The badge describes the settings, while `Sync:` describes current transfer activity. A configured mode does not establish that the device is connected or that file and database reflection is enabled. Unconfigured Vaults and P2P main remotes do not show this badge; P2P uses its own connection and automatic synchronisation settings.
+
+Fetch and Rebuild deliberately disable automatic synchronisation. Completion does not restore the previous mode, so the badge then shows 🛎. A completed operation can still leave conflicts to review. Please review the resulting Vault and any conflicts before choosing the intended triggers under **Sync Settings** → **Synchronization Method**.
+
 ## CouchDB comparison count
 
 When CouchDB change history is being compared, directional counts can appear before any new documents arrive, for example `Sync: ⏩ (⏩↑ 1200) (⏩↓ 84) ↑ 0 ↓ 0`. The `⏩↑` count is for the push direction, and `⏩↓` is for the pull direction. Each counts candidate changes-feed entries compared during the current replication attempt, including entries which do not need to be transferred and repeated entries on retries. They are feed-entry counts, not counts of Vault files which need to be transferred. The final `↑` and `↓` counts continue to show uploaded and downloaded Chunks and Metadata.
@@ -49,7 +64,7 @@ The status bar and editor overlay use individual spans with the common `livesync
 }
 ```
 
-The item classes include `livesync-stat-network`, `livesync-stat-sync`, `livesync-stat-sent`, `livesync-stat-push-remaining`, `livesync-stat-arrived`, `livesync-stat-pull-remaining`, `livesync-stat-ff-push`, `livesync-stat-ff-pull`, and `livesync-stat-p2p`. File-processing items use `livesync-stat-file-processing`, `livesync-stat-file-pending`, and `livesync-stat-file-batched`; queue items use `livesync-stat-queue-` followed by `replication`, `database`, `storage`, `chunk-initial`, `chunk-retrying`, `plugin-scan`, `hidden-files`, or `conflicts`. The skipped-file indicator uses `livesync-stat-file-skip`.
+The item classes include `livesync-stat-sync-mode`, `livesync-stat-network`, `livesync-stat-sync`, `livesync-stat-sent`, `livesync-stat-push-remaining`, `livesync-stat-arrived`, `livesync-stat-pull-remaining`, `livesync-stat-ff-push`, `livesync-stat-ff-pull`, and `livesync-stat-p2p`. File-processing items use `livesync-stat-file-processing`, `livesync-stat-file-pending`, and `livesync-stat-file-batched`; queue items use `livesync-stat-queue-` followed by `replication`, `database`, `storage`, `chunk-initial`, `chunk-retrying`, `plugin-scan`, `hidden-files`, or `conflicts`. The skipped-file indicator uses `livesync-stat-file-skip`.
 
 The former `livesync-stat-ff` class has been replaced by `livesync-stat-ff-push` and `livesync-stat-ff-pull`. Update existing CSS snippets to target one or both of the directional classes.
 
