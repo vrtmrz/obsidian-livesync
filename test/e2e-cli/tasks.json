@@ -41,6 +41,9 @@
     "test:fetch-on-demand-chunks": {
         "test": ["test-fetch-on-demand-chunks.ts"]
     },
+    "test:fetch-unrecognised-encrypted-document": {
+        "test": ["test-fetch-unrecognised-encrypted-document.ts"]
+    },
     "test:remote-administration-exit-codes": {
         "test": ["test-remote-administration-exit-codes.ts"]
     },

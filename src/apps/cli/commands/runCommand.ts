@@ -25,6 +25,7 @@ import {
     NO_INTERACTION,
     REPLICATION_PROGRESS_PRESENTATIONS,
     REMOTE_RESOURCE_KINDS,
+    UnsupportedEncryptedDocumentFormatError,
     USER_INITIATED_REPLICATION_AUTHORITY,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteResource";
@@ -563,7 +564,21 @@ export async function runCommand(options: CLIOptions, context: CLICommandContext
             await core.serviceModules.rebuilder.$fetchLocal(false, true);
             return true;
         } catch (error) {
-            writeStderrLine(standardIo, "[Error] Fetch failed:", error);
+            if (UnsupportedEncryptedDocumentFormatError.findIn(error)) {
+                writeStderrLine(
+                    standardIo,
+                    "[Error] Fetch stopped because the remote database contains data in an unsupported E2EE format."
+                );
+                writeStderrLine(
+                    standardIo,
+                    "Please back up the Vaults and the remote database. " +
+                        "On another device whose Vault contains all the files and changes you need, " +
+                        "rebuild the remote database ('rebuild --force' in the CLI). " +
+                        "Then run 'fetch --force' again on this device."
+                );
+            } else {
+                writeStderrLine(standardIo, "[Error] Fetch failed:", error);
+            }
             return false;
         }
     }
