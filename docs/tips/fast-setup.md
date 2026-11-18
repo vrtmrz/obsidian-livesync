@@ -62,7 +62,9 @@ Depending on your choice in Step 1, you will configure how to handle mismatches:
 Once you confirm your choices:
 1. The plug-in performs a fast download of the remote database (`fetchLocalDBFast`).
 2. It automatically runs a full scan (`synchroniseAllFilesBetweenDBandStorage`) in the foreground to reflect database changes in your local vault files immediately.
-3. The plug-in finalises the process and resumes normal operational status.
+3. The plug-in finalises the database and resumes file watching and database reflection.
+
+The ordinary automatic synchronisation triggers remain disabled after Fast Setup; the previous mode is not restored. Completion can still leave conflicts or local differences to review. Please review the resulting Vault before enabling the intended triggers under **Sync Settings** → **Synchronization Method**. For CouchDB and S3-compatible Object Storage, the [configured automatic synchronisation badge](status-display.md#configured-automatic-synchronisation) shows 🛎 while those triggers are disabled.
 
 ### If Fast Setup Stops
 

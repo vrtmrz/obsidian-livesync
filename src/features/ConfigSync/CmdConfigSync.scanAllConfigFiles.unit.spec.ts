@@ -18,12 +18,15 @@ vi.mock("@/modules/features/InteractiveConflictResolving/ConflictResolveModal.ts
 }));
 vi.mock("@/features/LiveSyncCommands.ts", () => ({
     LiveSyncCommands: class LiveSyncCommands {
-        core!: { services: unknown; localDatabase: unknown };
+        core!: { services: unknown; localDatabase: unknown; settings: unknown };
         get localDatabase() {
             return this.core.localDatabase;
         }
         get services() {
             return this.core.services;
+        }
+        get settings() {
+            return this.core.settings;
         }
     },
 }));
@@ -56,7 +59,14 @@ vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({
 
 vi.mock("octagonal-wheels/concurrency/scoped.iteration", { spy: true });
 
-import { LOG_LEVEL_VERBOSE, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    LOG_LEVEL_VERBOSE,
+    MODE_AUTOMATIC,
+    MODE_PAUSED,
+    MODE_SELECTIVE,
+    MODE_SHINY,
+    type FilePath,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import * as iterationModule from "octagonal-wheels/concurrency/scoped.iteration";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { ConfigSync } from "./CmdConfigSync";
@@ -72,6 +82,7 @@ function setup(files: string[] = [], rows: Row[] = []) {
     const findEntries = vi.fn(async function* () {
         yield* rows;
     });
+    const allDocsRaw = vi.fn(async () => ({ rows: rows.map((doc) => ({ doc })) }));
     const scanInternalFiles = vi.fn(async () => files as FilePath[]);
     const storeCustomisationFileV2 = vi.fn(async (path: string, _term: string) => {
         events.push(`store:${path}`);
@@ -79,21 +90,29 @@ function setup(files: string[] = [], rows: Row[] = []) {
     const deleteConfigOnDatabase = vi.fn(async (key: string) => {
         events.push(`delete:${key}`);
     });
+    const storeCustomizationFiles = vi.fn(async (path: string) => {
+        events.push(`store:${path}`);
+    });
     const updatePluginList = vi.fn(async (_showMessage: boolean) => {});
     const log = vi.fn();
     const configSync = Object.create(ConfigSync.prototype) as ConfigSync;
     Object.assign(configSync, {
         core: {
-            settings: { usePluginSyncV2: true },
-            localDatabase: { findEntries },
-            services: { setting: { getDeviceAndVaultName: () => term } },
+            settings: { usePluginSyncV2: true, pluginSyncExtendedSetting: {} },
+            localDatabase: { findEntries, allDocsRaw },
+            services: {
+                setting: { getDeviceAndVaultName: () => term },
+                API: { getSystemConfigDir: () => ".obsidian" },
+            },
         },
         scanInternalFiles,
         isTargetPath: (path: string) => path !== "ignored",
         filenameWithUnifiedKey: (path: string, _term: string) => keyOf(path),
         unifiedKeyPrefixOfTerminal: (_term: string) => prefix,
         storeCustomisationFileV2,
+        storeCustomizationFiles,
         deleteConfigOnDatabase,
+        getPath: (entry: Row) => entry.path,
         updatePluginList,
         _log: log,
     });
@@ -103,6 +122,7 @@ function setup(files: string[] = [], rows: Row[] = []) {
         findEntries,
         scanInternalFiles,
         storeCustomisationFileV2,
+        storeCustomizationFiles,
         deleteConfigOnDatabase,
         updatePluginList,
         log,
@@ -111,6 +131,143 @@ function setup(files: string[] = [], rows: Row[] = []) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+describe.each([false, true])("ConfigSync scan mode selection (V2: %s)", (useV2) => {
+    const workspace = ".obsidian/workspace.json";
+    const legacyWorkspace = `${prefix}CONFIG/workspace.json.md`;
+    const v2Workspace = `${prefix}CONFIG/workspace.json%workspace.json`;
+
+    function setupMode(mode?: number, localFiles = [workspace], registeredFiles = ["workspace.json"]) {
+        const rows: Row[] = [];
+        const fixture = setup(localFiles, rows);
+        Object.assign(fixture.configSync.core.settings, {
+            usePluginSyncV2: useV2,
+            pluginSyncExtendedSetting:
+                mode === undefined
+                    ? {}
+                    : { "CONFIG/workspace.json": { key: "CONFIG/workspace.json", mode, files: registeredFiles } },
+        });
+        Object.assign(fixture.configSync, {
+            isTargetPath: ConfigSync.prototype.isTargetPath,
+            filenameWithUnifiedKey: ConfigSync.prototype.filenameWithUnifiedKey,
+        });
+        return { ...fixture, rows };
+    }
+
+    it.each([MODE_PAUSED, MODE_AUTOMATIC])("does not collect a new file registered with mode %s", async (mode) => {
+        const fixture = setupMode(mode);
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.storeCustomizationFiles).not.toHaveBeenCalled();
+        expect(fixture.storeCustomisationFileV2).not.toHaveBeenCalled();
+        expect(fixture.deleteConfigOnDatabase).not.toHaveBeenCalled();
+    });
+
+    it.each([MODE_PAUSED, MODE_AUTOMATIC])("preserves existing documents for mode %s", async (mode) => {
+        const fixture = setupMode(mode);
+        fixture.rows.push({ _id: legacyWorkspace, path: legacyWorkspace }, { _id: v2Workspace, path: v2Workspace });
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.events).toEqual([]);
+    });
+
+    it.each([MODE_PAUSED, MODE_AUTOMATIC])(
+        "preserves excluded documents when the local file is absent (mode %s)",
+        async (mode) => {
+            const fixture = setupMode(mode, []);
+            fixture.rows.push({ _id: legacyWorkspace, path: legacyWorkspace }, { _id: v2Workspace, path: v2Workspace });
+
+            await fixture.configSync.scanAllConfigFiles(false);
+
+            expect(fixture.events).toEqual([]);
+        }
+    );
+
+    it("retains case-insensitive exclusions without protecting unrelated missing files", async () => {
+        const fixture = setupMode(MODE_PAUSED, [workspace], ["WORKSPACE.json"]);
+        fixture.rows.push(
+            { _id: legacyWorkspace, path: legacyWorkspace },
+            { _id: `${prefix}CONFIG/stale.json.md`, path: `${prefix}CONFIG/stale.json.md` }
+        );
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.events).toEqual([`delete:${prefix}CONFIG/stale.json.md`]);
+    });
+
+    it.each([undefined, MODE_SELECTIVE, MODE_SHINY])("continues to collect files with mode %s", async (mode) => {
+        const fixture = setupMode(mode);
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.events).toEqual([`store:${workspace}`]);
+    });
+
+    it.each([{ registeredFiles: [] }, { registeredFiles: ["different.json"] }])(
+        "retains the existing file-inventory limitation for $registeredFiles",
+        async ({ registeredFiles }) => {
+            const fixture = setupMode(MODE_PAUSED, [workspace], registeredFiles);
+
+            await fixture.configSync.scanAllConfigFiles(false);
+
+            expect(fixture.events).toEqual([`store:${workspace}`]);
+        }
+    );
+
+    it("preserves an excluded plug-in group even when all its local files are absent", async () => {
+        const fixture = setupMode(MODE_PAUSED, [], ["plugins/example/main.js", "plugins/example/manifest.json"]);
+        fixture.rows.push({ _id: `${prefix}PLUGIN_MAIN/example.md`, path: `${prefix}PLUGIN_MAIN/example.md` });
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.events).toEqual([]);
+    });
+});
+
+describe.each([
+    { usePluginSyncV2: false, usePluginEtc: false },
+    { usePluginSyncV2: false, usePluginEtc: true },
+    { usePluginSyncV2: true, usePluginEtc: false },
+    { usePluginSyncV2: true, usePluginEtc: true },
+])("ConfigSync saved PLUGIN_ETC retention ($usePluginSyncV2, $usePluginEtc)", (settings) => {
+    it.each([
+        { mode: MODE_PAUSED, present: true },
+        { mode: MODE_PAUSED, present: false },
+        { mode: MODE_AUTOMATIC, present: true },
+        { mode: MODE_AUTOMATIC, present: false },
+    ])("preserves the excluded snapshot (mode $mode, local file present: $present)", async ({ mode, present }) => {
+        const path = ".obsidian/plugins/example/cache.json";
+        const saved = `${prefix}PLUGIN_ETC/example%cache.json`;
+        const stale = `${prefix}CONFIG/stale.json.md`;
+        const fixture = setup(present ? [path] : [], [
+            { _id: saved, path: saved },
+            { _id: stale, path: stale },
+        ]);
+        Object.assign(fixture.configSync.core.settings, {
+            ...settings,
+            pluginSyncExtendedSetting: {
+                "PLUGIN_ETC/example": {
+                    key: "PLUGIN_ETC/example",
+                    mode,
+                    files: ["plugins/example/cache.json"],
+                },
+            },
+        });
+        Object.assign(fixture.configSync, {
+            isTargetPath: ConfigSync.prototype.isTargetPath,
+            filenameWithUnifiedKey: ConfigSync.prototype.filenameWithUnifiedKey,
+        });
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.deleteConfigOnDatabase).toHaveBeenCalledExactlyOnceWith(stale);
+        expect(fixture.storeCustomizationFiles).not.toHaveBeenCalled();
+        expect(fixture.storeCustomisationFileV2).not.toHaveBeenCalled();
+        expect(fixture.configSync.isTargetPath(path)).toBe(settings.usePluginSyncV2 && settings.usePluginEtc);
+    });
 });
 
 describe("ConfigSync V2 scan behaviour", () => {

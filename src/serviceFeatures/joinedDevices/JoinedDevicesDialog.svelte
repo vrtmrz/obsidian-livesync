@@ -2,6 +2,7 @@
     import { onDestroy, onMount } from "svelte";
     import type { GuestDialogProps } from "@/modules/services/LiveSyncUI/svelteDialog";
     import DialogHeader from "@/modules/services/LiveSyncUI/components/DialogHeader.svelte";
+    import { Menu } from "@/deps";
     import InfoNote from "@/modules/services/LiveSyncUI/components/InfoNote.svelte";
     import { $msg as translate } from "@/common/translation";
     import type {
@@ -18,8 +19,11 @@
     let forgettingId = $state<string>();
     let statusMessage = $state("");
     let errorMessage = $state("");
+    let savingPreferenceId = $state<string>();
+    let preferenceError = $state("");
+    let deviceMenu: Menu | undefined;
     let disposed = false;
-    const busy = $derived(isRefreshing || forgettingId !== undefined);
+    const busy = $derived(isRefreshing || forgettingId !== undefined || savingPreferenceId !== undefined);
     const title = translate("Joined devices");
 
     onMount(() => {
@@ -35,8 +39,35 @@
 
     onDestroy(() => {
         disposed = true;
+        deviceMenu?.hide();
         options?.cancel();
     });
+
+    async function saveVersionNoticesHidden(id: string, hidden: boolean) {
+        const dialogOptions = options;
+        if (!dialogOptions || disposed || busy) {
+            return;
+        }
+        savingPreferenceId = id;
+        preferenceError = "";
+        try {
+            await dialogOptions.setVersionNoticesHidden(id, hidden);
+            if (!disposed && view) {
+                view = { ...view, devices: view.devices.map((device) =>
+                    device.id === id ? { ...device, versionNoticesHidden: hidden } : device
+                ) };
+                await refreshView();
+            }
+        } catch {
+            if (!disposed) {
+                preferenceError = translate("The notification preference could not be saved. Try again.");
+            }
+        } finally {
+            if (!disposed) {
+                savingPreferenceId = undefined;
+            }
+        }
+    }
 
     async function refreshView(afterForget = false) {
         const dialogOptions = options;
@@ -63,8 +94,26 @@
         }
     }
 
+    function openDeviceMenu(event: MouseEvent, device: JoinedDeviceRow) {
+        if (disposed || busy || device.self) {
+            return;
+        }
+        deviceMenu?.hide();
+        deviceMenu = new Menu().addItem((item) => {
+            item.setTitle(translate("Forget device record…"))
+                .setIcon("trash-2")
+                .setWarning(true)
+                .onClick(() => toggleConfirmation(device));
+        });
+        const button = event.currentTarget as HTMLButtonElement;
+        const rect = button.getBoundingClientRect();
+        deviceMenu.showAtPosition({ x: rect.right, y: rect.bottom }, button.ownerDocument);
+    }
+
     function toggleConfirmation(device: JoinedDeviceRow) {
-        if (busy || device.self) return;
+        if (disposed || busy || device.self) {
+            return;
+        }
         confirmingId = confirmingId === device.id ? undefined : device.id;
         errorMessage = "";
         statusMessage = "";
@@ -125,6 +174,13 @@
     <InfoNote
         message="Synchronisation between different plug-in versions is generally safe unless the connection is explicitly blocked. However, it may be less efficient or use more storage, and P2P synchronisation may be unavailable."
     />
+
+    <p class="preference-description">
+        {translate("Version notice choices are saved only for this Vault on this device. Compatibility checks remain enabled.")}
+    </p>
+    {#if preferenceError}
+        <p class="error-message" role="alert">{preferenceError}</p>
+    {/if}
 
     {#if view}
         {#if !view.milestonePresent}
@@ -233,16 +289,33 @@
                                             disabled={busy}
                                             onclick={() => void forgetDevice(device)}
                                         >
-                                            {translate("Forget device")}
+                                            {translate("Forget device record")}
                                         </button>
                                     </div>
                                 </div>
                             {:else}
-                                <div class="device-actions">
-                                    <button disabled={busy} onclick={() => toggleConfirmation(device)}>
-                                        {forgettingId === device.id
-                                            ? translate("Forgetting…")
-                                            : translate("Forget device")}
+                                <div class="device-actions device-primary-actions">
+                                    {#if forgettingId === device.id}
+                                        <span role="status">{translate("Forgetting…")}</span>
+                                    {/if}
+                                    <button
+                                        class="version-notice-action"
+                                        disabled={busy}
+                                        onclick={() => void saveVersionNoticesHidden(device.id, !device.versionNoticesHidden)}
+                                    >
+                                        {device.versionNoticesHidden
+                                            ? translate("Unmute version notices")
+                                            : translate("Mute version notices")}
+                                    </button>
+                                    <button
+                                        class="device-more-actions"
+                                        aria-label={translate("More actions for ${DEVICE}", { DEVICE: device.id })}
+                                        title={translate("More actions for ${DEVICE}", { DEVICE: device.id })}
+                                        aria-haspopup="menu"
+                                        disabled={busy}
+                                        onclick={(event) => openDeviceMenu(event, device)}
+                                    >
+                                        …
                                     </button>
                                 </div>
                             {/if}
@@ -262,6 +335,27 @@
 </div>
 
 <style>
+    .device-actions.device-primary-actions {
+        flex-wrap: nowrap;
+    }
+
+    .device-primary-actions .version-notice-action {
+        flex: 0 1 auto;
+        min-width: 0;
+        margin: 0;
+    }
+
+    .device-primary-actions .device-more-actions {
+        flex: 0 0 44px;
+        min-width: 44px;
+        margin: 0;
+        padding-inline: var(--size-4-2);
+    }
+
+    .preference-description {
+        color: var(--text-muted);
+    }
+
     .joined-devices-dialog {
         display: flex;
         flex-direction: column;

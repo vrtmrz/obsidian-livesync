@@ -5143,6 +5143,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         zh: "显示日志",
         "zh-tw": "顯示日誌",
     },
+    "moduleLog.syncMode.configured": {
+        def: "Configured automatic synchronisation: ${modes}.",
+    },
+    "moduleLog.syncMode.manual": {
+        def: "Manual synchronisation only. Automatic synchronisation is disabled.",
+    },
+    "moduleLog.syncMode.periodic": {
+        def: "Periodic",
+    },
     "moduleMigration.fix0256.buttons.checkItLater": {
         def: "Check it later",
         es: "Comprobarlo más tarde",

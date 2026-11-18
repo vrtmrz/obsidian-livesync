@@ -12,7 +12,7 @@ vi.mock("@/common/translation", () => ({
 import { useJoinedDevicesFeature } from "./useJoinedDevices";
 import { OPEN_JOINED_DEVICES } from "./joinedDevices/command";
 
-function fixture() {
+function fixture(preferences = new Map<string, unknown>()) {
     const settings = {
         ...createNewVaultSettings(),
         remoteType: REMOTE_COUCHDB,
@@ -44,6 +44,12 @@ function fixture() {
     const palette: Array<{ id: string; checkCallback: (checking: boolean) => boolean }> = [];
     const get = vi.fn(async () => ({ nodeid: "self" }));
     const database = { getRaw: vi.fn(() => get()), localDatabase: { get } };
+    const config = {
+        getObject: vi.fn(async (key: string) => preferences.get(key)),
+        setObject: vi.fn(async (key: string, value: unknown) => {
+            preferences.set(key, value);
+        }),
+    };
     const host = {
         services: {
             API: {
@@ -54,6 +60,7 @@ function fixture() {
             },
             UI: { commands, dialogManager: { open: dialog } },
             setting: { currentSettings: () => settings },
+            config,
             database: { isDatabaseReady: () => true, localDatabase: database },
             replicator: { createRemoteResource: createResource },
             replication: {
@@ -74,6 +81,8 @@ function fixture() {
     useJoinedDevicesFeature(host, notices as unknown as Parameters<typeof useJoinedDevicesFeature>[1]);
     return {
         settings,
+        preferences,
+        config,
         initialise,
         unload,
         before,
@@ -112,6 +121,127 @@ describe("joined devices service feature", () => {
         }
     });
 
+    it("shows version Notices by default and leaves each device unchecked", async () => {
+        const data = fixture();
+        const { options, pending } = await open(data);
+        const view = await options.refresh();
+        expect(view.devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(false);
+        expect(data.notices.finish).toHaveBeenCalledWith("joined-device-versions", { durationMs: 15000 });
+        data.close();
+        await pending;
+    });
+    it("suppresses selected devices while retaining another device with the same version", async () => {
+        const data = fixture();
+        data.read.mockResolvedValue({
+            milestonePresent: true, locked: false, cleaned: false,
+            devices: [
+                { id: "selected", accepted: true, pluginVersion: "2.0.0" },
+                { id: "other", accepted: true, pluginVersion: "2.0.0" },
+                { id: "older", accepted: true, pluginVersion: "0.1.0" },
+            ],
+        });
+        const { options, pending } = await open(data);
+        await options.refresh();
+        await options.setVersionNoticesHidden("selected", true);
+        expect(data.notices.hide).toHaveBeenCalledWith("joined-device-versions");
+        data.notices.setItem.mockClear();
+        const view = await options.refresh();
+        expect(view.devices.find((device) => device.id === "selected")?.versionNoticesHidden).toBe(true);
+        expect(view.devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(false);
+        const messages = data.notices.setItem.mock.calls.map(([, , item]) => item.message).join(" ");
+        expect(messages).toContain("Newer Self-hosted LiveSync versions detected: 2.0.0.");
+        expect(messages).toContain("Older Self-hosted LiveSync versions detected: 0.1.0.");
+        await options.setVersionNoticesHidden("other", true);
+        await options.setVersionNoticesHidden("older", true);
+        data.notices.setItem.mockClear();
+        expect((await options.refresh()).devices).toHaveLength(4);
+        expect(data.notices.setItem).not.toHaveBeenCalled();
+        data.close();
+        await pending;
+    });
+    it("retains selected device IDs across feature instances without affecting another local store", async () => {
+        const first = fixture();
+        const opened = await open(first);
+        await opened.options.setVersionNoticesHidden("other", true);
+        first.close();
+        await opened.pending;
+        for (const unload of first.unload) {
+            await unload();
+        }
+
+        const next = fixture(first.preferences);
+        const { options, pending } = await open(next);
+        expect((await options.refresh()).devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(true);
+        expect(next.notices.setItem).not.toHaveBeenCalled();
+        next.close();
+        await pending;
+
+        const other = fixture();
+        const otherOpened = await open(other);
+        expect((await otherOpened.options.refresh()).devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(false);
+        expect(other.notices.setItem).toHaveBeenCalled();
+        other.close();
+        await otherOpened.pending;
+    });
+    it("can show the same version difference again after a device is unchecked", async () => {
+        const data = fixture();
+        const { options, pending } = await open(data);
+        await options.refresh();
+        await options.setVersionNoticesHidden("other", true);
+        await options.refresh();
+        await options.setVersionNoticesHidden("other", false);
+        data.notices.setItem.mockClear();
+        expect((await options.refresh()).devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(false);
+        expect(data.notices.setItem).toHaveBeenCalled();
+        data.close();
+        await pending;
+    });
+    it("does not hide a Notice when saving a device preference fails", async () => {
+        const data = fixture();
+        const { options, pending } = await open(data);
+        await options.refresh();
+        data.config.setObject.mockRejectedValueOnce(new Error("storage unavailable"));
+        await expect(options.setVersionNoticesHidden("other", true)).rejects.toThrow("storage unavailable");
+        expect(data.notices.hide).not.toHaveBeenCalled();
+        expect((await options.refresh()).devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(false);
+        await options.setVersionNoticesHidden("other", true);
+        expect((await options.refresh()).devices.find((device) => device.id === "other")?.versionNoticesHidden).toBe(true);
+        data.close();
+        await pending;
+    });
+    it("keeps advisory storage failures out of the replication result", async () => {
+        const data = fixture();
+        data.config.getObject.mockRejectedValue(new Error("storage unavailable"));
+        expect(await data.before[0]()).toBe(true);
+        await vi.waitFor(() => expect(data.dispose).toHaveBeenCalledOnce());
+        expect(data.notices.setItem).toHaveBeenCalled();
+    });
+    it("does not publish a Notice when the dialogue closes during a preference read", async () => {
+        const data = fixture();
+        let completeRead!: (value: unknown) => void;
+        data.config.getObject.mockImplementationOnce(() => new Promise((resolve) => { completeRead = resolve; }));
+        const { options, pending } = await open(data);
+        const refreshing = options.refresh();
+        await vi.waitFor(() => expect(data.config.getObject).toHaveBeenCalledOnce());
+        options.cancel();
+        const rejected = expect(refreshing).rejects.toThrow();
+        completeRead([]);
+        await rejected;
+        expect(data.notices.setItem).not.toHaveBeenCalled();
+        expect(data.dispose).toHaveBeenCalledOnce();
+        data.close();
+        await pending;
+    });
+    it("rejects preference changes from a cancelled dialogue or for this device", async () => {
+        const data = fixture();
+        const { options, pending } = await open(data);
+        await expect(options.setVersionNoticesHidden("self", true)).rejects.toThrow();
+        options.cancel();
+        await expect(options.setVersionNoticesHidden("other", true)).rejects.toThrow();
+        expect(data.config.setObject).not.toHaveBeenCalled();
+        data.close();
+        await pending;
+    });
     it("opens one dialogue through the command and disposes each completed read", async () => {
         const data = fixture();
         const { options, pending } = await open(data);

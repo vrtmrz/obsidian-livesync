@@ -89,6 +89,14 @@ export const liveSyncProvisionalEnglishMessages = {
         "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.",
     "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.":
         "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.",
+    "Mute version notices": "Mute version notices",
+    "Unmute version notices": "Unmute version notices",
+    "Forget device record…": "Forget device record…",
+    "Forget device record": "Forget device record",
+    "Version notice choices are saved only for this Vault on this device. Compatibility checks remain enabled.":
+        "Version notice choices are saved only for this Vault on this device. Compatibility checks remain enabled.",
+    "The notification preference could not be saved. Try again.":
+        "The notification preference could not be saved. Try again.",
     "Unknown platform": "Unknown platform",
     "This removes only this device's record from the remote.":
         "This removes only this device's record from the remote.",

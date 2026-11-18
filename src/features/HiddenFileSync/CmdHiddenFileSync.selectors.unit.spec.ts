@@ -5,7 +5,13 @@ vi.mock("@/features/HiddenFileCommon/JsonResolveModal.ts", () => ({ JsonResolveM
 vi.mock("@/modules/features/ModuleLog.ts", () => ({ MARK_DONE: "" }));
 vi.mock("./configureHiddenFileSyncMode.ts", () => ({ configureHiddenFileSyncMode: vi.fn() }));
 
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    MODE_AUTOMATIC,
+    MODE_PAUSED,
+    MODE_SELECTIVE,
+    MODE_SHINY,
+    type FilePath,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { createOptionalFileSyncDatabase, optionalFileEntry } from "../../../test/fixtures/optionalFileSyncDatabase";
 import { HiddenFileSync } from "./CmdHiddenFileSync";
@@ -38,6 +44,70 @@ async function hiddenFiles() {
 afterEach(async () => {
     vi.restoreAllMocks();
     for (const fixture of fixtureOwners.splice(0)) await fixture.dispose();
+});
+
+describe("Hidden File Sync customisation exclusions", () => {
+    async function configuredFiles(mode = MODE_PAUSED) {
+        const fixture = await hiddenFiles();
+        Object.assign(fixture.settings, {
+            usePluginSync: true,
+            syncInternalFilesTargetPatterns: "",
+            syncInternalFilesIgnorePatterns: "",
+            pluginSyncExtendedSetting: {
+                "SNIPPET/MyStyle.css": { key: "SNIPPET/MyStyle.css", mode, files: ["snippets/MyStyle.css"] },
+            },
+        });
+        return fixture;
+    }
+
+    describe.each([MODE_PAUSED, MODE_SELECTIVE])("excluded mode %s", (mode) => {
+        it.each(["MyStyle.css", "mystyle.css", "MYSTYLE.CSS"])("excludes the registered file %s", async (name) => {
+            const fixture = await configuredFiles(mode);
+
+            await expect(fixture.hiddenFileSync.isTargetFile(`.obsidian/snippets/${name}` as FilePath)).resolves.toBe(
+                false
+            );
+        });
+    });
+
+    it.each([MODE_AUTOMATIC, MODE_SHINY])("continues to select a file registered with mode %s", async (mode) => {
+        const fixture = await configuredFiles(mode);
+
+        await expect(fixture.hiddenFileSync.isTargetFile(".obsidian/snippets/MyStyle.css" as FilePath)).resolves.toBe(
+            true
+        );
+    });
+
+    it("releases the exclusion when Customisation Sync is disabled", async () => {
+        const fixture = await configuredFiles();
+        await expect(fixture.hiddenFileSync.isTargetFile(".obsidian/snippets/MyStyle.css" as FilePath)).resolves.toBe(
+            false
+        );
+        fixture.settings.usePluginSync = false;
+
+        await expect(fixture.hiddenFileSync.isTargetFile(".obsidian/snippets/MyStyle.css" as FilePath)).resolves.toBe(
+            true
+        );
+    });
+
+    it("traverses parent folders and preserves unrelated files and their original case", async () => {
+        const fixture = await configuredFiles();
+        const tree: Record<string, { files: string[]; folders: string[] }> = {
+            "": { files: [], folders: [".obsidian"] },
+            ".obsidian": { files: [], folders: [".obsidian/snippets"] },
+            ".obsidian/snippets": {
+                files: [".obsidian/snippets/MyStyle.css", ".obsidian/snippets/Other.css"],
+                folders: [],
+            },
+        };
+        const list = vi.fn(async (path: string) => tree[path]);
+        Object.assign(fixture.services.context, {
+            app: { vault: { getRoot: () => ({ path: "" }), adapter: { list } } },
+        });
+
+        await expect(fixture.hiddenFileSync.scanInternalFileNames()).resolves.toEqual([".obsidian/snippets/Other.css"]);
+        expect(list.mock.calls.map(([path]) => path)).toEqual(["", ".obsidian", ".obsidian/snippets"]);
+    });
 });
 
 describe("issue #1272: Hidden File Sync with normal-file selectors", () => {

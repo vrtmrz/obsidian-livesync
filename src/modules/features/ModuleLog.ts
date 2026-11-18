@@ -50,6 +50,7 @@ import {
 import { createFastForwardCheckedChangesDisplay, projectReplicationStatusLabel } from "./ReplicationStatusLabel.ts";
 import { createP2PProgressDisplay, selectReplicationStatus } from "./P2PStatusLabel.ts";
 import { createStatusBarRenderer, type StatusBarPart, type StatusBarRenderer } from "./StatusBarRenderer.ts";
+import { projectSyncModeLabel } from "./syncModeLabel.ts";
 import type { LiveSyncCore } from "@/main.ts";
 import { LiveSyncError } from "@vrtmrz/livesync-commonlib/compat/common/LSError";
 import { isValidPath } from "@/common/utils.ts";
@@ -211,9 +212,11 @@ export class ModuleLog extends AbstractObsidianModule {
         );
         const p2pProgress = registerDisplay(createP2PProgressDisplay(this.p2pLogCollector.p2pReplicationStats));
         const p2pIsPrimary = reactiveSource(this.settings.remoteType === REMOTE_P2P);
+        const syncModeLabel = reactiveSource(projectSyncModeLabel(this.settings));
         this.services.API.registerCleanup(
             this.services.context.events.onEvent(EVENT_SETTING_SAVED, (settings) => {
                 p2pIsPrimary.value = settings.remoteType === REMOTE_P2P;
+                syncModeLabel.value = projectSyncModeLabel(settings);
             })
         );
         this.services.API.registerCleanup(() => this.p2pLogCollector.dispose());
@@ -240,7 +243,9 @@ export class ModuleLog extends AbstractObsidianModule {
             );
             const queued = queueCountLabel();
             const waiting = waitingLabel();
+            const syncMode = syncModeLabel.value;
             const firstLineParts = [
+                ...(syncMode ? [syncMode] : []),
                 ...replication.parts,
                 ...counterPart("file-processing", "⏳", labelProc.count.value),
                 ...counterPart("file-pending", "🛫", labelPend.count.value),
@@ -255,7 +260,12 @@ export class ModuleLog extends AbstractObsidianModule {
                 ...counterPart("queue-conflicts", "🔩", labelConflictProcessCount.count.value),
             ];
             return {
-                message: replication.message + waiting + queued + (p2p.message === "" ? "" : "\n" + p2p.message),
+                message:
+                    (syncMode ? syncMode.text + " " : "") +
+                    replication.message +
+                    waiting +
+                    queued +
+                    (p2p.message === "" ? "" : "\n" + p2p.message),
                 parts:
                     p2p.message === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" }, ...p2p.parts],
                 statusBarParts: firstLineParts,

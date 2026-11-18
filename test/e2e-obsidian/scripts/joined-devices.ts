@@ -268,7 +268,7 @@ async function assertInitialDialogue(dialogue: Locator, self: SelfDeviceInfo, pa
     await assertDetail(selfCard, "Plug-in version", self.pluginVersion);
     await assertDetail(selfCard, "App version", self.appVersion);
     assertEqual(
-        await selfCard.getByRole("button", { name: "Forget device", exact: true }).count(),
+        await selfCard.getByRole("button", { name: `More actions for ${self.id}`, exact: true }).count(),
         0,
         "The current device exposed a forget control."
     );
@@ -323,19 +323,34 @@ async function refreshRemotePlatform(page: Page, remote: JoinedDevicesRemote): P
     });
 }
 
-async function showForgetConfirmation(dialogue: Locator): Promise<void> {
-    const targetCard = deviceCard(dialogue, targetId);
-    await targetCard.getByRole("button", { name: "Forget device", exact: true }).click({ timeout: uiTimeoutMs });
+async function openDeviceActions(dialogue: Locator, id: string): Promise<Locator> {
+    await deviceCard(dialogue, id)
+        .getByRole("button", { name: `More actions for ${id}`, exact: true })
+        .click({ timeout: uiTimeoutMs });
+    const menu = dialogue.page().locator(".menu:visible").last();
+    await menu.getByText("Forget device record…", { exact: true }).waitFor({ state: "visible", timeout: uiTimeoutMs });
+    return menu;
+}
+
+async function showForgetConfirmation(dialogue: Locator, id = targetId): Promise<void> {
+    const targetCard = deviceCard(dialogue, id);
+    assertEqual(
+        await targetCard.getByRole("button", { name: "Forget device record", exact: true }).count(),
+        0,
+        "Device removal was exposed before opening its menu."
+    );
+    const menu = await openDeviceActions(dialogue, id);
+    await menu.getByText("Forget device record…", { exact: true }).click({ timeout: uiTimeoutMs });
     await targetCard.getByText("Forget this device record?", { exact: true }).waitFor({
         state: "visible",
         timeout: uiTimeoutMs,
     });
 }
 
-async function assertCancelledForget(dialogue: Locator, remote: JoinedDevicesRemote): Promise<void> {
+async function assertCancelledForget(dialogue: Locator, remote: JoinedDevicesRemote, id = targetId): Promise<void> {
     const before = await remote.read();
-    await showForgetConfirmation(dialogue);
-    const confirmation = deviceCard(dialogue, targetId).locator(".forget-confirmation");
+    await showForgetConfirmation(dialogue, id);
+    const confirmation = deviceCard(dialogue, id).locator(".forget-confirmation");
     await confirmation.getByRole("button", { name: "Cancel", exact: true }).click({ timeout: uiTimeoutMs });
     await confirmation.waitFor({ state: "detached", timeout: uiTimeoutMs });
     assertEqual(JSON.stringify(await remote.read()), JSON.stringify(before), "Cancelling Forget changed the remote.");
@@ -343,7 +358,7 @@ async function assertCancelledForget(dialogue: Locator, remote: JoinedDevicesRem
 
 async function confirmForgetTarget(dialogue: Locator): Promise<void> {
     const targetCard = deviceCard(dialogue, targetId);
-    await targetCard.getByRole("button", { name: "Forget device", exact: true }).click({ timeout: uiTimeoutMs });
+    await targetCard.getByRole("button", { name: "Forget device record", exact: true }).click({ timeout: uiTimeoutMs });
     await dialogue.getByText("The device record was forgotten.", { exact: true }).waitFor({
         state: "visible",
         timeout: uiTimeoutMs,
@@ -417,6 +432,13 @@ async function dismissNotices(page: Page): Promise<void> {
         try {
             await notice.click({ position: { x: 20, y: 20 }, timeout: uiTimeoutMs });
             await notice.waitForElementState("hidden", { timeout: uiTimeoutMs });
+        } catch (error) {
+            // A timed Notice can disappear while Playwright waits for a stable click target.
+            try {
+                await notice.waitForElementState("hidden", { timeout: 500 });
+            } catch {
+                throw error;
+            }
         } finally {
             await notice.dispose();
         }
@@ -443,6 +465,33 @@ async function captureJoinedDevices(
             throw error;
         }
     });
+}
+
+async function setVersionNoticeMuted(dialogue: Locator, id: string, muted: boolean): Promise<void> {
+    const card = deviceCard(dialogue, id);
+    await card
+        .getByRole("button", { name: muted ? "Mute version notices" : "Unmute version notices", exact: true })
+        .click({ timeout: uiTimeoutMs });
+    await card.locator("button.version-notice-action:enabled").waitFor({ state: "visible", timeout: uiTimeoutMs });
+    assertEqual(
+        await card
+            .getByRole("button", { name: muted ? "Unmute version notices" : "Mute version notices", exact: true })
+            .count(),
+        1,
+        "The version Notice preference was not saved."
+    );
+}
+
+async function refreshDeviceList(dialogue: Locator): Promise<void> {
+    const refresh = dialogue.getByRole("button", { name: "Refresh", exact: true });
+    await refresh.click({ timeout: uiTimeoutMs });
+    await dialogue
+        .page()
+        .waitForFunction(
+            (button) => button !== null && !(button as HTMLButtonElement).disabled,
+            await refresh.elementHandle(),
+            { timeout: uiTimeoutMs }
+        );
 }
 
 async function main(): Promise<void> {
@@ -482,6 +531,16 @@ async function main(): Promise<void> {
             const dialoguePage = dialogue.page();
             await dialoguePage.setViewportSize({ width: 1280, height: 1100 });
             await assertInitialDialogue(dialogue, self, dialoguePage);
+            await deviceCard(dialogue, targetId)
+                .locator("button.version-notice-action:enabled")
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            assertEqual(
+                await deviceCard(dialogue, targetId)
+                    .getByRole("button", { name: "Mute version notices", exact: true })
+                    .count(),
+                1,
+                "Version Notices were not enabled by default."
+            );
             const notice = dialoguePage.locator(".notice").filter({
                 hasText: "Newer Self-hosted LiveSync versions detected: 999.0.0.",
             });
@@ -518,6 +577,64 @@ async function main(): Promise<void> {
             await dismissNotices(reopened.page());
             return reopened;
         });
+        await captureJoinedDevices(
+            session.remoteDebuggingPort,
+            "joined-devices-more-actions-desktop.png",
+            async (page) => {
+                const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                await openDeviceActions(dialogue, targetId);
+                return dialogue;
+            }
+        );
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            await page.keyboard.press("Escape");
+            await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+        });
+        await captureJoinedDevices(
+            session.remoteDebuggingPort,
+            "joined-devices-per-device-notices.png",
+            async (page) => {
+                const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                const newer = page
+                    .locator(".notice")
+                    .filter({ hasText: "Newer Self-hosted LiveSync versions detected:" });
+                const older = page
+                    .locator(".notice")
+                    .filter({ hasText: "Older Self-hosted LiveSync versions detected:" });
+                assertEqual(
+                    await deviceCard(dialogue, self.id)
+                        .getByRole("button", { name: "Mute version notices", exact: true })
+                        .count(),
+                    0,
+                    "This device should not have a version Notice action."
+                );
+                await setVersionNoticeMuted(dialogue, targetId, true);
+                await newer.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+                await older.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                assertEqual(
+                    await deviceCard(dialogue, retainedId)
+                        .getByRole("button", { name: "Mute version notices", exact: true })
+                        .count(),
+                    1,
+                    "Selecting one device changed another device's preference."
+                );
+                await setVersionNoticeMuted(dialogue, retainedId, true);
+                await older.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+                await setVersionNoticeMuted(dialogue, targetId, false);
+                await newer.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                assertEqual(
+                    await deviceCard(dialogue, retainedId)
+                        .getByRole("button", { name: "Unmute version notices", exact: true })
+                        .count(),
+                    1,
+                    "Clearing one device changed another device's preference."
+                );
+                await setVersionNoticeMuted(dialogue, retainedId, false);
+                await older.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                await dismissNotices(dialogue.page());
+                return dialogue;
+            }
+        );
         await captureJoinedDevices(
             session.remoteDebuggingPort,
             "joined-devices-forget-confirmation.png",
@@ -567,6 +684,128 @@ async function main(): Promise<void> {
             await dismissNotices(dialogue.page());
             return dialogue;
         });
+
+        await captureJoinedDevices(
+            session.remoteDebuggingPort,
+            "joined-devices-more-actions-mobile.png",
+            async (page) => {
+                const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                await openDeviceActions(dialogue, retainedId);
+                return dialogue;
+            }
+        );
+        await withObsidianPage(session.remoteDebuggingPort, async (page) => {
+            await page.keyboard.press("Escape");
+            const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+            await assertCancelledForget(dialogue, remote, retainedId);
+        });
+        await captureJoinedDevices(
+            session.remoteDebuggingPort,
+            "joined-devices-notices-hidden-mobile.png",
+            async (page) => {
+                const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                const notice = page
+                    .locator(".notice")
+                    .filter({ hasText: "Older Self-hosted LiveSync versions detected:" });
+                await assertLocatorHasMinimumTouchTarget(
+                    page,
+                    deviceCard(dialogue, retainedId).getByRole("button", { name: "Mute version notices", exact: true }),
+                    { label: "Device version Notice button" }
+                );
+                await setVersionNoticeMuted(dialogue, retainedId, true);
+                await setVersionNoticeMuted(dialogue, retainedId, false);
+                await refreshDeviceList(dialogue);
+                await notice.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                await setVersionNoticeMuted(dialogue, retainedId, true);
+                await notice.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+                await refreshDeviceList(dialogue);
+                assertEqual(await notice.count(), 0, "A suppressed version Notice reappeared after refresh.");
+                await deviceCard(dialogue, retainedId)
+                    .getByRole("button", { name: "Unmute version notices", exact: true })
+                    .scrollIntoViewIfNeeded();
+                const muteButton = deviceCard(dialogue, retainedId).getByRole("button", {
+                    name: "Unmute version notices",
+                    exact: true,
+                });
+                const moreButton = deviceCard(dialogue, retainedId).getByRole("button", {
+                    name: `More actions for ${retainedId}`,
+                    exact: true,
+                });
+                const muteBounds = await muteButton.boundingBox();
+                const moreBounds = await moreButton.boundingBox();
+                if (!muteBounds || !moreBounds) {
+                    throw new Error("The device action buttons could not be measured.");
+                }
+                console.log(JSON.stringify({ mobileDeviceActions: { mute: muteBounds, more: moreBounds } }));
+                assert(
+                    Math.abs(muteBounds.y - moreBounds.y) < 1,
+                    "The device actions wrapped onto separate rows in mobile mode."
+                );
+                await dismissNotices(dialogue.page());
+                return dialogue;
+            }
+        );
+        await session.app.stop();
+        session = await startObsidianLiveSyncSession({
+            binary,
+            cliBinary: cli.binary,
+            vault,
+            startupGraceMs: Number(process.env.E2E_OBSIDIAN_STARTUP_GRACE_MS ?? 1000),
+        });
+        await waitForLiveSyncCoreReady(cli.binary, session.cliEnv);
+        await assertE2eCompatibilityUnpaused(cli.binary, session.cliEnv, session.remoteDebuggingPort);
+        await captureJoinedDevices(
+            session.remoteDebuggingPort,
+            "joined-devices-notices-hidden-after-restart.png",
+            async (page) => {
+                const opened = await page.evaluate((id) => {
+                    const app = (
+                        window as typeof window & {
+                            app?: { commands?: { executeCommandById?(commandId: string): boolean } };
+                        }
+                    ).app;
+                    return app?.commands?.executeCommandById?.(id) === true;
+                }, commandId);
+                assert(opened, "The Joined devices command was unavailable after restart.");
+                const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+                await dialogue
+                    .getByText(retainedId, { exact: true })
+                    .waitFor({ state: "visible", timeout: uiTimeoutMs });
+                await deviceCard(dialogue, retainedId)
+                    .locator("button.version-notice-action:enabled")
+                    .waitFor({ state: "visible", timeout: uiTimeoutMs });
+                assertEqual(
+                    await deviceCard(dialogue, retainedId)
+                        .getByRole("button", { name: "Unmute version notices", exact: true })
+                        .count(),
+                    1,
+                    "The version Notice preference was lost after restarting Obsidian."
+                );
+                assertEqual(
+                    await page
+                        .locator(".notice")
+                        .filter({ hasText: "Older Self-hosted LiveSync versions detected:" })
+                        .count(),
+                    0,
+                    "A suppressed version Notice appeared after restarting Obsidian."
+                );
+                await dismissNotices(dialogue.page());
+                return dialogue;
+            }
+        );
+        await captureJoinedDevices(session.remoteDebuggingPort, "joined-devices-notices-restored.png", async (page) => {
+            const dialogue = await waitForVisibleObsidianDialogue(page, "Joined devices", uiTimeoutMs);
+            await setVersionNoticeMuted(dialogue, retainedId, false);
+            await refreshDeviceList(dialogue);
+            await page
+                .locator(".notice")
+                .filter({ hasText: "Older Self-hosted LiveSync versions detected:" })
+                .waitFor({ state: "visible", timeout: uiTimeoutMs });
+            return dialogue;
+        });
+        console.log(
+            "Version Notices were suppressed independently per device, remained hidden after a full Obsidian restart, and returned after clearing the device preference."
+        );
 
         console.log(`Joined devices scenario passed against ${remote.label}.`);
     } finally {

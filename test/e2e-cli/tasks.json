@@ -23,6 +23,9 @@
     "test:daemon-watch-paths": {
         "test": ["test-daemon-watch-paths.ts"]
     },
+    "test:legacy-case-lookup": {
+        "test": ["test-legacy-case-lookup.ts"]
+    },
     "test:decoupled-vault": {
         "test": ["test-decoupled-vault.ts"]
     },

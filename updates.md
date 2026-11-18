@@ -12,11 +12,28 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- The Docker Compose sample can re-run initialisation on an already configured CouchDB server and retain authentication and CORS settings when the container is recreated. (#1356)
+    - The initialisation check now authenticates, and a dedicated volume preserves runtime configuration. When updating an existing stack, please save and transfer its settings as described in [Data & Backup](docker/README.md#data--backup) before recreating CouchDB.
+- CLI file lookups avoid repeated full Vault scans when locating files which have not arrived locally or have already been deleted. (#1347)
+    - Applies to Legacy file identity (`pathNormalizationVersion: 0`) with case-insensitive file-name handling. Matching directory branches are listed instead of scanning unrelated Vault subtrees.
+- Changes to files registered as **Ignore** or **Automatic** no longer create Customisation Sync snapshots during configuration scans. (#1359)
+    - Existing snapshots are retained. Exclusions still depend on each item's recorded file list; this change does not repair empty or outdated lists.
+- Hidden File Sync now respects Customisation Sync's **Ignore** and **Selective** selections for registered paths containing uppercase letters.
+    - While Customisation Sync is enabled, the exclusion check compares both paths in lowercase, restoring the previous matching behaviour.
+
+### Improved
+
+- We can see when automatic synchronisation is disabled, including after Fetch or Rebuild. (#1361)
+    - A framed badge in the status bar and editor overlay shows the configured LiveSync, periodic, event, or manual-only mode alongside the current transfer status.
+    - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.
+- We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. The choices are retained for this Vault on this device and can be reversed with **Unmute version notices**; synchronisation compatibility checks remain enabled. Device removal is available under **… → Forget device record…**. (#1349)
+
 ### Recovery work in progress
 
 - An unavailable local database can be reopened before synchronisation resumes, after a read of its current connection fails. Local file dispatch is held during replacement; failed completion requests an Obsidian restart. (#1360)
     - This candidate requires the combined Commonlib update. Controlled Linux Obsidian recovery tests pass; recovery on a physical iPhone remains unverified.
-
 - Ordinary files which could not be reflected are retained. Failures at known local database or remote content-read boundaries are eligible for one automatic retry after the required resources recover. Failures without an established retry condition and remaining failed attempts are available through 'Review files which could not be reflected', including the Hatch action. (#1224, #1360)
     - Native request failures carry their origin without relying on their message text. Reopening the same local database preserves retained work and consumed retry allowances.
 

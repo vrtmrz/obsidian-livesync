@@ -100,7 +100,7 @@ recovery guidance, or diagnostics intended for users.
   Treat it as a secret.
 - **Joined devices:** The dialogue showing device records held by the active
   CouchDB or Object Storage remote, with the current device first. Records
-  describe participation, not current online activity. **Forget device** removes
+  describe participation, not current online activity. **Forget device record** removes
   an obsolete device record; it does not delete Vault files or revoke credentials.
 - **Journal / Journal Sync:** The synchronisation mechanism used with
   S3-compatible Object Storage and non-database remotes. Rather than
