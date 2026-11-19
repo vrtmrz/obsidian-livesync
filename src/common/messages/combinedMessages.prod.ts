@@ -169,6 +169,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ja: "（すでに同期している別のデバイスがある場合に選択してください。）このデバイスを既存の同期環境に追加します。",
             ru: "(Выберите, если у вас уже есть другое устройство с синхронизацией.) Этот вариант добавляет устройство в ту же синхронизацию.",
             zh: "（如果你已有另一台正在同步的设备，请选择此项。）此选项会把本设备加入同一个同步。",
+            "zh-tw": "如果已有其他裝置在同步，選這個選項就能讓這台裝置加入既有同步。",
         },
     "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.":
         {
@@ -11569,6 +11570,8 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ja: "最初のセットアップは、暗号化、接続方法、およびどのデバイスが初期データを提供するかを確認するため、いくつかの短いステップで構成されています。完了すると、追加のデバイスでセットアップ URIを再利用できるようになります。",
             ru: "Первая настройка идёт в несколько коротких шагов: надо подтвердить шифрование, способ подключения и то, какое устройство даёт первые данные. После этого другие устройства можно настроить через Setup URI.",
             zh: "首次设置分为几个简短步骤，因为它要确认加密方式、连接方式，以及由哪台设备提供初始数据。完成后，其他设备可以复用设置 URI。",
+            "zh-tw":
+                "首次設定會分成幾個簡短步驟，確認加密方式、連線方式，以及由哪台裝置提供初始資料。設定完成後，其他裝置就能用同一個 Setup URI 加入同步。",
         },
     "This is an advanced option for users who do not have a URI or who wish to configure detailed settings.": {
         def: "This is an advanced option for users who do not have a URI or who wish to configure detailed settings.",
@@ -13766,12 +13769,15 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "再起動後、現在のリモート同期データからこのデバイスのローカルデータベースを再構築します。その後、Vault内のファイルがそのデータと照合・調整されます。",
         ru: "После перезапуска локальная база этого устройства пересобирается из текущих данных удалённой базы. Затем файлы хранилища сверяются с этими данными.",
         zh: "重启后，用当前的远端同步数据重建本设备的本地数据库。库中的文件随后会与该数据核对合并。",
+        "zh-tw":
+            "重新啟動後，會用遠端目前的同步資料重建這台裝置的本機資料庫。接著會比對 Vault 裡的檔案，並依遠端資料處理差異。",
     },
     "Ui.SetupWizard.ApplySettingsInitialisation.FetchOptionP2PDesc": {
         def: "After restarting, select an online source device. This device's local LiveSync database will be rebuilt from that source.",
         ja: "再起動後、オンラインのソースデバイスを選択してください。そのソースからこのデバイスのローカルLiveSyncデータベースが再構築されます。",
         ru: "После перезапуска выберите устройство-источник в сети. Локальная база LiveSync этого устройства пересоберётся из него.",
         zh: "重启后选择一台在线的源设备。本设备的本地 LiveSync 数据库将从该源设备重建。",
+        "zh-tw": "重新啟動後，請選一台在線上的來源裝置。這台裝置會用來源裝置的資料重建自己的 LiveSync 資料庫。",
     },
     "Ui.SetupWizard.ApplySettingsInitialisation.Guidance": {
         def: "These setting changes alter how synchronisation data is interpreted. Apply them together with an initialisation operation after restart.",
@@ -13826,6 +13832,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "現在このVault内にあるファイルからローカルおよびリモートのデータベースを再構築します。他の同期デバイスはその後、ローカル同期をリセットする必要があります。",
         ru: "Пересобрать локальную и удалённую базы из текущих файлов хранилища. Другим устройствам после этого нужно сбросить локальную синхронизацию.",
         zh: "用本库中当前的文件重建本地和远端数据库。其他正在同步的设备之后必须重置其本地同步。",
+        "zh-tw": "用這個 Vault 目前的檔案重建本機與遠端資料庫。完成後，其他同步裝置都必須執行「重設此裝置上的同步」。",
     },
     "Ui.SetupWizard.ApplySettingsInitialisation.RebuildOptionP2P": {
         def: "Prepare This Device from This Vault",
@@ -13838,6 +13845,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ja: "現在このVault内にあるファイルからこのデバイスのローカルLiveSyncデータベースを再構築します。他のデバイスが上書きされることはありません。",
         ru: "Пересобрать локальную базу LiveSync из текущих файлов хранилища. Другое устройство при этом не перезаписывается.",
         zh: "用本库中当前的文件重建本设备的本地 LiveSync 数据库。这不会覆盖其他设备。",
+        "zh-tw": "用這個 Vault 目前的檔案重建這台裝置的本機 LiveSync 資料庫。這個操作會保留其他裝置上的資料。",
     },
     "Ui.SetupWizard.ApplySettingsInitialisation.RemoteVerificationGuidance": {
         def: "The configured remote could not be verified with the current credentials and encryption settings. Continuing may make the Fetch fail after restart.",

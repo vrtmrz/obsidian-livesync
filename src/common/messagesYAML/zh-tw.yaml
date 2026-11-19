@@ -1541,6 +1541,11 @@ Ui:
       Merge: 合併
       Overwrite: 覆寫
   SetupWizard:
+    ApplySettingsInitialisation:
+      FetchOptionDesc: 重新啟動後，會用遠端目前的同步資料重建這台裝置的本機資料庫。接著會比對 Vault 裡的檔案，並依遠端資料處理差異。
+      FetchOptionP2PDesc: 重新啟動後，請選一台在線上的來源裝置。這台裝置會用來源裝置的資料重建自己的 LiveSync 資料庫。
+      RebuildOptionDesc: 用這個 Vault 目前的檔案重建本機與遠端資料庫。完成後，其他同步裝置都必須執行「重設此裝置上的同步」。
+      RebuildOptionP2PDesc: 用這個 Vault 目前的檔案重建這台裝置的本機 LiveSync 資料庫。這個操作會保留其他裝置上的資料。
     Common:
       Back: 不，返回上一步
       Cancel: 取消
@@ -1659,11 +1664,14 @@ xxhash32 (Fast but less collision resistance): xxhash32（速度快，但抗碰�
 xxhash64 (Fastest): xxhash64（最快）
 "Welcome to Self-hosted LiveSync": "歡迎使用 Self-hosted LiveSync"
 "We will now guide you through a few questions to simplify the synchronisation setup.": "接下來我們會透過幾個問題，引導你更輕鬆地完成同步設定。"
+"This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.":
+  首次設定會分成幾個簡短步驟，確認加密方式、連線方式，以及由哪台裝置提供初始資料。設定完成後，其他裝置就能用同一個 Setup URI 加入同步。
 "First, please select the option that best describes your current situation.": "首先，請選擇最符合你目前情況的選項。"
 "I am setting this up for the first time": "我是第一次進行設定"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在將此裝置設定為第一台同步裝置，請選擇此項。）此選項適合初次使用 LiveSync，並希望從頭開始設定的使用者。"
 "I am adding a device to an existing synchronisation setup": "我要將裝置加入既有同步設定"
 "(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。"
+"(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.": "如果已有其他裝置在同步，選這個選項就能讓這台裝置加入既有同步。"
 "Yes, I want to set up a new synchronisation": "是的，我要設定新的同步"
 "Yes, I want to add this device to my existing synchronisation": "是的，我要把這台裝置加入既有同步"
 "No, please take me back": "不，返回上一步"
