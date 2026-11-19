@@ -247,26 +247,32 @@ export async function captureAndStartInitialisation(
           : mode === "new"
             ? "Restart and Initialise Server"
             : "Restart and Fetch Data";
-    if (p2pAdditionalDevice) {
+    const restartTitle = mode === "existing" ? "Before restarting" : title;
+    if (mode === "existing") {
         await withObsidianPage(port, async (page) => {
             const modal = modalByTitle(page, title);
-            await modal
-                .getByText("After restarting, select an online source device for the initial Fetch.", {
-                    exact: false,
-                })
-                .waitFor({ state: "visible", timeout: uiTimeoutMs });
-            if ((await modal.getByText("downloaded from the server", { exact: false }).count()) !== 0) {
-                throw new Error("P2P additional-device setup still describes the initial Fetch as a server download.");
+            if (p2pAdditionalDevice) {
+                await modal
+                    .getByText("After restarting, select an online source device for the initial Fetch.", {
+                        exact: false,
+                    })
+                    .waitFor({ state: "visible", timeout: uiTimeoutMs });
+                if ((await modal.getByText("downloaded from the server", { exact: false }).count()) !== 0) {
+                    throw new Error(
+                        "P2P additional-device setup still describes the initial Fetch as a server download."
+                    );
+                }
             }
+            await modal.getByRole("button", { name: "Next", exact: true }).click({ timeout: uiTimeoutMs });
         });
     }
     const screenshot = await captureGuideDialogue(
         port,
         `guide-${captures.guide}-${mode === "new" ? "first-initialise" : "second-fetch"}.png`,
-        title
+        restartTitle
     );
     await withObsidianPage(port, async (page) => {
-        await modalByTitle(page, title).getByRole("button", { name: button }).click({ timeout: uiTimeoutMs });
+        await modalByTitle(page, restartTitle).getByRole("button", { name: button }).click({ timeout: uiTimeoutMs });
     });
     return screenshot;
 }

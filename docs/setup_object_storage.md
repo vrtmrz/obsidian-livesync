@@ -108,7 +108,7 @@ Start with a new or separately backed-up Vault.
 
     ![Object Storage Setup URI from the first device entered on the second device](../images/object-storage-setup/guide-object-storage-setup-second-setup-uri.png)
 
-4. Select `Restart and Fetch Data`.
+4. Review `Setup Complete: Preparing to Fetch Synchronisation Data` and select `Next`. Read `Before restarting`, then select `Restart and Fetch Data`.
 
     ![Object Storage Fetch confirmation on the second device](../images/object-storage-setup/guide-object-storage-setup-second-fetch.png)
 
@@ -119,8 +119,9 @@ Start with a new or separately backed-up Vault.
     ![Object Storage local-file policy](../images/object-storage-setup/guide-object-storage-setup-local-file-policy.png)
 
 6. Keep Obsidian open until retrieval and file reflection finish.
+7. Review the reflected Vault and any conflicts, and confirm that the first device's test note appears unchanged. Fetch leaves automatic synchronisation disabled on this device. Open **Sync Settings** → **Synchronization Method** and select `Periodic and on events` under **Sync Mode** to enable periodic synchronisation, or turn on the event triggers you intend to use.
 
-Confirm that the first device's test note appears unchanged. Create a second ordinary note on the new device, wait for its journal synchronisation to finish, and confirm that it reaches the first device. Configure optional features only after this two-way check passes.
+Create a second ordinary note on the new device, wait for its journal synchronisation to finish, and confirm that it reaches the first device. Configure optional features only after this two-way check passes.
 
 ![Note from the first device received by the second Object Storage device](../images/object-storage-setup/guide-object-storage-setup-first-to-second.png)
 
