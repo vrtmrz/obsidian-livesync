@@ -16,6 +16,8 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
 
+- When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
+
 ## 1.0.51
 
 18th November, 2026
