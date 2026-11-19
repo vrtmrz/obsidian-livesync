@@ -14,7 +14,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Improved
 
-- When an unsupported E2EE format stops a CouchDB Fetch, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
+- When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
 
 ## 1.0.51
 
