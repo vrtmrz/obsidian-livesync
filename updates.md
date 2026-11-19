@@ -12,35 +12,69 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
-### Fixed
-
-- The Docker Compose sample can re-run initialisation on an already configured CouchDB server and retain authentication and CORS settings when the container is recreated. (#1356)
-    - The initialisation check now authenticates, and a dedicated volume preserves runtime configuration. When updating an existing stack, please save and transfer its settings as described in [Data & Backup](docker/README.md#data--backup) before recreating CouchDB.
-- CLI file lookups avoid repeated full Vault scans when locating files which have not arrived locally or have already been deleted. (#1347)
-    - Applies to Legacy file identity (`pathNormalizationVersion: 0`) with case-insensitive file-name handling. Matching directory branches are listed instead of scanning unrelated Vault subtrees.
-- Changes to files registered as **Ignore** or **Automatic** no longer create Customisation Sync snapshots during configuration scans. (#1359)
-    - Existing snapshots are retained. Exclusions still depend on each item's recorded file list; this change does not repair empty or outdated lists.
-- Hidden File Sync now respects Customisation Sync's **Ignore** and **Selective** selections for registered paths containing uppercase letters.
-    - While Customisation Sync is enabled, the exclusion check compares both paths in lowercase, restoring the previous matching behaviour.
-
 ### Improved
 
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
-- We can see when automatic synchronisation is disabled, including after Fetch or Rebuild. (#1361)
-    - A framed badge in the status bar and editor overlay shows the configured LiveSync, periodic, event, or manual-only mode alongside the current transfer status.
+
+## 1.0.51
+
+18th November, 2026
+
+### Fixed
+
+- Files registered as **Ignore** or **Automatic** in **Customisation sync** no longer trigger new snapshots during configuration scans. (#1359)
+    - Existing snapshots are retained. Exclusions still rely on each item's recorded file list, and this fix does not repair empty or outdated lists.
+
+- **Hidden File Sync** now respects **Customisation sync** exclusions (**Ignore** and **Selective**) for registered paths containing uppercase letters. (#1359)
+    - When **Customisation sync** is enabled, the exclusion check compares both paths in lowercase, restoring case-insensitive matching.
+
+### Improved
+
+- We can see at a glance when automatic synchronisation is disabled, including while it remains suspended after Fetch or Rebuild. (#1361)
+    - A framed badge in the status bar and editor overlay displays the configured **LiveSync**, **Periodic**, **On events**, or manual-only mode alongside current transfer activity.
     - Available for CouchDB and S3-compatible Object Storage remotes. Fetch and Rebuild retain their existing suspension behaviour.
-- We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. The choices are retained for this Vault on this device and can be reversed with **Unmute version notices**; synchronisation compatibility checks remain enabled. Device removal is available under **… → Forget device record…**. (#1349)
 
-### Recovery work in progress
+- We can mute recurring plug-in version Notices for individual devices from **Joined devices** using **Mute version notices**. (#1349, #1368)
+    - Choices are retained only for this Vault on this device and can be reversed with **Unmute version notices**, while synchronisation compatibility checks remain enabled. Removing a device record remains available under **… → Forget device record…**.
 
-- An unavailable local database can be reopened before synchronisation resumes, after a read of its current connection fails. Local file dispatch is held during replacement; failed completion requests an Obsidian restart. (#1360)
-    - This candidate requires the combined Commonlib update. Controlled Linux Obsidian recovery tests pass; recovery on a physical iPhone remains unverified.
-- Ordinary files which could not be reflected are retained. Failures at known local database or remote content-read boundaries are eligible for one automatic retry after the required resources recover. Failures without an established retry condition and remaining failed attempts are available through 'Review files which could not be reflected', including the Hatch action. (#1224, #1360)
-    - Native request failures carry their origin without relying on their message text. Reopening the same local database preserves retained work and consumed retry allowances.
+#### Recovery work in progress
 
-### Developer tools
+- This plug-in can now reopen an unavailable local database before resuming synchronisation, after a read against the current connection fails, instead of requiring an immediate force-quit. (#1360)
+    - Local file dispatch is held while the connection is replaced; if reopening fails, this plug-in requests an Obsidian restart. This recovery path does not prevent platform disconnections or detect an adapter operation which never settles.
+    - Controlled Linux Obsidian recovery tests pass; natural background connection loss and recovery on a physical iPhone remain unverified.
 
-- The Review Harness adds individual guided diagnostics for controlled database connection loss and app background events. They record observations only; a run with no observed failure does not establish that a fix worked or provide automatic product recovery.
+- Ordinary Vault files which could not be reflected are retained for recovery and review, rather than remaining silently unapplied until another scan. (#1224, #1360)
+    - Failures at known local database or remote content-read boundaries are eligible for one automatic retry after every required resource recovers. Failures without an established retry condition and items whose automatic allowance is exhausted remain available under **Hatch** → **Recovery and Repair** → **Review files which could not be reflected**.
+    - Native request failures preserve their origin without relying on message text, and reopening the same local database retains saved recovery items and consumed retry allowances.
+
+#### Developer tools
+
+- The Review Harness (enabled via **Power users → Enable Developers' Debug Tools**) adds individual database diagnostics: **Database connection-loss diagnostic**, **Database background-events diagnostic**, and **Database transaction-abort diagnostic**.
+    - These diagnostics use disposable database fixtures and record observations only; a run with no observed failure does not establish that recovery succeeded or attempt automatic product recovery.
+
+### CLI
+
+#### Fixed
+
+- CLI file lookups avoid full Vault scans when checking files which have not arrived locally or have already been deleted. (#1347)
+    - With Legacy file identity (`pathNormalizationVersion: 0`) and case-insensitive file-name handling, matching directory branches are listed directly instead of scanning unrelated Vault subtrees.
+
+### Docker
+
+#### Fixed
+
+- The Docker Compose sample can now re-run initialisation against an already configured CouchDB server and preserve authentication and CORS settings when the container is recreated. (#1356)
+    - The initialisation check authenticates with CouchDB, and a dedicated volume retains runtime configuration. Before recreating CouchDB on an existing stack, save and transfer its settings as described in [Data & Backup](docker/README.md#data--backup).
+
+### Miscellaneous
+
+- Updated dependencies (including `@vrtmrz/livesync-commonlib` 0.6.0).
+
+### Acknowledgements
+
+Thank you for your contributions!
+
+- @levity, for avoiding full Vault scans during case-insensitive CLI file lookups (#1347).
 
 ## 1.0.50
 
@@ -132,40 +166,3 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - The daemon no longer misses files written into newly created folders. (#1328)
     - This includes bursts of writes and files renamed from temporary names.
     - The CLI requires Node.js 22.22 or later. The Docker image includes its own runtime.
-
-## 1.0.46
-
-7th November, 2026
-
-P2P synchronisation can stop connecting when our devices are on different versions. And this is one of those versions.
-
-If we use P2P synchronisation, let us make sure all our devices are on the same version.
-
-### Fixed
-
-#### Synchronisation and recovery
-
-- Receiving devices no longer reject newly saved files with 'seems to be corrupted! Writing prevented' because rapid edits left the sender's cached file size out of date. New saves record the byte length of the content actually read. (#1324)
-    - Existing incorrect size records need explicit repair. Use **Inspect conflicts and file/database differences** → **Correct recorded file size** when the readable current database revision has no conflicts and matches the Vault exactly. The correction retains the file content and timestamps.
-
-#### P2P synchronisation
-
-- Peer actions and long device names now fit narrow panes. Larger buttons and wrapped labels keep the controls readable and usable.
-
-### Improved
-
-#### P2P synchronisation
-
-- We can inspect the latest relay, peer, and synchronisation observations in **P2P Status**. Expand **Diagnostic summary** below **Stats**; detailed observations start collapsed.
-    - Enable **Diag** to show diagnostic events in the Log Pane without editor-status updates or notifications. Opening the Log Pane also displays its buffered messages.
-    - Unobserved information is labelled explicitly. An open room does not establish relay acceptance; relay rejection details remain unavailable through the diagnostic summary.
-
-- We can see sent (↑) and received (↓) database document revision counts in the P2P panes and editor status, and in the main status bar when P2P is our main remote. Counts include Metadata and Chunks, rather than Vault files.
-    - Directional ⏩ labels show changes-feed comparison progress, including when no revisions need transferring. Each label disappears three seconds after its count last changes; its absence alone does not establish completion. Peers without document statistics retain sequence values labelled `seq`.
-
-- The updated transport incorporates upstream improvements to peer discovery after relay reconnection, missed signalling messages, and stale connections after rejoining or waiting. Connection offers are created on demand.
-    - All communicating devices in our P2P group, including CLI and WebPeer clients, must be updated together before P2P synchronisation resumes. Trystero 0.26.0 cannot exchange data with the previous transport.
-
-### Documentation
-
-- Clarified backend selection and hosting requirements, including Object Storage request costs. Added a guide to P2P diagnostic observations, logs, and transfer progress.

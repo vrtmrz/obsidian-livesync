@@ -38,9 +38,18 @@ The Harness accepts no path, command, code, remote configuration, or credential 
 
 ### Database connection diagnostics
 
-Each diagnostic requests confirmation before attempting to create a dedicated disposable database. It closes only its owned fixture connections; the active LiveSync database is inspected read-only. Fixture samples and active-database samples remain separate. Each sample records its source, UTC sample time, stage, and observations. The stages are `baseline`, `manual-check`, `after-native-close`, and `after-explicit-reopen`; lifecycle and background transitions are recorded as `background-transition` events. The interface displays the current instruction and expected result, with live listener registrations, native event-property presence, received counts, timestamps, and connection-check observations. Event observations include `isTrusted`: browser-delivered events report `true`, while synthetic events report `false`. The active LiveSync native handle is not exposed; its database readiness and a read-only information check are recorded instead.
+Each diagnostic requests confirmation before attempting to create a dedicated disposable database. It closes only its owned fixture connections; the active LiveSync database is inspected read-only, and its native handle is never exposed (only database readiness and a read-only information check are recorded).
 
-If the disposable fixture or native connection cannot be prepared, the Harness keeps available browser and host event observations active. Finish that run to report **Unsupported**; active-database errors do not replace missing fixture evidence or change the status. The missing native capture is not a successful database check.
+Fixture samples and active-database samples are kept separate. Each sample records:
+
+- its source, UTC sample time, and stage (`baseline`, `manual-check`, `after-native-close`, or `after-explicit-reopen`);
+- lifecycle and background transitions as `background-transition` events;
+- live listener registrations, native event-property presence, received counts, timestamps, and connection-check observations; and
+- `isTrusted` on event observations (`true` for browser-delivered events, `false` for synthetic events).
+
+The interface displays the current instruction and expected result alongside these live observations.
+
+If the disposable fixture or native connection cannot be prepared, the Harness keeps available browser and host event observations active. Finish that run to report **Unsupported**; active-database errors do not replace missing fixture evidence or change the status, and missing native capture is not a successful database check.
 
 #### A. Controlled connection loss
 
@@ -59,7 +68,9 @@ The explicit native `close()` action is controlled test input. A **Passed** cont
 3. Select **Check connections** to record the current connection checks and event counts.
 4. Select **Finish observation**, then select **Copy Markdown report** separately.
 
-The **Finish observation** action ends observation and cleans up the fixture; it does not copy the report. A background run which observes no failure retains the **Not observed** result and still records listener registration, event-property presence, received counts, stages, and timestamps. No observed failure does not establish that a fix worked, and neither diagnostic attempts automatic LiveSync recovery. An explicit fixture reopen is recorded as a separate manual intervention; it is not evidence of automatic LiveSync recovery.
+The **Finish observation** action ends observation and cleans up the fixture; it does not copy the report.
+
+A background run which observes no failure retains the **Not observed** result and still records listener registration, event-property presence, received counts, stages, and timestamps. However, no observed failure does not establish that a fix worked: neither diagnostic attempts automatic LiveSync recovery, and an explicit fixture reopen is recorded as a separate manual intervention rather than automatic LiveSync recovery.
 
 #### C. Transaction abort on both adapters
 
