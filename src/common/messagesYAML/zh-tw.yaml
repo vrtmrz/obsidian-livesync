@@ -312,16 +312,16 @@ Passphrase is required.: 必須輸入密語。
 Please enter the Setup URI that was generated during server installation or on another device, along with the vault passphrase.: 請輸入在伺服器安裝期間或其他裝置上產生的 Setup URI，以及 Vault 的密語。
 Please follow the steps below to import settings from your existing device.: 請依照以下步驟，從現有裝置匯入設定。
 "PLEASE NOTE": 請注意
-Please select the button below to restart and proceed to the data fetching confirmation.: 請點選下方按鈕以重新啟動，並前往資料擷取確認步驟。
+Please select the button below to restart and proceed to the data fetching confirmation.: 請點選下方按鈕以重新啟動，並前往取回資料的確認步驟。
 Please select the button below to restart and proceed to the final confirmation.: 請點選下方按鈕以重新啟動，並前往最終確認步驟。
 Please select your situation.: 請選擇符合你情況的選項。
 Proceed to the next step.: 繼續前往下一步。
-Restart and Fetch Data: 重新啟動並擷取資料
+Restart and Fetch Data: 重新啟動並取回資料
 Restart and Initialise Server: 重新啟動並初始化伺服器
 Scan QR Code: 掃描 QR 碼
 Selecting this option will result in the current data on this device being used to initialise the server. Any existing data on the server will be completely overwritten.: 選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。
-Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。
-"Setup Complete: Preparing to Fetch Synchronisation Data": 設定完成：準備擷取同步資料
+Selecting this option will result in this device joining the existing server. You need to fetching the existing synchronisation data from the server to this device.: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料取回到此裝置。
+"Setup Complete: Preparing to Fetch Synchronisation Data": 設定完成：準備取回同步資料
 "Setup Complete: Preparing to Initialise Server": 設定完成：準備初始化伺服器
 Setup-URI: Setup URI
 The connection to the server has been configured successfully. As the next step,: 與伺服器的連線已成功設定完成。接下來，
@@ -356,7 +356,7 @@ Add default patterns: 新增預設模式
 Always prompt merge conflicts: 總是提示合併衝突
 Analyse: 分析
 Apply Latest Change if Conflicting: 發生衝突時套用最新變更
-Apply preset configuration: 套用預設配置
+Apply preset configuration: 套用預設設定
 Ask a passphrase at every launch: 每次啟動時都詢問密語
 Automatically Sync all files when opening Obsidian.: 開啟 Obsidian 時自動同步所有檔案。
 Batch database update: 批次更新資料庫
@@ -633,6 +633,7 @@ moduleInputUIObsidian:
   optionNo: 否
   optionYes: 是
 moduleLiveSyncMain:
+  logPluginVersion: Self-hosted LiveSync v${manifestVersion} ${packageVersion}
   logAdditionalSafetyScan: 額外的安全掃描⋯
   logLoadingPlugin: 正在載入外掛⋯
   logPluginInitCancelled: 外掛初始化被某個模組取消
@@ -640,7 +641,7 @@ moduleLiveSyncMain:
   logVersionUpdate: LiveSync 已更新。為避免破壞性更新造成問題，已暫時停用所有自動同步。請確保所有裝置都已更新到最新版本後再啟用。
   logSafetyScanCompleted: 額外的安全掃描已完成
   logSafetyScanFailed: 額外的安全掃描在某個模組上失敗
-  logUnloadingPlugin: 正在卸載外掛⋯
+  logUnloadingPlugin: 正在停止外掛⋯
   msgScramEnabled: |
     Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？
 
@@ -660,6 +661,11 @@ moduleLiveSyncMain:
 moduleLocalDatabase:
   logWaitingForReady: 正在等待就緒⋯
 moduleLog:
+  "pathComponentTooLong": "此路徑包含超過 ${maxBytes} 個 UTF-8 位元組的檔名或資料夾名稱，可能無法在部分 Android 和 Linux 檔案系統上使用。"
+  syncMode:
+    "configured": "已設定的自動同步方式：${modes}。"
+    "manual": "目前只使用手動同步，自動同步已停用。"
+    "periodic": "定期同步"
   showLog: 顯示日誌
 moduleMigration:
   fix0256:
@@ -754,6 +760,15 @@ No limit configured: 尚未設定限制
 Non-Synchronising files: 不同步的檔案
 Normal Files: 一般檔案
 obsidianLiveSyncSettingTab:
+  "linkTroubleshooting": "/docs/troubleshooting.md"
+  "logServerConfigurationCheck": "檢查伺服器設定"
+  "titleAdvancedSettings": "進階設定"
+  "titleExtraFeaturesGroup": "額外功能"
+  "titleExtraMenus": "額外選單"
+  "titleHelpAndInformation": "說明與資訊"
+  "titleHelpAndTroubleshooting": "說明與疑難排解"
+  "titleMaintenanceAndRecovery": "維護與復原"
+  "titleSynchronisation": "同步"
   btnApply: 套用
   btnCheck: 檢查
   btnCopy: 複製
@@ -1086,8 +1101,8 @@ paneMaintenance:
   remoteLockedResolvedDevice: 遠端資料庫已鎖定，但此裝置已被接受。
   unlockDatabaseReady: 現在可以解鎖資料庫。
 Paste a connection string: 貼上連線字串
-Patterns to match files for overwriting instead of merging: 用於匹配需覆寫而非合併檔案的模式
-Patterns to match files for syncing: 用於匹配同步檔案的模式
+Patterns to match files for overwriting instead of merging: 用來比對要覆寫而非合併的檔案
+Patterns to match files for syncing: 用來比對要同步的檔案
 Peer-to-Peer Synchronisation: Peer-to-Peer 同步
 Perform: 執行
 Perform cleanup: 執行清理
@@ -1339,6 +1354,8 @@ SettingTab:
     AskRebuild: 你的變更需要從遠端資料庫抓取，要繼續嗎？
 Ui:
   Common:
+    "LocalDatabaseInitialisationFailed": "Self-hosted LiveSync 無法同步。請產生報告，查看詳細記錄。"
+    "SomeFilesCouldNotBeSynchronised": "部分檔案未能同步。請檢查受影響的檔案，並產生報告查看詳細記錄。"
     Signal:
       Caution: 注意
       Danger: 危險
@@ -1509,11 +1526,11 @@ Ui:
       NonSynchronisingFilesDesc: （正則表示式）若已設定，所有符合此模式的本機與遠端檔案變更都會被略過。
       NormalFiles: 一般檔案
       OverwritePatterns: 覆寫模式
-      OverwritePatternsDesc: 用於匹配需覆寫而非合併檔案的模式
+      OverwritePatternsDesc: 用來比對要覆寫而非合併的檔案
       SynchronisingFiles: 同步中的檔案
       SynchronisingFilesDesc: （正則表示式）留空即同步所有檔案。設定正則表示式篩選器可限制要同步的檔案。
       TargetPatterns: 目標模式
-      TargetPatternsDesc: 用於匹配同步檔案的模式
+      TargetPatternsDesc: 用來比對要同步的檔案
     PowerUsers:
       ConfigurationEncryption: 設定加密
       ConnectionTweak: CouchDB 連線調校
@@ -1584,7 +1601,7 @@ Ui:
       CompatibleOption: 遠端已經設定完成，且設定相容（或透過此操作變得相容）。
       CompatibleOptionDesc: 除非你很確定，否則選擇此選項有風險。這個選項假設伺服器設定與此裝置相容；若並非如此，可能導致資料遺失。請確保你了解這麼做的後果。
       ExistingOption: 我的遠端伺服器已經設定完成，我想讓這台裝置加入。
-      ExistingOptionDesc: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料擷取到此裝置。
+      ExistingOptionDesc: 選擇此選項會讓此裝置加入現有的伺服器，你需要將伺服器上現有的同步資料取回到此裝置。
       Guidance: 與伺服器的連線已成功設定完成。接下來，本機資料庫，也就是同步資訊，必須重新建立。
       NewOption: 我是第一次設定新的伺服器／我想要重設現有的伺服器。
       NewOptionDesc: 選擇此選項會使用此裝置目前的資料來初始化伺服器，伺服器上任何現有資料都會被完全覆寫。
@@ -1592,8 +1609,19 @@ Ui:
       ProceedNext: 繼續前往下一步。
       Question: 請選擇符合你情況的選項。
       Title: 大致完成：需要你做出決定
+    OutroExistingUser:
+      Next: 下一步
+      RestartConfirmationTitle: 重新啟動前請確認
+      FetchSyncGuidance: |-
+        取回同步資料時，這台裝置的**自動同步**會停用。
+
+        重新啟動後，請依畫面提示取回資料。等檔案出現在 Vault 裡並確認內容後，再到「**同步設定**」選擇同步模式或觸發條件。
+      P2PFetchSyncGuidance: |-
+        取回同步資料時，這台裝置的 **P2P 自動啟動與變更通知**會停用。
+
+        重新啟動後，請依畫面提示取回資料。等檔案出現在 Vault 裡後，請先確認內容，再到「**P2P 狀態**」測試手動同步，確認可用後再重新啟用自動選項。
     OutroNewP2PUser:
-      GuidanceNotice: P2P 沒有中央伺服器複本可覆寫。此步驟只會準備這台裝置；當其他裝置擷取初始資料時，請讓這台裝置保持連線。
+      GuidanceNotice: P2P 沒有中央伺服器複本可覆寫。此步驟只會準備這台裝置；當其他裝置取回初始資料時，請讓這台裝置保持連線。
       GuidancePrimary: Peer-to-Peer 連線已成功設定完成。接下來，將依此 Vault 目前的檔案建立本機 LiveSync 資料庫。
       Important: 請注意
       Proceed: 重新啟動並準備此裝置
@@ -1611,7 +1639,7 @@ Ui:
       ConfirmLocalResetNote: 此 Vault 目前的檔案將用於重建它。
       ConfirmTitle: ⚠️ 請確認以下事項
       Guidance: 此程序會捨棄此裝置上的本機 LiveSync 資料庫，並依此 Vault 目前的檔案重新建立。它不會刪除或覆寫其他裝置上的資料。
-      Note: 初始化完成後請讓此裝置保持連線，以便其他裝置能從它擷取 Vault。
+      Note: 初始化完成後請讓此裝置保持連線，以便其他裝置能從它取回 Vault。
       Proceed: 我了解，準備此裝置
       Title: 最終確認：為 P2P 準備此裝置
     SetupRemote:
@@ -1688,7 +1716,6 @@ xxhash64 (Fastest): xxhash64（最快）
 "I am setting this up for the first time": "我是第一次進行設定"
 "(Select this if you are configuring this device as the first synchronisation device.) This option is suitable if you are new to LiveSync and want to set it up from scratch.": "（如果你正在將此裝置設定為第一台同步裝置，請選擇此項。）此選項適合初次使用 LiveSync，並希望從頭開始設定的使用者。"
 "I am adding a device to an existing synchronisation setup": "我要將裝置加入既有同步設定"
-"(Select this if another device is already using LiveSync.) This option adds this device to that existing synchronisation setup.": "（如果你已經在另一台電腦或手機上使用同步，請選擇此項。）此選項適合將目前裝置加入既有 LiveSync 設定的使用者。"
 "(Select this if you already have another synchronising device.) This option adds this device to the same synchronisation.": "如果已有其他裝置在同步，選這個選項就能讓這台裝置加入既有同步。"
 "Yes, I want to set up a new synchronisation": "是的，我要設定新的同步"
 "Yes, I want to add this device to my existing synchronisation": "是的，我要把這台裝置加入既有同步"
@@ -1865,3 +1892,144 @@ Setup:
 "To prevent unwanted vault corruption, the remote database has been locked for synchronisation. (This device is marked as 'resolved'.) When all your devices are marked as 'resolved', unlock the database. This warning will continue to appear until replication confirms the device is resolved.": "為避免 Vault 發生非預期的損毀，遠端資料庫已鎖定同步。（此裝置已標記為「已處理」。）當你所有的裝置都標記為「已處理」後，即可解鎖資料庫。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。"
 "I have made a backup, mark this device as resolved": "我已完成備份，將此裝置標記為已處理"
 "The remote database is locked for synchronisation to prevent vault corruption because this device is not marked as 'resolved'. Please back up your vault, reset the local database, and select 'Mark this device as resolved'. This warning will persist until replication confirms the device is resolved.": "由於此裝置尚未標記為「已處理」，為避免 Vault 損毀，遠端資料庫已鎖定同步。請先備份你的 Vault、重設本機資料庫，然後選擇「將此裝置標記為已處理」。在複寫程序確認此裝置已處理完畢之前，這則警告會持續顯示。"
+"Cancel all and reboot": 取消整個流程並重新啟動
+"Compare time and take newer": 依修改時間採用較新的版本
+"Conflict & Deletion Options": 衝突與刪除選項
+"Data retrieval scheduled": 已排定取回資料
+"Delete local files if deleted on remote": 刪除已在遠端刪除的本機檔案
+"Delete local files if not on remote": 刪除遠端沒有的本機檔案
+"How to handle extra existing local files?": 如何處理只存在本機的檔案？
+"Keep local files even if deleted on remote": 保留已在遠端刪除的本機檔案
+"Keep local files even if not on remote": 保留遠端沒有的本機檔案
+"Overwrite all with remote files": 用遠端檔案覆寫所有本機檔案
+"Use the detailed flow": 開啟詳細設定流程
+"How should files that were deleted on other devices be handled?\n\n- **${NEWER_CLEANUP}**: Delete local files if they were deleted on remote.\n  This is useful if you want to keep your vault clean and consistent across devices, but please make sure you have a backup if there is already any important data in your vault.\n- **${NEWER_SYNC_ALL}**: Recreate remote files even if they were deleted on remote.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.": |-
+  要如何處理在其他裝置上刪除的檔案？
+
+  - **${NEWER_CLEANUP}**：如果檔案已在遠端刪除，也刪除本機的同一個檔案。
+    這樣可讓各裝置的 Vault 維持一致。如果 Vault 裡有重要資料，請先確認已有備份。
+  - **${NEWER_SYNC_ALL}**：保留本機檔案；即使檔案已在遠端刪除，也會在遠端重新建立。
+    這會保留所有本機檔案。若有檔案只存在本機，可能會出現重複檔案，你可以在同步後手動清理。
+"Since you have chosen to overwrite all local files with remote data, **how would you like to handle local files that are not present in the remote database?**\n\n- **${DELETE_ALL}**: Local-only files and remote-deleted files will be removed.\n  This option will make your local vault exactly the same as the remote database, but please make sure you have a backup if there is any important data in your vault.\n- **${DELETE_NONE}**: All existing local files will be preserved.\n  This option will keep all your local files, but it may cause duplicates if there are files that exist on local but not on remote. You can clean up these duplicates manually after the synchronisation.": |-
+  你已選擇用遠端資料覆寫所有本機檔案。**要如何處理遠端資料庫裡沒有的本機檔案？**
+
+  - **${DELETE_ALL}**：刪除只存在本機的檔案，以及已在遠端刪除的檔案。
+    這會讓本機 Vault 與遠端資料庫完全一致。如果 Vault 裡有重要資料，請先確認已有備份。
+  - **${DELETE_NONE}**：保留所有現有的本機檔案。
+    若有檔案只存在本機，可能會出現重複檔案，你可以在同步後手動清理。
+"We are about to retrieve the remote data.\n\nFirstly, how shall we handle the data retrieved from this remote source?\n\n- **${NEWER_WINS}**: Compares the modified time of files and takes the newer one.\n  If you have been using Self-hosted LiveSync and have made changes on multiple devices, this option may be suitable for you as it tries to merge changes based on modified time.\n- **${REMOTE_WINS}**: Remote data is the source of truth.\n  If you are new to using Self-hosted LiveSync. This option may be easiest to understand and get started with.\n  It will overwrite all your local files with the remote data, so please make sure you have a backup if there is any important data in your vault.\n- **${DETAILED}**: Opens the detailed setup wizard.\n  If you want to have more control over the synchronisation process, or want to review the changes before applying, you can choose this option to use the detailed flow.": |-
+  即將取回遠端資料。
+
+  要如何處理從遠端取回的資料？
+
+  - **${NEWER_WINS}**：比較檔案的修改時間，採用較新的版本。
+    如果你已在多台裝置上使用 Self-hosted LiveSync 並修改過檔案，可以選這個做法。LiveSync 會嘗試依修改時間合併各裝置的變更。
+  - **${REMOTE_WINS}**：以遠端資料為準。
+    如果你剛開始使用 Self-hosted LiveSync，這個做法較容易上手。這會用遠端資料覆寫所有本機檔案。如果 Vault 裡有重要資料，請先確認已有備份。
+  - **${DETAILED}**：開啟詳細設定精靈。
+    如果你想進一步控制同步流程，或想在套用前先檢查變更，請選這個做法。
+"Active Remote Type": "目前使用的遠端類型"
+"Allow sleep during synchronisation": "同步時允許裝置休眠"
+"Allow sleep during synchronisation on the desktop": "在桌面版同步時允許裝置休眠"
+"Allow the operating system to sleep while finite synchronisation operations are in progress.": "執行單次同步作業時，允許作業系統休眠。"
+"Application ID": "應用程式 ID"
+"Auto-accept compatible tweak mismatches": "自動接受相容的進階設定差異"
+"Automatically accepts mismatches that are compatible but potentially lossy by comparing tweak modification times.": "遇到相容但可能造成資料遺失的進階設定差異時，會比較設定的修改時間並自動接受差異。"
+"Automatically broadcast changes to connected peers": "自動通知已連線的對端有新變更"
+"Automatically start P2P connection on launch": "啟動時自動建立 P2P 連線"
+"Check server requirements": "檢查伺服器是否符合需求"
+"Chunk revisions are always derived from their content. This stored key is retained only for compatibility.": "Chunk 的修訂版本一律由內容產生。這個設定鍵僅為相容性而保留。"
+"Chunk Splitter": "Chunk 切分方式"
+"Connect to existing database and continue": "連線到現有資料庫並繼續"
+"Content-derived chunk revisions (obsolete setting)": "依內容產生 Chunk 修訂版本（舊設定）"
+"CouchDB only. Version 0 preserves legacy path identity; version 1 uses Unicode NFC. Physical file names stay unchanged. Update every device and stop synchronisation, then Rebuild both databases from a complete authoritative Vault and Fetch on the other devices. Resolve colliding file names first. P2P and Object Storage do not support version 1.": "僅適用於 CouchDB。版本 0 保留舊版路徑識別方式，版本 1 使用 Unicode NFC。實際檔名維持原樣。請先處理檔名碰撞，更新所有裝置並停止同步。使用保存完整且正確檔案的 Vault 重建本機和遠端資料庫，再讓其他裝置取回同步資料。P2P 和物件儲存不支援版本 1。"
+"CouchDB validates the database name when you connect. The name must not be empty.": "連線時，CouchDB 會驗證資料庫名稱。請填寫資料庫名稱。"
+"Create or connect to database and continue": "建立或連線到資料庫並繼續"
+"Custom headers for requesting the bucket. e.g. `x-custom-header1: value1\n x-custom-header2: value2`": |-
+  傳送至儲存桶的請求所用的自訂標頭，例如 `x-custom-header1: value1
+   x-custom-header2: value2`。
+"Custom headers for requesting the CouchDB. e.g. `x-custom-header1: value1\n x-custom-header2: value2`": |-
+  傳送至 CouchDB 的請求所用的自訂標頭，例如 `x-custom-header1: value1
+   x-custom-header2: value2`。
+"Desktop only; uses more battery and network.": "僅適用於桌面版。會增加耗電與網路用量。"
+"Desktop only. Allow sleep on this device even when the general option is disabled.": "僅適用於桌面版。即使已停用一般休眠選項，仍允許這台裝置休眠。"
+"Effectively a directory. Should end with `/`. e.g., `vault-name/`.": "可視為目錄，請以 `/` 結尾，例如 `vault-name/`。"
+"Enable advanced mode": "啟用進階模式"
+"Enable Developers' Debug Tools (If available).": "啟用開發者除錯工具（如果可用）。"
+"Enable forcePathStyle": "啟用 forcePathStyle"
+"Enable P2P Synchronization": "啟用 P2P 同步"
+"Enable per-file customization sync": "啟用逐檔同步自訂項目"
+"Enable power user mode": "啟用進階使用者模式"
+"Encrypt file properties (paths, times, sizes, and Chunk references) used by Hidden File Sync and Customisation Sync. This affects future writes; manually rebuild the remote database to protect existing properties. Requires E2EE V2, Property Encryption, and compatible clients on every device.": "加密隱藏檔案同步和自訂同步使用的檔案屬性，包括路徑、時間、大小與 Chunk 參照。此設定會影響日後寫入的資料。若要保護現有屬性，請手動重建遠端資料庫。所有裝置都需要使用相容的用戶端，並啟用 E2EE V2 與屬性加密。"
+"Encrypt internal file Properties": "加密內部檔案屬性"
+"Encryption passphrase. If changed, you should overwrite the server's database with the new (encrypted) files.": "加密用的密語。變更密語後，請用重新加密的檔案覆寫伺服器資料庫。"
+"End-to-End Encryption Algorithm": "端對端加密演算法"
+"Enter a complete HTTP or HTTPS URL.": "請輸入完整的 HTTP 或 HTTPS 網址。"
+"File prefix on the bucket": "儲存桶內的檔案前綴"
+"Files with modification times greater than this value (in seconds since the Unix epoch) will not have their events reflected. Set to 0 to disable this limit.": "修改時間晚於此值的檔案，其事件不會反映到 Vault。此值以 Unix 紀元起算的毫秒數表示。設為 0 可停用限制。"
+"Finalise the process and resume normal operation": "完成程序並恢復正常運作"
+"Hide password": "隱藏密碼"
+"If enabled, changes will be automatically broadcasted to all connected peers. Notified peers will start fetching the changes.": "啟用後，所有已連線的對端都會自動收到變更通知，並開始取回變更。"
+"If enabled, efficient per-file customization sync will be used. A minor migration is required when enabling this feature, and all devices must be updated to v0.23.18. Enabling this feature will result in losing compatibility with older versions.": "啟用後，會改用較有效率的逐檔同步方式處理自訂項目。啟用時需要進行小幅移轉，所有裝置都必須更新到 v0.23.18。啟用後將無法與舊版本相容。"
+"If enabled, the file properties will be encrypted in the remote database. This is useful for protecting sensitive information in file paths, sizes, and IDs of its chunks. If you are using V1 E2EE, this only obfuscates the file path.": "啟用後，遠端資料庫會加密檔案屬性，以保護路徑、大小和 Chunk ID 等敏感資訊。若使用 E2EE V1，這個設定只會混淆檔案路徑。"
+"If enabled, the forcePathStyle option will be used for bucket operations.": "啟用後，儲存桶操作會使用 forcePathStyle。"
+"If enabled, the P2P connection will be automatically started when the application launches.": "啟用後，應用程式啟動時會自動建立 P2P 連線。"
+"If enabled, the plugin will not attempt to connect to the remote database even if the chunk was not found locally.": "啟用後，即使找不到本機 Chunk，外掛也不會嘗試連線到遠端資料庫。"
+"If enabled, the request API will be used to avoid `inevitable` CORS problems. This is a workaround and may not work in all cases. PLEASE READ THE DOCUMENTATION BEFORE USING THIS OPTION. This is a less-secure option.": "啟用後，會使用 Request API 繞過無法避開的 CORS 問題。這是安全性較低的替代方式，某些情況下可能無效。請先閱讀文件再啟用。"
+"If this enabled, JWT will be used for authentication.": "啟用後，會使用 JWT 驗證身分。"
+"Internal timestamp for resolving compatible tweak mismatches.": "用於處理相容進階設定差異的內部時間戳記。"
+"Keep replication active in the background": "在背景保持複寫"
+"Key ID": "金鑰 ID"
+"Keypair or pre-shared key": "金鑰對或預先共用金鑰"
+"Last tweak modified timestamp": "進階設定上次修改的時間戳記"
+"Legacy path identity": "舊版路徑識別"
+"Longest chunk line threshold value (Not Configurable from the UI Now).": "最長 Chunk 行長度門檻（目前無法從介面調整）。"
+"Maximum file modification time for reflected file events": "反映檔案事件的修改時間上限"
+"Maximum request size for manually resending chunks": "手動重送 Chunk 時的單次請求大小上限"
+"MB per request": "每次請求的 MB 數"
+"Minimum Chunk Size (Not Configurable from the UI Now).": "最小 Chunk 大小（目前無法從介面調整）。"
+"Move remotely deleted files to the trash, instead of deleting. (This setting is ineffective from Obsidian v1.7.2 onwards, as deletion always respects your Obsidian preferences.)": "將遠端已刪除的檔案移至垃圾桶。自 Obsidian v1.7.2 起，刪除檔案一律依照 Obsidian 偏好設定處理，這個選項已無作用。"
+"Now we can choose how to split the chunks; V3 is the most efficient. If you have troubled, please make this Default or Legacy.": "你可以選擇如何切分 Chunk。V3 的效率最高。若遇到問題，請改用 V2（Default）或 V1（Legacy）。"
+"Path identity mode": "路徑識別模式"
+"Please use V2, V1 is deprecated and will be removed in the future, It was not a very appropriate algorithm. Only for compatibility V1 is kept.": "請使用 V2。V1 的演算法已不建議使用，目前僅為相容性而保留，日後將移除。"
+"Process files even if seems to be corrupted": "即使檔案疑似損毀也繼續處理"
+"Reboot to re-run the process": "重新啟動以重跑程序"
+"Rotation Duration": "輪替間隔"
+"Save without connecting": "不連線，直接儲存"
+"Saving without a successful connection test keeps this profile, but automatic synchronisation may fail until the connection is corrected.": "連線測試未通過時仍可儲存此連線設定檔。修正連線前，自動同步可能無法運作。"
+"SettingService.ConfigurationCouldNotBeDecrypted": "無法解密現有設定。設定金鑰仍維持原樣。"
+"SettingService.ConfigurationEncryptionSaveFailed": "無法儲存設定的加密變更。請先確認已儲存的設定和裝置金鑰，再試一次。"
+"SettingService.ConfigurationPassphraseCancelled": "密語輸入已取消或無法使用，啟動程序已停止。已儲存的設定仍然保留。"
+"SettingService.ConfigurationPassphraseDeviceLocalDescription": "這組密語只會保留在這台裝置上。如果另一台裝置需要解密受保護的設定，但沒有已儲存的金鑰，請在啟動時輸入同一組密語。"
+"SettingService.ConfigurationPassphraseRetryTitle": "無法解密設定。請再輸入一次設定密語。"
+"SettingService.ConfigurationPassphraseRollbackFailed": "寫入失敗後，無法還原設定密語。請先確認已儲存的設定和裝置金鑰，再試一次。"
+"SettingService.ConfigurationPassphraseTitle": "設定密語"
+"Show password": "顯示密碼"
+"Signalling Relays": "訊號中繼站"
+"Some files failed to synchronise. What would you like to do?": "部分檔案同步失敗。你要怎麼處理？"
+"Subject (whoami)": "主體（whoami）"
+"Synchronisation Issues Detected": "同步發生問題"
+"Test connection and save": "測試連線並儲存"
+"The algorithm used for JWT authentication.": "JWT 身分驗證使用的演算法。"
+"The Application ID for P2P connection. This should be same among your devices. Default is 'self-hosted-livesync' and could not be modified from the UI.": "建立 P2P 連線用的應用程式 ID。所有裝置都必須使用相同的 ID。預設值為「self-hosted-livesync」，無法在介面上修改。"
+"The connection test cannot add a signalling relay while P2P is active. Use the active relay settings, or disconnect P2P before testing.": "P2P 啟用時，連線測試無法新增訊號中繼站。請用目前的中繼站設定測試，或先中斷 P2P 連線。"
+"The credential/password for the TURN servers.": "TURN 伺服器使用的憑證或密碼。"
+"The key (PSK in HSxxx in base64, or private key in ESxxx in PEM) used for JWT authentication.": "JWT 身分驗證使用的金鑰。HSxxx 使用 Base64 編碼的 PSK，ESxxx 使用 PEM 格式的私密金鑰。"
+"The key ID. this should be matched with CouchDB->jwt_keys->ALG:_`kid`.": "金鑰 ID 必須和 CouchDB->jwt_keys->ALG:_`kid` 相符。"
+"The Nostr relay servers to establish connections for P2P connections. Multiple servers can be separated by commas.": "建立 P2P 連線用的 Nostr 中繼伺服器。多個位址請用逗號分隔。"
+"The Passphrase for P2P connection. This should be same among your devices.": "建立 P2P 連線用的密語。請在所有裝置上使用同一組密語。"
+"The Room ID for P2P connection. This should be same among your devices.": "建立 P2P 連線用的房間 ID。請在所有裝置上使用相同的 ID。"
+"The Rotation duration of token in minutes. Each generated tokens will be valid only within this duration.": "權杖的輪替間隔，以分鐘為單位。每個新權杖只在這段時間內有效。"
+"The subject for JWT authentication. Mostly username.": "JWT 身分驗證使用的主體，通常是使用者名稱。"
+"The TURN servers to use for P2P connections. Multiple servers can be separated by commas.": "P2P 連線使用的 TURN 伺服器。多個位址請用逗號分隔。"
+"The username for the TURN servers.": "TURN 伺服器的使用者名稱。"
+"This optional check uses Obsidian's internal request API and sends the credentials above to the CouchDB server. Use it only with a server you trust; administrator access may be required.": "這項選用檢查會透過 Obsidian 內部的 Request API，將上方的憑證送到 CouchDB 伺服器。請只對你信任的伺服器執行，可能需要管理員權限。"
+"TURN Servers": "TURN 伺服器"
+"Unicode NFC path identity": "Unicode NFC 路徑識別"
+"Use JWT instead of Basic Authentication": "使用 JWT 取代基本驗證"
+"Use Only Local Chunks": "只使用本機 Chunk"
+"Use Request API to avoid `inevitable` CORS problem": "使用 Request API 繞過無法避開的 CORS 問題"
+"While enabled, it causes very performance impact but debugging replication testing and other features will be enabled. Please disable this if you have not read the source code. Requires restart of Obsidian. Sometimes there is no implementation.": "啟用後會明顯影響效能，並開放複寫測試等除錯功能。如果你沒讀過原始碼，請保持停用。需重新啟動 Obsidian。部分功能可能尚未實作。"
+"xxhash64 is the current default.": "目前預設使用 xxhash64。"
+"You can enable this setting to process the files with size mismatches, these files can be created by some APIs or integrations.": "啟用後，LiveSync 也會處理大小不符的檔案。部分 API 或整合服務可能會產生這類檔案。"
+"you wanted(Thank you)!": "你的要求（謝謝！）"
