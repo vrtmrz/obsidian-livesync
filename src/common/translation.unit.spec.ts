@@ -21,6 +21,14 @@ describe("LiveSync-owned translation catalogue", () => {
         expect($msg("moduleCheckRemoteSize.optionIncreaseLimit", { newMax: "800" }, "def")).toBe("Increase to 800 MB");
     });
 
+    it("selects Traditional Chinese and preserves the English fallback for provisional messages", () => {
+        setLang("zh-tw");
+
+        expect($msg("Display Language")).toBe("顯示語言");
+        expect(translateLiveSyncMessage("Active Remote Type")).toBe("目前使用的遠端類型");
+        expect($msg("This file has unresolved conflicts.")).toBe("This file has unresolved conflicts.");
+    });
+
     it("keeps the active-file path compatibility warning concise", () => {
         const oversizedComponent = `${"界".repeat(86)} (258 bytes)`;
 

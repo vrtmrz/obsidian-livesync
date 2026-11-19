@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "v
 const noticeState = vi.hoisted(() => ({
     instances: [] as Array<{ hide: ReturnType<typeof vi.fn>; duration: number }>,
     spanTexts: [] as string[],
+    getLanguage: vi.fn(() => "ja"),
 }));
 
 vi.mock("@/deps", () => ({
-    getLanguage: () => "ja",
+    getLanguage: noticeState.getLanguage,
     requireApiVersion: () => true,
     Notice: class {
         hide = vi.fn();
@@ -38,6 +39,7 @@ describe("automatic display language", () => {
     beforeEach(() => {
         noticeState.instances.length = 0;
         noticeState.spanTexts.length = 0;
+        noticeState.getLanguage.mockReturnValue("ja");
         clickDetails = undefined;
         vi.stubGlobal("createFragment", (build: (fragment: unknown) => void) => {
             const anchor = {
@@ -115,4 +117,25 @@ describe("automatic display language", () => {
         await expect(unloadHandlers[0]?.()).resolves.toBe(true);
         expect(noticeState.instances[0]?.hide).toHaveBeenCalled();
     });
+
+    it.each(["zh-tw", "zh-hk", "zh-mo", "zh-hant", "zh-TW"])(
+        "persists Traditional Chinese when Obsidian uses %s",
+        async (language) => {
+            noticeState.getLanguage.mockReturnValue(language);
+            const settings = { displayLanguage: "" };
+            const applyPartial = vi.fn(async (partial: Partial<typeof settings>) => Object.assign(settings, partial));
+            const saveSettingData = vi.fn().mockResolvedValue(undefined);
+            const host = {
+                services: {
+                    setting: { currentSettings: () => settings, applyPartial, saveSettingData },
+                    API: { addLog: vi.fn() },
+                    appLifecycle: { onUnload: { addHandler: vi.fn() } },
+                },
+            };
+
+            await expect(enableI18nFeature(host as never)).resolves.toBe(true);
+            expect(applyPartial).toHaveBeenCalledExactlyOnceWith({ displayLanguage: "zh-tw" });
+            expect(saveSettingData).toHaveBeenCalledOnce();
+        }
+    );
 });

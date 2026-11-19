@@ -1,5 +1,9 @@
 import { glob } from "tinyglobby";
 import { parse } from "yaml";
+import {
+    liveSyncProvisionalEnglishMessages,
+    liveSyncProvisionalJapaneseMessages,
+} from "@/common/messages/LiveSyncProvisionalMessages.ts";
 import { objectToDotted } from "./messagelib.ts";
 
 const fsPromises = process.getBuiltinModule("node:fs/promises");
@@ -37,6 +41,10 @@ if (!base) {
 }
 
 const baseKeys = Object.keys(base);
+const baseKeySet = new Set(baseKeys);
+const provisionalKeys = Object.keys(liveSyncProvisionalEnglishMessages).filter(
+    (key): key is keyof typeof liveSyncProvisionalEnglishMessages => !baseKeySet.has(key)
+);
 const report = Object.fromEntries(
     [...localeData.entries()].map(([locale, data]) => {
         const keys = new Set(Object.keys(data));
@@ -45,6 +53,12 @@ const report = Object.fromEntries(
             (key) => keys.has(key) && locale !== baseLocale && data[key] === base[key]
         );
         const translated = baseKeys.length - missing.length;
+        const missingProvisional = provisionalKeys.filter(
+            (key) =>
+                locale !== baseLocale &&
+                !data[key] &&
+                !(locale === "ja" && liveSyncProvisionalJapaneseMessages[key])
+        );
         return [
             locale,
             {
@@ -55,6 +69,12 @@ const report = Object.fromEntries(
                 coverage: `${translated}/${baseKeys.length}`,
                 missing,
                 identicalToEnglish,
+                provisional: {
+                    totalKeys: provisionalKeys.length,
+                    translatedKeys: provisionalKeys.length - missingProvisional.length,
+                    missingKeys: missingProvisional.length,
+                    missing: missingProvisional,
+                },
             },
         ];
     })

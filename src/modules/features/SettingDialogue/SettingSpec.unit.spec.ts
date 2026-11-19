@@ -1,5 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { statusDisplay, type ConfigurationItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { setLang } from "@/common/translation";
 import { getConfig, type OnDialogSettings } from "./settingConstants.ts";
 import {
     isValidSettingSpecValue,
@@ -95,6 +96,24 @@ describe("Advanced setting specifications", () => {
 });
 
 describe("General setting specifications", () => {
+    it("renders network warning choices in Traditional Chinese", () => {
+        setLang("zh-tw");
+        try {
+            const spec = createGeneralSettingSpecGroups({
+                showEditorStatusDetails: () => false,
+                showVerboseLog: () => false,
+            })
+                .flatMap(({ items }) => items)
+                .find(({ key }) => key === "networkWarningStyle");
+            if (spec?.control.type !== "dropdown") throw new Error("Expected a network warning dropdown");
+            expect(Object.values(spec.control.options()).sort()).toEqual(
+                ["顯示完整橫幅", "僅顯示圖示", "完全隱藏"].sort()
+            );
+        } finally {
+            setLang("def");
+        }
+    });
+
     it("shares every General, Logging, and File identity control between the imperative and declarative renderers", () => {
         const groups = createGeneralSettingSpecGroups({
             showEditorStatusDetails: () => true,
