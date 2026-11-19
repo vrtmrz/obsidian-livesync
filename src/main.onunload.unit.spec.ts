@@ -6,7 +6,6 @@ import { bindableFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib
 const unusedStartupDependencies: readonly [string, readonly string[]][] = [
     ["./serviceFeatures/replication/reflectionRecoveryReview", ["useReflectionRecoveryReview"]],
     ["@/serviceFeatures/useP2PSettingsPreparation", ["useP2PSettingsPreparation"]],
-    ["@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", ["setGetLanguage"]],
     ["./features/LiveSyncCommands.ts", ["LiveSyncCommands"]],
     ["./features/HiddenFileSync/CmdHiddenFileSync.ts", ["HiddenFileSync"]],
     ["./features/ConfigSync/CmdConfigSync.ts", ["ConfigSync"]],
@@ -60,7 +59,13 @@ const unusedStartupDependencies: readonly [string, readonly string[]][] = [
 
 beforeEach(() => {
     vi.resetModules();
-    vi.doMock("./deps", () => ({ Plugin: class {}, Notice: class {}, getLanguage: () => "en" }));
+    const getLanguage = () => "en";
+    vi.doMock("./deps", () => ({ Plugin: class {}, Notice: class {}, getLanguage }));
+    // The translation module reads the language as soon as it is imported.
+    vi.doMock("@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions", () => ({
+        getLanguage,
+        setGetLanguage: vi.fn(),
+    }));
     for (const [specifier, names] of unusedStartupDependencies) {
         vi.doMock(specifier, () => Object.fromEntries(names.map((name) => [name, vi.fn()])));
     }
