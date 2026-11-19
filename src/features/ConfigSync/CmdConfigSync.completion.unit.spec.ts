@@ -47,7 +47,7 @@ vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { MODE_PAUSED, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { ConfigSync } from "./CmdConfigSync";
 import { createOptionalFileSyncDatabase } from "../../../test/fixtures/optionalFileSyncDatabase";
@@ -216,5 +216,30 @@ describe("Customisation Sync optional save completion", () => {
         await expect(config.deleteConfigOnDatabase(databasePath)).resolves.toBe(false);
         const unchanged = await fixture.localDatabase.getDBEntry(databasePath);
         expect(unchanged && getDocData(unchanged.data)).toBe(original && getDocData(original.data));
+    });
+
+    it("skips a queued optional save when ownership switches to Ignore before flush", async () => {
+        const { fixture, config, storageAccess, databasePath } = await createConfigSync();
+        let releaseFlush!: () => void;
+        const whenFlushRequested = new Promise<void>((resolve) => {
+            releaseFlush = resolve;
+        });
+        const put = vi.spyOn(fixture.localDatabase, "putDBEntry");
+
+        const pending = config._processOptionalFileEventWithResult(path, { whenFlushRequested });
+        await vi.waitFor(() => expect(storageAccess.statHidden).toHaveBeenCalledOnce());
+        await Promise.resolve();
+        fixture.settings.pluginSyncExtendedSetting = {
+            "SNIPPET/test.css": {
+                key: "SNIPPET/test.css",
+                mode: MODE_PAUSED,
+                files: ["snippets/test.css"],
+            },
+        };
+        releaseFlush();
+
+        await expect(pending).resolves.toEqual({ kind: "not-applicable" });
+        expect(put).not.toHaveBeenCalled();
+        await expect(fixture.localDatabase.getDBEntry(databasePath)).resolves.toBe(false);
     });
 });

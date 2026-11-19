@@ -426,8 +426,8 @@ describe("HiddenFileSync pipeline contracts", () => {
         const getRaw = vi.fn().mockRejectedValueOnce(failure).mockResolvedValue({});
         const { hiddenFileSync } = createHiddenFileSync({ getRaw });
         hiddenFileSync.path2id = async (path) => path as unknown as DocumentID;
-        hiddenFileSync.queueConflictCheck("i:bad.txt" as FilePathWithPrefix);
-        hiddenFileSync.queueConflictCheck("i:good.txt" as FilePathWithPrefix);
+        hiddenFileSync.queueConflictCheck("i:.obsidian/bad.txt" as FilePathWithPrefix);
+        hiddenFileSync.queueConflictCheck("i:.obsidian/good.txt" as FilePathWithPrefix);
         await vi.advanceTimersByTimeAsync(100);
         expect(await hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed()).toBe(true);
         expect(getRaw).toHaveBeenCalledTimes(2);

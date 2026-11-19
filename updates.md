@@ -12,6 +12,11 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- When both **Customisation sync** and **Hidden File Sync** are enabled, **Selective** (including unconfigured default items) and **Flagged Selective** items are no longer automatically modified, uploaded, or conflict-resolved by **Hidden File Sync**, and exclusions no longer rely on a cached file list. (#825)
+    - **Ignore** excludes the item from both features, **Automatic** delegates the item to **Hidden File Sync** while still obeying its target and ignore patterns (displaying a Notice when chosen if any files are excluded by those patterns), and disabling **Customisation sync** returns hidden files to **Hidden File Sync**'s own selectors.
+
 ### Improved
 
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)

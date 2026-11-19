@@ -18,12 +18,15 @@
         MODE_PAUSED,
         type SYNC_MODE,
         MODE_SHINY,
+        type FilePath,
     } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { normalizePath } from "@/deps";
     import {
         HiddenFileSync,
         HIDDEN_FILE_SYNC_DISABLED_NOTICE,
+        HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE,
     } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
+    import { getHiddenFileSyncPatternExcludedFiles } from "@/features/HiddenFileCommon/optionalFileSyncSelection.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     import { $msg as translateMessage } from "@/common/translation";
@@ -175,6 +178,12 @@
         setMode(key, MODE_AUTOMATIC);
         const configDir = normalizePath(plugin.core.services.API.getSystemConfigDir());
         const files = getAutomaticSyncTargetFiles(key, configDir, plugin.core.settings.pluginSyncExtendedSetting);
+        const excludedFiles = getHiddenFileSyncPatternExcludedFiles(files, (file) =>
+            addOnHiddenFileSync.isTargetFileInPatterns(file as FilePath)
+        );
+        if (excludedFiles.length > 0) {
+            Logger(translateMessage(HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE), LOG_LEVEL_NOTICE);
+        }
         void addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {

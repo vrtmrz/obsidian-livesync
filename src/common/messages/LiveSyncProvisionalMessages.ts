@@ -85,6 +85,8 @@ export const liveSyncProvisionalEnglishMessages = {
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
         "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.",
     "Hidden File Sync initialisation was not started.": "Hidden File Sync initialisation was not started.",
+    "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.":
+        "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.",
     "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.":
         "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.",
     "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.":
@@ -532,6 +534,8 @@ export const liveSyncProvisionalJapaneseMessages: Partial<Record<LiveSyncProvisi
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
         "このデバイスでは非表示ファイル同期が無効です。Automatic を使用する場合や非表示ファイルを初期化する場合は、同期設定で有効にしてください。",
     "Hidden File Sync initialisation was not started.": "非表示ファイル同期は初期化されませんでした。",
+    "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.":
+        "この Automatic 項目のファイルの一部は、非表示ファイル同期の対象パターンまたは除外パターンにより除外されているため、自動同期されません。",
     "Unknown platform": "不明なプラットフォーム",
     "This removes only this device's record from the remote.":
         "リモートから削除されるのは、このデバイスの記録のみです。",
