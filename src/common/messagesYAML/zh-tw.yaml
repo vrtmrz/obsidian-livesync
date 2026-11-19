@@ -1542,10 +1542,28 @@ Ui:
       Overwrite: 覆寫
   SetupWizard:
     ApplySettingsInitialisation:
+      ApplyWithoutInitialisation: 只套用設定，略過初始化
+      Back: 查看其他套用方式
+      BypassGuidance: 只套用這些設定，可能會讓這台裝置無法使用現有的同步資料。請先確認無須重建，再選擇這個做法。
+      BypassTitle: 要略過初始化，只套用設定嗎？
+      ContinueFetch: 繼續取回同步資料
+      FetchOption: 重設此裝置上的同步
       FetchOptionDesc: 重新啟動後，會用遠端目前的同步資料重建這台裝置的本機資料庫。接著會比對 Vault 裡的檔案，並依遠端資料處理差異。
       FetchOptionP2PDesc: 重新啟動後，請選一台在線上的來源裝置。這台裝置會用來源裝置的資料重建自己的 LiveSync 資料庫。
+      Guidance: 這些設定會改變 LiveSync 解讀同步資料的方式。請選擇一種初始化方式，讓設定與初始化在重新啟動後一起生效。
+      KeepEditing: 繼續編輯設定
+      ProceedFetch: 重新啟動並取回同步資料
+      ProceedFetchP2P: 重新啟動並選擇來源裝置
+      ProceedRebuild: 重新啟動並覆寫伺服器資料
+      ProceedRebuildP2P: 重新啟動並準備此裝置
+      Question: 重新啟動後，要使用哪個來源的現有資料？
+      RebuildOption: 以此裝置的檔案覆寫伺服器資料
       RebuildOptionDesc: 用這個 Vault 目前的檔案重建本機與遠端資料庫。完成後，其他同步裝置都必須執行「重設此裝置上的同步」。
+      RebuildOptionP2P: 用這個 Vault 的檔案準備此裝置
       RebuildOptionP2PDesc: 用這個 Vault 目前的檔案重建這台裝置的本機 LiveSync 資料庫。這個操作會保留其他裝置上的資料。
+      RemoteVerificationGuidance: 使用目前的憑證與加密設定，無法驗證已設定的遠端。若繼續，重新啟動後可能無法取回同步資料。
+      RemoteVerificationTitle: 無法驗證遠端同步資料
+      Title: 套用設定並重新初始化同步
     Common:
       Back: 不，返回上一步
       Cancel: 取消
