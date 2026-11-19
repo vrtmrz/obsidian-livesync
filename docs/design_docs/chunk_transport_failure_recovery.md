@@ -15,16 +15,34 @@ change. The revised integrated implementation is included in Self-hosted
 LiveSync `1.0.51`, using
 [Commonlib 0.6.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.6.0)
 pinned in the manifest and lockfile, and has controlled Linux Obsidian
-verification. Natural iOS connection loss and recovery on a physical iPhone
-remain unverified. The historical results below are labelled by the earlier
+verification. The historical results below are labelled by the earlier
 candidate they exercised.
+
+In 1.0.51, an online restart or **Replicate now** recovered the waiting files on
+the reporter's iPhone. An offline restart followed by restoring the network left
+the foreground Vault idle. [iPhone test report](https://github.com/vrtmrz/obsidian-livesync/issues/1224#issuecomment-6977503970)
+
+The unreleased follow-up retries one CouchDB LiveSync start on the next online
+event when a confirmed network failure prevented that start. Its successful
+initial pull supplies the existing `remote` recovery signal. In Linux Obsidian
+1.12.7, the public 1.0.51 build left the file unapplied for the 30-second
+observation after the network returned. The candidate restored the exact file
+content and received a later edit through continuous synchronisation. Testing
+the automatic start on a physical iPhone remains pending. [Regression scenario](../../test/e2e-obsidian/scripts/issue1224-network-recovery.ts)
+
+While a start is pending, `plugin.pendingContinuousStart` exposes the observed
+`reason`, `hostOnlineAtFailure`, and `failedAt`. The
+`plugin.core.services.replicator.replicationStatics.value.statsUpdatedAt`
+field records the last statistics publication in epoch milliseconds and starts
+at `null` for a new Replicator. Reading either value performs no network or
+database operation.
 
 [Issue #1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224) reports
 ordinary start-up reflection failing before CouchDB becomes reachable. With
 on-demand fetching, later replication can succeed without changing the affected
 Metadata or retrieving its Chunks. The file then remains unapplied until another
 scan. Controlled Linux Obsidian tests reproduced this on public 1.0.47 and 1.0.50
-builds; the reporter's native iOS execution remains unconfirmed.
+builds. The iPhone follow-up above tested recovery in 1.0.51.
 
 Retain one automatic recovery attempt for a current document/revision when the
 resource required for its failed content read has recovered. Reuse the

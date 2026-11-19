@@ -70,6 +70,21 @@ These tests are intended for local verification, not the default CI gate. Reuse 
 - keep `_testdata/obsidian/squashfs-root` after running the AppImage installer, or
 - run `test:e2e:obsidian:install-appimage` again only when the local Obsidian version should change.
 
+## Issue #1224 network recovery
+
+This focused scenario requires a built plug-in artefact, a local CouchDB configured in `.test.env`, and the real Linux desktop Obsidian executable. It refuses non-loopback CouchDB hosts and uses only temporary Vaults and a unique database, which it removes during teardown.
+
+The following command tests the current built artefact. Set
+`E2E_OBSIDIAN_ARTIFACT_ROOT` to test an earlier build against the same scenario.
+
+```bash
+node --import tsx test/e2e-obsidian/scripts/issue1224-network-recovery.ts
+```
+
+The receiver starts with CDP network emulation set offline before the plug-in loads. The scenario inserts only remote Metadata through the existing received-document handler, checks that the result processor records the missing-Chunk file as Waiting, and reopens the same isolated Vault while it is still offline. After that offline start settles, CDP restores the network and the scenario checks the exact Vault content and a later edit sent through continuous synchronisation without a receiver retry or replication command. The candidate must expose the passive `pendingContinuousStart` diagnostic and keep scheduling controls private. The published 1.0.51 comparison uses its original interface.
+
+This exercises Linux desktop renderer network events. Physical iOS radio transitions and application suspension need device testing.
+
 ## Commands
 
 After changing plug-in source, use the focused wrapper rather than invoking a scenario directly. It always rebuilds `main.js` before launching real Obsidian, and it builds the local CLI too when the CLI-to-Obsidian scenario needs it:
@@ -93,7 +108,7 @@ npm run test:e2e:obsidian:focused -- sync-guard
 
 The wrapper accepts only maintained real-Obsidian scenario names; run it with `--help` for the current list. It deliberately does not manage CouchDB, Object Storage, or the P2P signalling relay. Start the required fixture first, or use the complete service-managed suite.
 
-`replication-status` uses isolated Vaults without a remote service. It opens the fixture editor before loading the plug-in, then checks the resulting overlay and subsequent leaf transitions. It injects synthetic replication statistics into real Obsidian to check the ⏩ icon and the push and pull comparison counts. The comparison cases cover a push-only count while the `sent` total is zero, independent three-second expiry when both directions are active, a zeroed state before a fresh 0-to-1 count, restoration of the ordinary Sync icon when CouchDB is idle, and error-icon priority. The plain-text status is checked for separate comparison and transfer counts, including its `(LIVE)` labels.
+`replication-status` uses isolated Vaults without a remote service. It opens the fixture editor before loading the plug-in, then checks the resulting overlay and subsequent leaf transitions. It injects synthetic replication statistics into real Obsidian to check the ⏩ icon and the push and pull comparison counts. The comparison cases cover a push-only count while the `sent` total is zero, independent three-second expiry when both directions are active, a zeroed state before a fresh 0-to-1 count, the 💤 paused state after CouchDB progress becomes idle, and error-icon priority. The plain-text status is checked for separate comparison and transfer counts, including `(0)` when reported positions reach or pass the source boundary.
 
 The scenario also checks independently styled numeric items, stable rendered digit widths, computed right alignment, and unchanged DOM nodes for repeated values. It feeds the existing queue sources and checks their values in both displays, the separate P2P line, file warnings and their compact icon, and the corresponding plain-text status. It verifies the inactive class, retained inactive content and width, and the ability to override the default hiding behaviour through CSS. The desktop checks ensure that the status bar keeps its compact spacing.
 

@@ -8,11 +8,10 @@ import { useBasicCommandsFeature } from "./basicCommands";
 import { useConflictResolutionFeature } from "./conflictResolution";
 import { createReplicationFeature } from "./replication";
 import type { ReflectionRecoveryView } from "./replication/reflectionRecoveryState";
-import { useReplicationScheduling, type ReplicationSchedulingControl } from "./replicationScheduling";
+import { useReplicationScheduling, type ReplicationSchedulingViews } from "./replicationScheduling";
 
 /** Focused feature views available while a host composes its own features and UI. */
-export interface LiveSyncCoreFeatureViews {
-    readonly replicationScheduling: ReplicationSchedulingControl;
+export interface LiveSyncCoreFeatureViews extends ReplicationSchedulingViews {
     readonly reflectionRecovery: ReflectionRecoveryView;
 }
 
@@ -21,7 +20,7 @@ export type HostFeatureInitialiser<TCore> = (core: TCore, views: LiveSyncCoreFea
 /** Register shared features which precede host-specific composition. */
 export function initialiseSharedCoreFeatures<T extends ServiceContext, TCommands extends IMinimumLiveSyncCommands>(
     core: LiveSyncBaseCore<T, TCommands>
-): Pick<LiveSyncCoreFeatureViews, "replicationScheduling"> {
+): ReplicationSchedulingViews {
     useConflictResolutionFeature({
         services: core.services,
         serviceModules: core.serviceModules,
@@ -30,7 +29,7 @@ export function initialiseSharedCoreFeatures<T extends ServiceContext, TCommands
     useTargetFilters(core);
     usePrepareDatabaseForUse(core);
     useRemoteConfigurationMigration(core);
-    return Object.freeze({ replicationScheduling: useReplicationScheduling(core) });
+    return useReplicationScheduling(core);
 }
 
 /**

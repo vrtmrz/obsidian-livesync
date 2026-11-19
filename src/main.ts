@@ -1,4 +1,5 @@
 import { useReflectionRecoveryReview } from "./serviceFeatures/replication/reflectionRecoveryReview";
+import type { ReplicationSchedulingViews } from "./serviceFeatures/replicationScheduling";
 import { useP2PSettingsPreparation } from "@/serviceFeatures/useP2PSettingsPreparation";
 import { LOG_LEVEL_URGENT } from "octagonal-wheels/common/logger";
 import { getLanguage, Notice, Plugin, type App, type PluginManifest } from "./deps";
@@ -62,6 +63,12 @@ import { useDatabaseConnectionRecovery } from "./serviceFeatures/databaseConnect
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
 export default class ObsidianLiveSyncPlugin extends Plugin {
     core: LiveSyncCore;
+    #readPendingContinuousStart?: ReplicationSchedulingViews["readPendingContinuousStart"];
+
+    /** Network failure awaiting a CouchDB LiveSync start in this Vault, if any. */
+    get pendingContinuousStart() {
+        return this.#readPendingContinuousStart?.();
+    }
 
     /**
      * Initialise service modules.
@@ -188,6 +195,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
                 return addOns;
             },
             (core, coreFeatureViews) => {
+                this.#readPendingContinuousStart = coreFeatureViews.readPendingContinuousStart;
                 useReflectionRecoveryReview(core, coreFeatureViews.reflectionRecovery, serviceHub.context.noticeGroups);
                 //TODO Fix: useXXXX
                 const featuresInitialiser = enableI18nFeature;

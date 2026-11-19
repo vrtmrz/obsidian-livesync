@@ -12,7 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Fixed
+
+- In CouchDB LiveSync mode, an offline start can recover when the device returns online with the Vault open. A continuous start that failed because of a confirmed connection problem is tried once on that return. Its initial pull lets waiting files resume through the usual recovery process. (#1224)
+
 ### Improved
+
+- The sync display shows when a Replicator has yet to connect (`◌`), a session has closed (`⏹`), or a finite transfer has completed (`✅`). CouchDB and P2P show sequence progress as a countdown to `(0)`. (#1224)
 
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
 

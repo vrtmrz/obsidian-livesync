@@ -3,7 +3,12 @@ import { withOwnedRemoteResource } from "@/common/core/replication/ownedRemoteRe
 import { LOG_LEVEL_INFO, LOG_LEVEL_NOTICE, LOG_LEVEL_VERBOSE, Logger } from "octagonal-wheels/common/logger";
 import { MARK_LOG_NETWORK_ERROR } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import { UnresolvedErrorManager } from "@vrtmrz/livesync-commonlib/compat/services/base/UnresolvedErrorManager";
-import { REMOTE_RESOURCE_KINDS } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    getReplicationNetworkFailure,
+    observedOfflineReplicationFailure,
+    REMOTE_RESOURCE_KINDS,
+    type ReplicationPreparationResult,
+} from "@vrtmrz/livesync-commonlib/replication";
 import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore";
 
 type ReplicationPreflightServices = Pick<LiveSyncBaseCore["services"], "API" | "replicator" | "setting">;
@@ -17,11 +22,12 @@ export function createOnlineReplicationPreflight(
     errorManager: UnresolvedErrorManager,
     context: ReplicationPreflightContext
 ) {
-    return function isOnlineAndCanReplicate(showMessage: boolean): Promise<boolean> {
+    return function isOnlineAndCanReplicate(showMessage: boolean): Promise<ReplicationPreparationResult> {
         const errorMessage = "Network is offline";
         if (!context.services.API.isOnline) {
+            const failure = observedOfflineReplicationFailure();
             errorManager.showError(errorMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-            return Promise.resolve(false);
+            return Promise.resolve(failure);
         }
         errorManager.clearError(errorMessage);
         return Promise.resolve(true);
@@ -36,7 +42,7 @@ export function createSecuritySeedPreflight(
     errorManager: UnresolvedErrorManager,
     context: ReplicationPreflightContext
 ) {
-    return async function canReplicateWithSecuritySeed(showMessage: boolean): Promise<boolean> {
+    return async function canReplicateWithSecuritySeed(showMessage: boolean): Promise<ReplicationPreparationResult> {
         const currentSettings = context.services.setting.currentSettings();
         const errorMessage = $msg("Replicator.Message.InitialiseFatalError");
         // This is a fatal preparation error, so the non-interactive path still
@@ -57,7 +63,7 @@ export function createSecuritySeedPreflight(
         } catch (error) {
             Logger(error, LOG_LEVEL_VERBOSE);
             errorManager.showError(ensureMessage, showMessage ? LOG_LEVEL_NOTICE : LOG_LEVEL_INFO);
-            return false;
+            return getReplicationNetworkFailure(error) ?? false;
         }
         errorManager.clearError(ensureMessage);
         return true;

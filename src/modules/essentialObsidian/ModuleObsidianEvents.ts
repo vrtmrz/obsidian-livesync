@@ -187,7 +187,8 @@ export class ModuleObsidianEvents extends AbstractObsidianModule {
         scheduleTask("watch-window-visibility", 100, () => fireAndForget(() => this.watchWindowVisibilityAsync()));
     }
 
-    watchOnline() {
+    watchOnline(event: Event) {
+        this.services.context.recordNetworkState(event.type === "online");
         scheduleTask("watch-online", 500, () => fireAndForget(() => this.watchOnlineAsync()));
     }
     async watchOnlineAsync() {

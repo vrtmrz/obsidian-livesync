@@ -18,8 +18,8 @@ export function selectReplicationStatus(
 ): { primary: PeerStatusProjection; auxiliary: PeerStatusProjection } {
     if (!p2pIsPrimary) return { primary, auxiliary: p2p };
     const parts: StatusBarPart[] = p2p.parts.length
-        ? [{ key: "sync", text: "Sync: " }, ...p2p.parts]
-        : [{ key: "sync", text: "Sync: 💤 P2P" }];
+        ? p2p.parts
+        : [{ key: "sync", text: "💤" }];
     return { primary: { message: partsMessage(parts), parts }, auxiliary: { message: "", parts: [] } };
 }
 
@@ -34,23 +34,19 @@ function directionParts(
     const progress = peer[direction];
     const key = `p2p-${peer.peerId}-${direction}`;
     const arrow = direction === "sending" ? "↑" : "↓";
-    const parts: StatusBarPart[] = progress.statistics
-        ? [
-              {
-                  key,
-                  text: ` ${arrow} `,
-                  value: progress.statistics.documents,
-                  title: direction === "sending" ? "Sent document revisions" : "Received document revisions",
-              },
-          ]
-        : [
-              {
-                  key,
-                  text: ` ${arrow} seq `,
-                  value: progress.current,
-                  suffix: progress.current === progress.max ? "" : ` (${progress.max})`,
-              },
-          ];
+    const documentCount = progress.statistics?.documents;
+    const hasDocumentCount = typeof documentCount === "number" && Number.isFinite(documentCount);
+    const hasSequencePosition = progress.isActive && (progress.current !== 0 || progress.max !== 0);
+    const remaining = hasSequencePosition ? Math.max(0, progress.max - progress.current) : undefined;
+    const parts: StatusBarPart[] = [
+        {
+            key,
+            text: hasDocumentCount ? ` ${arrow} ` : ` ${arrow} —`,
+            ...(hasDocumentCount ? { value: documentCount } : {}),
+            ...(remaining === undefined ? {} : { suffix: ` (${remaining})` }),
+            title: direction === "sending" ? "Sent document revisions" : "Received document revisions",
+        },
+    ];
     if (checkedChanges !== undefined) {
         parts.push({
             key: `${key}-ff`,
@@ -63,7 +59,7 @@ function directionParts(
 }
 
 function partsMessage(parts: readonly StatusBarPart[]): string {
-    return parts.map((part) => part.text + (part.value === undefined ? "" : part.value + (part.suffix ?? ""))).join("");
+    return parts.map((part) => part.text + (part.value ?? "") + (part.suffix ?? "")).join("");
 }
 
 /** Retains transfer counts while independently expiring each peer's directional comparison labels. */

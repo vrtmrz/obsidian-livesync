@@ -7,13 +7,13 @@ import {
     type EntryDoc,
     type DocumentID,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { REMOTE_FEATURE_GENERATION } from "@vrtmrz/livesync-commonlib/replication";
+import { REMOTE_FEATURE_GENERATION, type ReplicationPreparationResult } from "@vrtmrz/livesync-commonlib/replication";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { EVENT_APPLICATION_READY } from "@/common/events";
 import { createReplicationFeature, useReplicationFeature } from "./index";
 import { ReplicateResultProcessor } from "./ReplicateResultProcessor";
 
-type BooleanHandler = (showMessage: boolean) => Promise<boolean>;
+type PreparationHandler = (showMessage: boolean) => Promise<ReplicationPreparationResult>;
 type ParseHandler = (documents: PouchDB.Core.ExistingDocument<EntryDoc>[]) => Promise<boolean>;
 type KeyValueDBFixture = {
     readonly kvDB: {
@@ -49,8 +49,8 @@ function setup(options: SetupOptions = {}) {
     const read = vi.fn(async () => new Uint8Array([1]));
     const dispose = vi.fn(async () => undefined);
     const createRemoteResource = vi.fn(async () => ({ read, dispose }));
-    const beforeReplicateHandlers = new Map<number, BooleanHandler>();
-    const centralRemoteHandlers: BooleanHandler[] = [];
+    const beforeReplicateHandlers = new Map<number, PreparationHandler>();
+    const centralRemoteHandlers: PreparationHandler[] = [];
     const failureHandlers: ((target: unknown, error: unknown) => Promise<boolean>)[] = [];
     const finiteSuccessHandlers: (() => Promise<boolean>)[] = [];
     let parseHandler: ParseHandler | undefined;
@@ -76,12 +76,12 @@ function setup(options: SetupOptions = {}) {
         replication: {
             replicationResultCount: { value: 0 },
             onBeforeReplicate: {
-                addHandler: vi.fn((handler: BooleanHandler, priority = 0) => {
+                addHandler: vi.fn((handler: PreparationHandler, priority = 0) => {
                     beforeReplicateHandlers.set(priority, handler);
                 }),
             },
             onPrepareCentralRemoteReplication: {
-                addHandler: vi.fn((handler: BooleanHandler) => centralRemoteHandlers.push(handler)),
+                addHandler: vi.fn((handler: PreparationHandler) => centralRemoteHandlers.push(handler)),
             },
             onReplicationFailed: { addHandler: vi.fn() },
             onFileReflectionFailed: {
@@ -470,6 +470,14 @@ describe("replication serviceFeature composition", () => {
         expect(dispose).toHaveBeenCalledOnce();
     });
 
+    it("refuses an unclassified seed read failure and still disposes the resource", async () => {
+        const { centralRemoteHandlers, dispose, read } = setup();
+        const error = new Error("remote read failed");
+        read.mockRejectedValueOnce(error);
+        await expect(centralRemoteHandlers[0](false)).resolves.toBe(false);
+        expect(dispose).toHaveBeenCalledOnce();
+    });
+
     it("keeps generic preflight separate from central-remote preparation", async () => {
         const { beforeReplicateHandlers, centralRemoteHandlers, createRemoteResource } = setup();
         const online = beforeReplicateHandlers.get(10);
@@ -484,6 +492,20 @@ describe("replication serviceFeature composition", () => {
 
         await expect(centralRemoteHandlers[0](false)).resolves.toBe(true);
         expect(createRemoteResource).toHaveBeenCalledOnce();
+    });
+
+    it("reports a disconnection observed by the host after the Security Seed was read", async () => {
+        const { services, centralRemoteHandlers, beforeReplicateHandlers } = setup();
+        const checkOnline = beforeReplicateHandlers.get(10)!;
+        await expect(centralRemoteHandlers[0](false)).resolves.toBe(true);
+        await expect(checkOnline(false)).resolves.toBe(true);
+
+        services.API.isOnline = false;
+        await expect(checkOnline(false)).resolves.toEqual({
+            reason: "offline",
+            hostOnlineAtFailure: false,
+            failedAt: expect.any(Number),
+        });
     });
 
     it("continues held results when Commonlib establishes application readiness", () => {

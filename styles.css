@@ -937,6 +937,22 @@ body.is-mobile .livesync-compatibility-review-notice {
     border-radius: var(--radius-s);
 }
 
+.livesync-stat-item:not(.livesync-stat-inactive) ~ .livesync-stat-sync {
+    margin-inline-start: 0.5em;
+    padding-inline-start: 0.5em;
+    border-inline-start: 1px solid var(--background-modifier-border);
+}
+
+.livesync-stat-file-skip {
+    padding-inline: 0.25em;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+}
+
+.syncstatusbar .livesync-stat-file-skip {
+    margin-inline-start: 0.5em;
+}
+
 .livesync-stat-item.livesync-stat-inactive {
     display: none;
 }

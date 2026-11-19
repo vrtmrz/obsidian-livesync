@@ -235,6 +235,18 @@ describe("createStatusBarRenderer", () => {
         renderer.dispose();
     });
 
+    it("renders a suffix when the prefix carries an unavailable numeric value", () => {
+        const { root, parent } = createFixture();
+        const renderer = createStatusBarRenderer(parent);
+
+        renderer.render([{ key: "p2p", text: " ↑ —", suffix: " (1)" }]);
+
+        const item = findItem(root, "p2p");
+        expect(item.textContent).toBe(" ↑ — (1)");
+        expect(findValue(item).hidden).toBe(true);
+        renderer.dispose();
+    });
+
     it("does not mutate the DOM when the same parts are rendered again", () => {
         const { document, parent } = createFixture();
         const renderer = createStatusBarRenderer(parent);

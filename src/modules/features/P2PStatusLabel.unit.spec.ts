@@ -34,20 +34,28 @@ describe("P2P progress display", () => {
 
     it("shows transferred revisions independently from seq and zero-transfer comparisons", () => {
         const { display, source } = displayFor();
-        expect(display.value.message).toBe("⚡ peer-a ↑ 2 ⏩↑ 40 ↓ 0 ⏩↓ 33");
+        expect(display.value.message).toBe("⚡ peer-a ↑ 2 (100) ⏩↑ 40 ↓ 0 (100) ⏩↓ 33");
         expect(display.value.parts.find((part) => part.key === "p2p-peer-a-fetching")).toMatchObject({ value: 0 });
         vi.advanceTimersByTime(3_000);
-        expect(display.value.message).toBe("⚡ peer-a ↑ 2 ↓ 0");
+        expect(display.value.message).toBe("⚡ peer-a ↑ 2 (100) ↓ 0 (100)");
         expect(source.value[0].fetching.statistics).toEqual({ documents: 0, checkedChanges: 33 });
     });
 
-    it("labels legacy seq honestly and distinguishes unavailable counts from measured zero", () => {
+    it("shows an em dash for unreported document counts and retains reported sequence progress", () => {
         const legacy = peer();
         delete legacy.sending.statistics;
         const { display } = displayFor([legacy]);
-        expect(display.value.message).toContain("↑ seq 800 (900)");
-        expect(display.value.message).toContain("↓ 0 ⏩↓ 33");
+        expect(display.value.message).toContain("↑ — (100)");
+        expect(display.value.message).toContain("↓ 0 (100) ⏩↓ 33");
         expect(display.value.message).not.toContain("⏩↑");
+
+        const initial = peer();
+        delete initial.sending.statistics;
+        initial.sending.current = 0;
+        initial.sending.max = 0;
+        const { display: initialDisplay } = displayFor([initial]);
+        expect(initialDisplay.value.message).toContain("↑ —");
+        expect(initialDisplay.value.message).not.toContain("↑ — (");
     });
 
     it("expires independently by direction and peer without extending on unrelated activity", () => {
@@ -57,8 +65,8 @@ describe("P2P progress display", () => {
         next.fetching.statistics = { documents: 0, checkedChanges: 66 };
         source.value = [next, peer("peer-b")];
         vi.advanceTimersByTime(1_000);
-        expect(display.value.peers.get("peer-a")?.message).toBe("↑ 2 ↓ 0 ⏩↓ 66");
-        expect(display.value.peers.get("peer-b")?.message).toBe("↑ 2 ↓ 0");
+        expect(display.value.peers.get("peer-a")?.message).toBe("↑ 2 (100) ↓ 0 (100) ⏩↓ 66");
+        expect(display.value.peers.get("peer-b")?.message).toBe("↑ 2 (100) ↓ 0 (100)");
         source.value = [{ ...next, peerName: "renamed" }, peer("peer-b")];
         vi.advanceTimersByTime(2_000);
         expect(display.value.message).not.toContain("⏩");
@@ -114,7 +122,7 @@ describe("P2P progress display", () => {
             snapshot = value;
         });
         disposables.push({ dispose });
-        expect(snapshot?.peers.get("peer-a")?.message).toContain("↓ 0 ⏩↓ 33");
+        expect(snapshot?.peers.get("peer-a")?.message).toContain("↓ 0 (100) ⏩↓ 33");
         listener?.([]);
         expect(snapshot?.peers.size).toBe(0);
         dispose();
@@ -133,16 +141,16 @@ describe("P2P progress display", () => {
 
     it("uses P2P for the Only P2P primary display and preserves the CouchDB display when auxiliary", () => {
         const { display } = displayFor();
-        const couchDB = { message: "Sync: ⚡ ↑ 12 ↓ 34", parts: [{ key: "sent", text: " ↑ ", value: 12 }] };
+        const couchDB = { message: "⚡ ↑ 12 ↓ 34", parts: [{ key: "sent", text: " ↑ ", value: 12 }] };
         const auxiliary = selectReplicationStatus(couchDB, display.value, false);
         expect(auxiliary.primary).toBe(couchDB);
         expect(auxiliary.auxiliary.message).toContain("↑ 2");
         const onlyP2P = selectReplicationStatus(couchDB, display.value, true);
-        expect(onlyP2P.primary.message).toBe("Sync: ⚡ peer-a ↑ 2 ⏩↑ 40 ↓ 0 ⏩↓ 33");
+        expect(onlyP2P.primary.message).toBe("⚡ peer-a ↑ 2 (100) ⏩↑ 40 ↓ 0 (100) ⏩↓ 33");
         expect(onlyP2P.auxiliary.message).toBe("");
         expect(couchDB.parts[0].value).toBe(12);
         expect(
             selectReplicationStatus(couchDB, { message: "", parts: [], peers: new Map() }, true).primary.message
-        ).toBe("Sync: 💤 P2P");
+        ).toBe("💤");
     });
 });

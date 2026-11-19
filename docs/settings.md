@@ -194,7 +194,7 @@ We can show the status of synchronisation on the status bar. (Default: On)
 
 Setting key: hideFileWarningNotice
 
-If enabled, the ⛔ icon will be shown inside the status instead of the file warnings banner. No details will be shown.
+If enabled, a framed icon inside the status replaces the file warnings banner: 📄⛔ for a file excluded from synchronisation, or 📄⚠️ for a compatibility warning alone. If both apply, the status shows 📄⛔. The marker does not include details.
 
 #### Network warning style
 

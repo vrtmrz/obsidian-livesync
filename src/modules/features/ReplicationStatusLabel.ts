@@ -122,14 +122,31 @@ export type ReplicationStatusProjection = {
     parts: StatusBarPart[];
 };
 
+function numericSequencePosition(lastSeq: string | number | undefined): number | undefined {
+    if (typeof lastSeq === "number") {
+        return Number.isFinite(lastSeq) && lastSeq >= 0 ? lastSeq : undefined;
+    }
+    if (typeof lastSeq !== "string") return undefined;
+    const numericPrefix = /^(\d+)(?:-|$)/u.exec(lastSeq)?.[1];
+    if (numericPrefix === undefined) return undefined;
+    const parsed = Number(numericPrefix);
+    return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function remainingSequenceLabel(
     key: string,
     lastSyncSeq: number,
-    maxSeq: number
+    maxSeq: number,
+    lastSeq: string | number | undefined,
+    transferredDocuments: number
 ): { text: string; part?: StatusBarPart } {
-    if (lastSyncSeq === 0) return { text: "" };
-    if (lastSyncSeq >= maxSeq) return { text: " (LIVE)", part: { key, text: " (LIVE)" } };
-    const remaining = maxSeq - lastSyncSeq;
+    const sequencePosition = numericSequencePosition(lastSeq);
+    const lastKnownTransferPosition =
+        transferredDocuments > 0 && Number.isFinite(lastSyncSeq) && lastSyncSeq > 0 ? lastSyncSeq : undefined;
+    const currentPosition = sequencePosition ?? lastKnownTransferPosition;
+    if (currentPosition === undefined || !Number.isFinite(maxSeq)) return { text: "" };
+    const remaining = Math.max(0, maxSeq - currentPosition);
+    if (!Number.isFinite(remaining)) return { text: "" };
     return {
         text: " (" + remaining + ")",
         part: { key, text: " (", value: remaining, suffix: ")" },
@@ -144,14 +161,16 @@ export function projectReplicationStatusLabel(
 ): ReplicationStatusProjection {
     const { sent, arrived, maxPullSeq, maxPushSeq, lastSyncPullSeq, lastSyncPushSeq } = stats;
     const networkActivity = formatRemoteActivityStatusLabel(networkStatus);
-    let pushRemaining: { text: string; part?: StatusBarPart } = { text: "" };
-    let pullRemaining: { text: string; part?: StatusBarPart } = { text: "" };
     let icon: string;
     switch (stats.syncStatus) {
         case "CLOSED":
-        case "COMPLETED":
-        case "NOT_CONNECTED":
             icon = "⏹";
+            break;
+        case "COMPLETED":
+            icon = "✅";
+            break;
+        case "NOT_CONNECTED":
+            icon = "◌";
             break;
         case "STARTED":
             icon = "🌀";
@@ -163,8 +182,6 @@ export function projectReplicationStatusLabel(
         case "JOURNAL_SEND":
         case "JOURNAL_RECEIVE":
             icon = stats.syncStatus === "JOURNAL_SEND" ? "📦↑" : stats.syncStatus === "JOURNAL_RECEIVE" ? "📦↓" : "⚡";
-            pushRemaining = remainingSequenceLabel("push-remaining", lastSyncPushSeq, maxPushSeq);
-            pullRemaining = remainingSequenceLabel("pull-remaining", lastSyncPullSeq, maxPullSeq);
             break;
         case "ERRORED":
             icon = "⚠";
@@ -174,6 +191,20 @@ export function projectReplicationStatusLabel(
     }
 
     const couchDB = stats.couchDB;
+    const pushRemaining = remainingSequenceLabel(
+        "push-remaining",
+        lastSyncPushSeq,
+        maxPushSeq,
+        couchDB?.push?.lastSeq,
+        sent
+    );
+    const pullRemaining = remainingSequenceLabel(
+        "pull-remaining",
+        lastSyncPullSeq,
+        maxPullSeq,
+        couchDB?.pull?.lastSeq,
+        arrived
+    );
     const isFastForwardChecking =
         stats.syncStatus !== "ERRORED" &&
         couchDB !== undefined &&
@@ -208,7 +239,7 @@ export function projectReplicationStatusLabel(
     } else if (networkActivity !== "") {
         parts.push({ key: "network", text: networkActivity });
     }
-    parts.push({ key: "sync", text: "Sync: " + icon });
+    parts.push({ key: "sync", text: icon });
     for (const direction of ["push", "pull"] as const) {
         const count = visibleFastForwardCounts[direction];
         if (count === undefined) continue;
@@ -229,7 +260,6 @@ export function projectReplicationStatusLabel(
         icon,
         message:
             networkActivity +
-            "Sync: " +
             icon +
             fastForwardLabel +
             " ↑ " +

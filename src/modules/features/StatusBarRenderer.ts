@@ -76,7 +76,7 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
 
         if (part.value === undefined) {
             setText(item.valueText, "");
-            setText(item.suffix, "");
+            setText(item.suffix, part.suffix ?? "");
             setHidden(item.value, true);
             setWidth(item.value, "");
             item.widestValueLength = 0;
