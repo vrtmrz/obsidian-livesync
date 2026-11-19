@@ -27,6 +27,7 @@ import SetupRemoteP2P from "./SetupWizard/dialogs/SetupRemoteP2P.svelte";
 import SetupRemoteE2EE from "./SetupWizard/dialogs/SetupRemoteE2EE.svelte";
 import { decodeSettingsFromQRCodeData } from "@vrtmrz/livesync-commonlib/compat/API/processSetting";
 import { AbstractModule } from "@/modules/AbstractModule.ts";
+import { $msg } from "@/common/translation";
 import type {
     OutroAskUserModeResultType,
     OutroExistingUserResultType,
@@ -495,10 +496,9 @@ export class SetupManager extends AbstractModule {
         activate: boolean = true,
         extra: () => void = () => {}
     ): Promise<boolean> {
-        newConf = await this.services.setting.adjustSettings({
-            ...this.settings,
-            ...newConf,
-        });
+        newConf = await this.services.setting.adjustSettings(
+            copySettingsForRemoteProfileUpdate({ ...this.settings, ...newConf })
+        );
         const enableUnencryptedContent =
             newConf.encrypt === true &&
             normaliseAcceptUnencryptedContent(newConf.acceptUnencryptedContent) &&
@@ -547,11 +547,14 @@ export class SetupManager extends AbstractModule {
                 }
             }
         }
-        const component = userMode === UserMode.NewUser ? OutroNewUser : OutroExistingUser;
-        const confirm = await this.dialogManager.openWithExplicitCancel<
-            OutroNewUserResultType | OutroExistingUserResultType,
-            OutroApplyInitialData
-        >(component, { isP2P: isP2PMainRemote(newConf), enableUnencryptedContent });
+        const initialData = { isP2P: isP2PMainRemote(newConf), enableUnencryptedContent };
+        const confirm =
+            userMode === UserMode.NewUser
+                ? await this.dialogManager.openWithExplicitCancel<OutroNewUserResultType, OutroApplyInitialData>(
+                      OutroNewUser,
+                      initialData
+                  )
+                : await this.confirmAdditionalDeviceRestart(initialData);
         if (confirm === "cancelled") {
             this._log("User cancelled applying settings from wizard..", LOG_LEVEL_NOTICE);
             return false;
@@ -573,6 +576,28 @@ export class SetupManager extends AbstractModule {
         }
         // Settings applied, but may require rebuild to take effect.
         return false;
+    }
+
+    private async confirmAdditionalDeviceRestart(
+        initialData: OutroApplyInitialData
+    ): Promise<OutroExistingUserResultType> {
+        const review = await this.dialogManager.openWithExplicitCancel<
+            OutroExistingUserResultType,
+            OutroApplyInitialData
+        >(OutroExistingUser, initialData);
+        if (review !== "apply") {
+            return "cancelled";
+        }
+
+        const title = $msg("Ui.SetupWizard.OutroExistingUser.RestartConfirmationTitle");
+        const message = $msg(
+            initialData.isP2P
+                ? "Ui.SetupWizard.OutroExistingUser.P2PFetchSyncGuidance"
+                : "Ui.SetupWizard.OutroExistingUser.FetchSyncGuidance"
+        );
+        const restart = $msg(initialData.isP2P ? "Restart and Select Source Device" : "Restart and Fetch Data");
+        const action = await this.core.confirm.confirmWithMessage(title, message, [restart, $msg("Cancel")], restart);
+        return action === restart ? "apply" : "cancelled";
     }
 
     /**

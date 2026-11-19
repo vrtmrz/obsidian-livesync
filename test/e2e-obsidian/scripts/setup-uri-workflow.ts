@@ -277,20 +277,28 @@ async function captureAndStartInitialisation(port: number, mode: "new" | "existi
             ? "Setup Complete: Preparing to Initialise Server"
             : "Setup Complete: Preparing to Fetch Synchronisation Data";
     const button = mode === "new" ? "Restart and Initialise Server" : "Restart and Fetch Data";
+    const restartTitle = mode === "existing" ? "Before restarting" : title;
+    if (mode === "existing") {
+        await withObsidianPage(port, async (page) => {
+            await modalByTitle(page, title)
+                .getByRole("button", { name: "Next", exact: true })
+                .click({ timeout: uiTimeoutMs });
+        });
+    }
     const screenshot = await captureObsidianDialogue(
         port,
         `setup-uri-${mode === "new" ? "first-initialise" : "second-fetch"}.png`,
         async (page) => {
-            await modalByTitle(page, title).waitFor({ state: "visible", timeout: uiTimeoutMs });
+            await modalByTitle(page, restartTitle).waitFor({ state: "visible", timeout: uiTimeoutMs });
         }
     );
     await captureGuideDialogue(
         port,
         `guide-quick-setup-${mode === "new" ? "first-initialise" : "second-fetch"}.png`,
-        title
+        restartTitle
     );
     await withObsidianPage(port, async (page) => {
-        await modalByTitle(page, title).getByRole("button", { name: button }).click({ timeout: uiTimeoutMs });
+        await modalByTitle(page, restartTitle).getByRole("button", { name: button }).click({ timeout: uiTimeoutMs });
     });
     return screenshot;
 }

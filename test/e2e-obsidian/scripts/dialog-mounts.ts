@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { Locator, Page } from "playwright";
 import { decodeSettingsFromSetupURI } from "@vrtmrz/livesync-commonlib/setup-uri";
 import { decryptString } from "@vrtmrz/livesync-commonlib/compat/encryption/stringEncryption";
-import { SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { REMOTE_COUCHDB, REMOTE_P2P, SETTING_KEY_P2P_DEVICE_NAME } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { $msg } from "../../../src/common/translation.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import { createE2eCouchDbPluginData, waitForLiveSyncCoreReady } from "../runner/liveSyncWorkflow.ts";
@@ -54,6 +54,7 @@ type DialogueRunState = {
     releaseDeviceNameRead?: () => void;
     error?: string;
     expected?: unknown;
+    fetchScheduled?: boolean;
     kind: string;
     result?: unknown;
 };
@@ -73,6 +74,9 @@ type LiveSyncTestPlugin = {
             createAllChunks(force: boolean): Promise<unknown>;
         };
         modules: SetupManagerHandle[];
+        rebuilder: {
+            scheduleFetch(prepareBeforeRestart?: () => Promise<void>): Promise<boolean>;
+        };
         services: {
             setting: {
                 config: {
@@ -292,6 +296,142 @@ async function assertDialogueRunCompleted(): Promise<DialogueRunState> {
         throw new Error(`The mounted dialogue failed: ${state.error}`);
     }
     return state;
+}
+
+async function verifyMobileAdditionalDeviceFetchGuidance(): Promise<void> {
+    const cases = [
+        {
+            remoteType: REMOTE_COUCHDB,
+            title: "Setup Complete: Preparing to Fetch Synchronisation Data",
+            action: "Restart and Fetch Data",
+            disabledSetting: "automatic synchronisation",
+            settingsPage: "Sync Settings",
+            useCancelButton: true,
+        },
+        {
+            remoteType: REMOTE_P2P,
+            title: "Setup Complete: Preparing to Fetch from Another Device",
+            action: "Restart and Select Source Device",
+            disabledSetting: "P2P auto-start and change announcements",
+            settingsPage: "P2P Status",
+            useCancelButton: false,
+        },
+    ];
+    for (const { remoteType, title, action, disabledSetting, settingsPage, useCancelButton } of cases) {
+        await withObsidianPage(obsidianRemoteDebuggingPort(), async (page) => {
+            await page.setViewportSize({ width: 375, height: 600 });
+            try {
+                await page.evaluate(
+                    ({ remoteType, stateKey }) => {
+                        const plugin = (globalThis as ObsidianTestGlobal).app?.plugins?.plugins["obsidian-livesync"];
+                        const manager = plugin?.core.modules.find(
+                            (module) => module.constructor.name === "SetupManager"
+                        );
+                        if (!plugin || typeof manager?.onConfirmApplySettingsFromWizard !== "function") {
+                            throw new Error("Could not find SetupManager");
+                        }
+                        const state: DialogueRunState = {
+                            kind: "additional-device-fetch",
+                            done: false,
+                            fetchScheduled: false,
+                        };
+                        (globalThis as unknown as Record<string, DialogueRunState>)[stateKey] = state;
+                        const { rebuilder } = plugin.core;
+                        const scheduleFetch = rebuilder.scheduleFetch;
+                        rebuilder.scheduleFetch = async () => {
+                            state.fetchScheduled = true;
+                            return false;
+                        };
+                        const settings = {
+                            ...plugin.core.settings,
+                            remoteType,
+                            remoteConfigurations: {},
+                            activeConfigurationId: "",
+                            encrypt: true,
+                            acceptUnencryptedContent: true,
+                        };
+                        void manager.onConfirmApplySettingsFromWizard(settings, "existing-user")
+                            .catch((error: unknown) => {
+                                state.error = error instanceof Error ? error.message : String(error);
+                            })
+                            .finally(() => {
+                                rebuilder.scheduleFetch = scheduleFetch;
+                                state.done = true;
+                            });
+                    },
+                    { remoteType, stateKey: dialogRunStateKey }
+                );
+
+                const modal = await waitForVisibleObsidianDialogue(page, title, uiTimeoutMs);
+                const next = modal.getByRole("button", { name: "Next", exact: true });
+                await next.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                const actions = next.locator("..");
+                await assertMobileDialogueLayout(page, modal, title);
+                if ((await actions.locator(".callout").count()) !== 0) {
+                    throw new Error(`${title}: the synchronisation guidance still occupies the fixed action area.`);
+                }
+
+                const warning = modal.getByText("Accepting unencrypted content will be enabled.", { exact: false });
+                const content = modal.locator(".modal-content");
+                await warning.evaluate((element) => element.scrollIntoView({ block: "start" }));
+                const warningStart = await warning.boundingBox();
+                const contentBounds = await content.boundingBox();
+                const controlsAtStart = await actions.boundingBox();
+                if (
+                    !warningStart ||
+                    !contentBounds ||
+                    !controlsAtStart ||
+                    warningStart.y < contentBounds.y - 1 ||
+                    warningStart.y >= controlsAtStart.y
+                ) {
+                    throw new Error(`${title}: the start of the unencrypted content warning is not readable.`);
+                }
+
+                await content.evaluate((element) => {
+                    element.scrollTop = element.scrollHeight;
+                });
+                const warningEnd = await warning.boundingBox();
+                const controlsAtEnd = await actions.boundingBox();
+                if (!warningEnd || !controlsAtEnd) {
+                    throw new Error(`${title}: the warning or restart controls disappeared when scrolled.`);
+                }
+                const warningBottom = warningEnd.y + warningEnd.height;
+                if (warningBottom < contentBounds.y || warningBottom > controlsAtEnd.y + 1) {
+                    throw new Error(`${title}: the end of the unencrypted content warning is not readable.`);
+                }
+                const confirmationTitle = "Before restarting";
+                await next.click();
+                await modal.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+                const confirmation = await waitForVisibleObsidianDialogue(page, confirmationTitle, uiTimeoutMs);
+                const message = confirmation.locator(".vpk-action-dialog__message");
+                for (const emphasis of [disabledSetting, settingsPage]) {
+                    await message.locator("strong").filter({ hasText: emphasis }).waitFor({
+                        state: "visible",
+                        timeout: uiTimeoutMs,
+                    });
+                }
+                const restart = confirmation.getByRole("button", { name: action, exact: true });
+                await restart.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                const cancel = confirmation.getByRole("button", { name: "Cancel", exact: true });
+                await cancel.waitFor({ state: "visible", timeout: uiTimeoutMs });
+                await assertMobileDialogueLayout(page, confirmation, confirmationTitle);
+                if ((await confirmation.locator(".vpk-action-dialog__action").count()) !== 2) {
+                    throw new Error(`${title}: the restart confirmation must offer only restart and cancellation.`);
+                }
+                const dismiss = useCancelButton
+                    ? cancel
+                    : confirmation.locator(".modal-close-button, .modal-header-button").last();
+                await dismiss.click();
+                await confirmation.waitFor({ state: "hidden", timeout: uiTimeoutMs });
+            } finally {
+                await page.setViewportSize(mobileViewport);
+            }
+        });
+        const finished = await assertDialogueRunCompleted();
+        if (finished.fetchScheduled !== false) {
+            throw new Error(`${title}: cancelling the restart confirmation attempted to schedule Fetch.`);
+        }
+    }
 }
 
 async function verifyRemoteSizeNoticeAndDialogue(): Promise<{
@@ -1701,6 +1841,10 @@ async function main(): Promise<void> {
             const mobileSetupUriScreenshot = await verifySetupUriDialogue("mobile");
             console.log(
                 `Mobile Setup URI dialogue passed viewport, safe-area, and touch-target checks. Screenshot: ${mobileSetupUriScreenshot}`
+            );
+            await verifyMobileAdditionalDeviceFetchGuidance();
+            console.log(
+                "Mobile Fetch warnings remained readable, and Cancel and the close button both dismissed the restart confirmation without reserving Fetch."
             );
             const mobileGeneratedSetupUriScreenshot = await verifyGenerateSetupUriDialogue("mobile");
             console.log(`Mobile Time-bound generation passed. Screenshot: ${mobileGeneratedSetupUriScreenshot}`);

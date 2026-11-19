@@ -63,7 +63,7 @@ Keep the first device online. Store the new URI and its passphrase separately.
 
     ![P2P Setup URI from the first device entered on the second device](../images/p2p-setup/guide-p2p-setup-second-setup-uri.png)
 
-4. Select `Restart and Fetch Data`.
+4. Review `Setup Complete: Preparing to Fetch from Another Device` and select `Next`. Read `Before restarting`, then select `Restart and Select Source Device`.
 
     ![P2P Fetch confirmation on the second device](../images/p2p-setup/guide-p2p-setup-second-fetch.png)
 
@@ -81,13 +81,13 @@ Keep the first device online. Store the new URI and its passphrase separately.
 
     ![Explicit P2P connection request on the first device](../images/p2p-setup/guide-p2p-setup-connection-request-1.png)
 
-8. Keep both devices open until the test note appears on the second device.
+8. Keep both devices open until retrieval and file reflection finish. Confirm that the first device's test note appears unchanged, and review the reflected Vault and any conflicts.
 
     ![Note from the first device received by the second P2P device](../images/p2p-setup/guide-p2p-setup-first-to-second.png)
 
 ## Verify the return journey
 
-Create a second ordinary note on the second device. Keep automatic announcements disabled, then run and verify the next synchronisation explicitly:
+Fetch turns off P2P auto-start and change announcements. It also clears the options to synchronise or follow a peer when it connects. Create a second ordinary note on the second device, then run and verify the next synchronisation explicitly:
 
 1. Open `P2P Status` on both devices.
 2. If a peer no longer appears, select `Disconnect` and then `Open connection` on the first device, followed by the second device. The device which joins last is advertised to devices which are already in the room.
@@ -104,6 +104,7 @@ The two devices are now proven to share the same room, encryption settings, and 
 
 After this manual path works, configure automatic behaviour deliberately:
 
+- To connect automatically when the plug-in launches, select `Open P2P Setup...` in `P2P Status` and enable `Auto Start P2P Connection`.
 - `Announce changes` on a source device dispatches change notifications while it is connected.
 - `Follow changes` on the receiving device fetches after notifications from that peer.
 - The peer's `More actions` menu can synchronise or follow whenever that named device connects, or include it in the P2P synchronisation command.
