@@ -18,6 +18,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 - When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
 
+- Splitting large files with V3 Rabin-Karp chunking uses less input-buffer memory by reading Blobs in blocks of up to 1 MiB as Chunks are produced, rather than loading the entire Blob into memory at once.
+    - Small files which fit within one block are read directly without creating a block iterator, and prepared Chunk batches pass straight to the writer without an extra array copy.
+
+### Miscellaneous
+
+- Updated dependencies (including `@vrtmrz/livesync-commonlib` 0.7.0, which adopts `@vrtmrz/rpc` 0.1.0 for hosted P2P rooms, and `octagonal-wheels` 0.1.57).
+
 ## 1.0.51
 
 18th November, 2026
