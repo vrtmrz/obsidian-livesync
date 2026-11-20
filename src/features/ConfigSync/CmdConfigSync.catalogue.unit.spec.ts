@@ -372,4 +372,32 @@ describe("issue #1271: rebuilding a multi-file Customisation Sync item", () => {
         expect(fixture.configSync.pluginList[0].files).toHaveLength(3);
         expect(fixture.configSync.updatingV2Count).toBe(0);
     });
+
+    it("computes missing V1 member hashes for display without persisting excluded binders", async () => {
+        const fixture = await catalogue();
+        fixture.release();
+        const v1Path = "ix:device/PLUGIN_MAIN/excluded-v1.md" as FilePathWithPrefix;
+        const payload = JSON.stringify({
+            category: "PLUGIN_MAIN",
+            name: "excluded-v1",
+            term: "device",
+            mtime: 1000,
+            files: [{ filename: "plugins/excluded-v1/main.js", data: ["console.log(1);"], mtime: 1000, size: 15 }],
+        });
+        await fixture.localDatabase.putDBEntry(optionalFileEntry(v1Path, payload));
+        fixture.settings.pluginSyncExtendedSetting = {
+            "PLUGIN_MAIN/excluded-v1": {
+                key: "PLUGIN_MAIN/excluded-v1",
+                mode: MODE_AUTOMATIC,
+                files: ["plugins/excluded-v1/main.js"],
+            },
+        };
+        const putSpy = vi.spyOn(fixture.localDatabase, "putDBEntry");
+
+        const loaded = await fixture.configSync.loadPluginData(v1Path);
+
+        expect(loaded).not.toBe(false);
+        expect(loaded && loaded.files[0].data[0]).toBeTruthy();
+        expect(putSpy).not.toHaveBeenCalled();
+    });
 });

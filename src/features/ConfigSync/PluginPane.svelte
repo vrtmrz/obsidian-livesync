@@ -27,8 +27,9 @@
         HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE,
     } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
     import {
-        findCustomisationEntryKey,
+        collectSavedCustomisationPluginNames,
         findCustomisationEntryMode,
+        findMatchingCustomisationEntryKeys,
         getHiddenFileSyncPatternExcludedFiles,
         isCaseInsensitiveSelection,
         updateCustomisationEntryMode,
@@ -280,7 +281,7 @@
 
     function computeDisplayKeys(list: IPluginDataExDisplay[], entries: typeof modeEntries, insensitive: boolean) {
         const representedKeys = new Set(
-            list.map((item) => findCustomisationEntryKey(`${item.category}/${item.name}`, entries, insensitive))
+            list.flatMap((item) => findMatchingCustomisationEntryKeys(`${item.category}/${item.name}`, entries, insensitive))
         );
         const extraKeys = Object.keys(entries).filter((key) => !representedKeys.has(key));
         return [
@@ -342,7 +343,16 @@
 
     let pluginEntries = [] as [string, IPluginDataExDisplay[]][];
     $: {
-        pluginEntries = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
+        const grouped = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
+        const savedOnlyNames = collectSavedCustomisationPluginNames(
+            grouped.map(([name]) => name),
+            modeEntries,
+            insensitive
+        );
+        pluginEntries = [
+            ...grouped,
+            ...savedOnlyNames.map((name) => [name, [] as IPluginDataExDisplay[]] as [string, IPluginDataExDisplay[]]),
+        ].sort(([a], [b]) => (nameMap.get(`plugins/${a}`) || a).localeCompare(nameMap.get(`plugins/${b}`) || b));
     }
     let useSyncPluginEtc = plugin.core.settings.usePluginEtc;
 </script>
@@ -371,7 +381,7 @@
     {/if}
 </div>
 <div class="list">
-    {#if list.length == 0}
+    {#if list.length == 0 && displayEntries.length == 0 && pluginEntries.length == 0}
         <div class="center">{translateMessage("No Items.")}</div>
     {:else}
         {#each displayEntries as [key, label]}

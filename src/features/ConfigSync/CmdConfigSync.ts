@@ -572,7 +572,7 @@ export class ConfigSync extends LiveSyncCommands {
                 work.data = [file.hash];
                 xFiles.push(work);
             }
-            if (missingHash) {
+            if (missingHash && !this.isDatabaseEntryExcludedFromConfigSync(path)) {
                 this._log(`Digest created for ${path} to improve checking`, LOG_LEVEL_VERBOSE);
                 wx.data = serialize(data);
                 fireAndForget(() => this.localDatabase.putDBEntry(createSavingEntryFromLoadedEntry(wx)));
@@ -1358,6 +1358,33 @@ export class ConfigSync extends LiveSyncCommands {
             }
         });
     }
+    private async resolveV1FixedMemberTargets(
+        parentPath: string,
+        members: readonly string[],
+        triggerPath: FilePath
+    ): Promise<FilePath[]> {
+        const insensitive = isCaseInsensitiveSelection(this.settings, this.services?.vault);
+        if (!insensitive) {
+            return members.map((member) => `${parentPath}/${member}` as FilePath);
+        }
+        const diskByLower = new Map<string, FilePath>();
+        const triggerBasename = triggerPath.split("/").slice(-1)[0] ?? "";
+        if (triggerBasename) {
+            diskByLower.set(triggerBasename.toLowerCase(), triggerPath);
+        }
+        if (typeof this.app?.vault?.adapter?.list === "function") {
+            const listed = await this.getFiles(parentPath, 0);
+            for (const candidate of listed) {
+                const candidateName = candidate.split("/").slice(-1)[0] ?? "";
+                const lowered = candidateName.toLowerCase();
+                if (lowered && !diskByLower.has(lowered)) {
+                    diskByLower.set(lowered, candidate as FilePath);
+                }
+            }
+        }
+        return members.map((member) => diskByLower.get(member.toLowerCase()) ?? (`${parentPath}/${member}` as FilePath));
+    }
+
     async storeCustomizationFiles(path: FilePath, termOverRide?: string) {
         return await this.storeCustomizationFilesCore(path, termOverRide, false);
     }
@@ -1411,9 +1438,9 @@ export class ConfigSync extends LiveSyncCommands {
                     dt.displayName = path.split("/").slice(-1).join("/");
                 }
             } else if (category == "PLUGIN_MAIN") {
-                fileTargets = PLUGIN_MAIN_FILES.map((e) => `${parentPath}/${e}` as FilePath);
+                fileTargets = await this.resolveV1FixedMemberTargets(parentPath, PLUGIN_MAIN_FILES, path);
             } else if (category == "THEME") {
-                fileTargets = THEME_FILES.map((e) => `${parentPath}/${e}` as FilePath);
+                fileTargets = await this.resolveV1FixedMemberTargets(parentPath, THEME_FILES, path);
             }
             for (const target of fileTargets) {
                 const data = await this.makeEntryFromFile(target, requireCompletion);

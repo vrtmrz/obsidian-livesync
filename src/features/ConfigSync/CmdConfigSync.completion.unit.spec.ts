@@ -287,4 +287,17 @@ describe("Customisation Sync optional save completion", () => {
         expect(put).not.toHaveBeenCalled();
         await expect(fixture.localDatabase.getDBEntry(databasePath)).resolves.toBe(false);
     });
+
+    it("collects V1 fixed plug-in members using their on-disk spelling when case-insensitive matching is active", async () => {
+        const { fixture, config, files } = await createConfigSync(false);
+        fixture.settings.handleFilenameCaseSensitive = false;
+        const uppercaseMain = ".obsidian/plugins/demo/MAIN.JS" as FilePath;
+        files.set(uppercaseMain, { content: "module.exports = 'upper';", mtime: 4000 });
+
+        await config.storeCustomizationFiles(uppercaseMain);
+
+        const stored = await fixture.localDatabase.getDBEntry(config.filenameToUnifiedKey(uppercaseMain));
+        expect(stored).not.toBe(false);
+        expect(stored && getDocData(stored.data)).toContain("plugins/demo/MAIN.JS");
+    });
 });

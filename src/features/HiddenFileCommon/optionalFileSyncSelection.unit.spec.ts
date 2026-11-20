@@ -10,6 +10,7 @@ import {
 import {
     categoryToFolder,
     classifyCustomisationFile,
+    collectSavedCustomisationPluginNames,
     extractCustomisationItemKeyFromUnifiedPath,
     findCustomisationEntryMode,
     getHiddenFileSyncPatternExcludedFiles,
@@ -298,5 +299,34 @@ describe("Customisation Sync dialogue modes", () => {
 
         expect(entries).toEqual({});
         expect(findCustomisationEntryMode(catalogueKey, entries, true)).toBeUndefined();
+    });
+
+    it("reconciles duplicate case-equivalent keys when updating or switching back to Selective", () => {
+        const entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+            "SNIPPET/Theme.css": { key: "SNIPPET/Theme.css", mode: MODE_AUTOMATIC, files: ["snippets/Theme.css"] },
+            "SNIPPET/theme.css": { key: "SNIPPET/theme.css", mode: MODE_AUTOMATIC, files: ["snippets/theme.css"] },
+        };
+
+        updateCustomisationEntryMode(entries, "SNIPPET/theme.css", MODE_PAUSED, ["snippets/theme.css"], true);
+        expect(Object.keys(entries)).toEqual(["SNIPPET/theme.css"]);
+        expect(findCustomisationEntryMode("SNIPPET/Theme.css", entries, true)).toBe(MODE_PAUSED);
+
+        entries["SNIPPET/Theme.css"] = { key: "SNIPPET/Theme.css", mode: MODE_AUTOMATIC, files: ["snippets/Theme.css"] };
+        updateCustomisationEntryMode(entries, "SNIPPET/theme.css", MODE_SELECTIVE, [], true);
+        expect(entries).toEqual({});
+        expect(findCustomisationEntryMode("SNIPPET/Theme.css", entries, true)).toBeUndefined();
+        expect(findCustomisationEntryMode("SNIPPET/theme.css", entries, true)).toBeUndefined();
+    });
+
+    it("retains saved-only plug-in assignments for the dialogue without duplicating listed plug-ins", () => {
+        const entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+            "PLUGIN_ALL/v1-only": { key: "PLUGIN_ALL/v1-only", mode: MODE_AUTOMATIC, files: [] },
+            "PLUGIN_MAIN/v1-only": { key: "PLUGIN_MAIN/v1-only", mode: MODE_PAUSED, files: [] },
+            "PLUGIN_DATA/Example": { key: "PLUGIN_DATA/Example", mode: MODE_PAUSED, files: [] },
+            "SNIPPET/style.css": { key: "SNIPPET/style.css", mode: MODE_AUTOMATIC, files: [] },
+        };
+
+        expect(collectSavedCustomisationPluginNames(["example"], entries, true)).toEqual(["v1-only"]);
+        expect(collectSavedCustomisationPluginNames(["example"], entries, false)).toEqual(["v1-only", "Example"]);
     });
 });

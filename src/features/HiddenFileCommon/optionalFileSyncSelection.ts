@@ -145,18 +145,35 @@ export function classifyCustomisationFile(
 
 type CustomisationEntries = ObsidianLiveSyncSettings["pluginSyncExtendedSetting"];
 
+const PLUGIN_SETTING_PREFIXES = new Set(["PLUGIN_ALL", "PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]);
+
+export function findMatchingCustomisationEntryKeys(
+    key: string,
+    entries: CustomisationEntries | undefined,
+    insensitive = false
+): string[] {
+    if (!entries) return [];
+    const matched: string[] = [];
+    if (entries[key] !== undefined) {
+        matched.push(key);
+    }
+    if (!insensitive) return matched;
+    const lowered = key.toLowerCase();
+    for (const entryKey of Object.keys(entries)) {
+        if (entryKey === key) continue;
+        if (entryKey.toLowerCase() === lowered || entries[entryKey].key.toLowerCase() === lowered) {
+            matched.push(entryKey);
+        }
+    }
+    return matched;
+}
+
 export function findCustomisationEntryKey(
     key: string,
     entries: CustomisationEntries | undefined,
     insensitive = false
 ): string | undefined {
-    if (!entries) return undefined;
-    if (entries[key] !== undefined) return key;
-    if (!insensitive) return undefined;
-    const lowered = key.toLowerCase();
-    return Object.keys(entries).find(
-        (entryKey) => entryKey.toLowerCase() === lowered || entries[entryKey].key.toLowerCase() === lowered
-    );
+    return findMatchingCustomisationEntryKeys(key, entries, insensitive)[0];
 }
 
 export function findCustomisationEntryMode(
@@ -175,12 +192,43 @@ export function updateCustomisationEntryMode(
     files: string[],
     insensitive: boolean
 ): void {
-    const savedKey = findCustomisationEntryKey(key, entries, insensitive) ?? key;
+    const matchedKeys = findMatchingCustomisationEntryKeys(key, entries, insensitive);
     if (mode === MODE_SELECTIVE) {
-        delete entries[savedKey];
+        for (const matchedKey of matchedKeys) {
+            delete entries[matchedKey];
+        }
         return;
     }
+    const savedKey = matchedKeys[0] ?? key;
+    for (const duplicateKey of matchedKeys.slice(1)) {
+        delete entries[duplicateKey];
+    }
     entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files };
+}
+
+export function collectSavedCustomisationPluginNames(
+    existingNames: readonly string[],
+    entries: CustomisationEntries | undefined,
+    insensitive = false
+): string[] {
+    if (!entries) return [];
+    const normalise = (value: string) => (insensitive ? value.toLowerCase() : value);
+    const seen = new Set(existingNames.map(normalise));
+    const savedOnly: string[] = [];
+    for (const entryKey of Object.keys(entries)) {
+        const canonicalKey = entries[entryKey]?.key || entryKey;
+        const slashIndex = canonicalKey.indexOf("/");
+        if (slashIndex === -1) continue;
+        const prefix = canonicalKey.slice(0, slashIndex);
+        if (!PLUGIN_SETTING_PREFIXES.has(prefix)) continue;
+        const name = canonicalKey.slice(slashIndex + 1).split("/")[0];
+        if (!name) continue;
+        const identity = normalise(name);
+        if (seen.has(identity)) continue;
+        seen.add(identity);
+        savedOnly.push(name);
+    }
+    return savedOnly;
 }
 
 export function isCustomisationItemExcludedFromConfigSync(
