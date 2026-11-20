@@ -811,6 +811,7 @@ export class ConfigSync extends LiveSyncCommands {
         const prefixPath = v1Path.slice(0, -".md".length) + "%";
         const category = pluginData.category;
 
+        const canMigrate = () => this.isThisModuleEnabled() && !this.isDatabaseEntryExcludedFromConfigSync(v1Path);
         for (const f of pluginData.files) {
             const stripTable: Record<string, number> = {
                 CONFIG: 0,
@@ -841,16 +842,22 @@ export class ConfigSync extends LiveSyncCommands {
                 children: [],
                 eden: {},
             };
-            if (this.isDatabaseEntryExcludedFromConfigSync(v1Path)) return;
+            if (!canMigrate()) {
+                return;
+            }
             const r = await this.core.localDatabase.putDBEntry(saving);
-            if (!r || !r.ok) return;
+            if (!r || !r.ok) {
+                return;
+            }
             this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
         }
-        if (pluginData.files.length === 0 || this.isDatabaseEntryExcludedFromConfigSync(v1Path)) return;
+        if (pluginData.files.length === 0 || !canMigrate()) {
+            return;
+        }
         const deleted = await this.deleteConfigOnDatabase(v1Path);
         if (deleted) {
             this._log(`Deleted ${v1Path} successfully`, LOG_LEVEL_INFO);
-        } else if (!this.isDatabaseEntryExcludedFromConfigSync(v1Path)) {
+        } else if (canMigrate()) {
             this._log(`Failed to delete ${v1Path}`, LOG_LEVEL_NOTICE);
         }
     }
@@ -1739,24 +1746,30 @@ export class ConfigSync extends LiveSyncCommands {
         return await this.deleteConfigOnDatabaseCore(
             prefixedFileName,
             false,
-            () => !this.isDatabaseEntryExcludedFromConfigSync(prefixedFileName)
+            (canonicalPath = prefixedFileName) =>
+                this.isThisModuleEnabled() && !this.isDatabaseEntryExcludedFromConfigSync(canonicalPath)
         );
     }
 
     private async deleteConfigOnDatabaseCore(
         prefixedFileName: FilePathWithPrefix,
         requireCompletion: boolean,
-        canDelete?: () => boolean
+        canDelete?: (canonicalPath?: FilePathWithPrefix) => boolean
     ) {
         // const id = await this.path2id(prefixedFileName);
         const mtime = new Date().getTime();
         return await withLock("file-x-" + prefixedFileName, async () => {
             try {
-                if (canDelete && !canDelete()) return false;
+                if (canDelete && !canDelete(prefixedFileName)) {
+                    return false;
+                }
                 const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
                     | InternalFileEntry
                     | false;
-                if (canDelete && !canDelete()) return false;
+                const resolvedPath = old !== false ? (old.path || this.getPath(old)) : prefixedFileName;
+                if (canDelete && !canDelete(resolvedPath)) {
+                    return false;
+                }
                 let saveData: InternalFileEntry;
                 if (old === false) {
                     this._log(`STORAGE -x> DB:${prefixedFileName}: (config) already deleted (Not found on database)`);

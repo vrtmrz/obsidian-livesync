@@ -29,7 +29,13 @@ vi.mock("@/common/events.ts", () => ({
 vi.mock("@/common/translation", () => ({ $msg: (message: string) => message }));
 vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({ getObsidianCommunityPluginManager: vi.fn() }));
 
-import { MODE_AUTOMATIC, MODE_PAUSED, type FilePath, type FilePathWithPrefix } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import {
+    MODE_AUTOMATIC,
+    MODE_PAUSED,
+    type DocumentID,
+    type FilePath,
+    type FilePathWithPrefix,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { createOptionalFileSyncDatabase, optionalFileEntry } from "../../../test/fixtures/optionalFileSyncDatabase";
 import { ConfigSync, PluginDataExDisplayV2, pluginManifests } from "./CmdConfigSync";
 
@@ -217,6 +223,106 @@ describe("issue #1271: rebuilding a multi-file Customisation Sync item", () => {
 
         await expect(fixture.database.get(binder)).resolves.toEqual(before);
         await expect(fixture.localDatabase.getDBEntryMeta(config.filenameWithUnifiedKey(file))).resolves.toBe(false);
+    });
+
+    it("retains a default Selective V1 binder when Customisation Sync is disabled during migration", async () => {
+        const fixture = await createOptionalFileSyncDatabase();
+        fixtureOwners.push(fixture);
+        vi.spyOn(ConfigSync.prototype, "onBindFunction").mockImplementation(() => {});
+        fixture.settings.usePluginSyncV2 = false;
+        const file = ".obsidian/snippets/review.css" as FilePath;
+        const css = "body { color: blue; }";
+        const config = new ConfigSync({
+            settings: fixture.settings,
+            localDatabase: fixture.localDatabase,
+            services: { ...fixture.services, API: { ...fixture.services.API, addRibbonIcon: vi.fn() } },
+            storageAccess: {
+                statHidden: async () => ({ type: "file", ctime: 1_000, mtime: 2_000, size: css.length }),
+                readHiddenFileBinary: async () => new TextEncoder().encode(css).buffer,
+            },
+        } as unknown as ConstructorParameters<typeof ConfigSync>[0]);
+        await expect(config.storeCustomizationFiles(file)).resolves.toMatchObject({ ok: true });
+        await config.pluginScanProcessor.waitForIdle();
+        const binder = config.filenameToUnifiedKey(file);
+        const before = await fixture.database.get(binder);
+
+        fixture.settings.usePluginSyncV2 = true;
+        const reading = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const read = fixture.localDatabase.getDBEntry.bind(fixture.localDatabase);
+        vi.spyOn(fixture.localDatabase, "getDBEntry").mockImplementationOnce(async (...args) => {
+            reading.resolve();
+            await release.promise;
+            return read(...args);
+        });
+
+        await config.updatePluginList(false);
+        try {
+            await reading.promise;
+            fixture.settings.usePluginSync = false;
+        } finally {
+            release.resolve();
+            await config.pluginScanProcessor.waitForIdle();
+        }
+
+        await expect(fixture.database.get(binder)).resolves.toEqual(before);
+        await expect(fixture.localDatabase.getDBEntryMeta(config.filenameWithUnifiedKey(file))).resolves.toBe(false);
+    });
+
+    it("preserves a V1 binder with a case-folded ID when switched to Ignore inside the V2 scan deletion lock", async () => {
+        const fixture = await createOptionalFileSyncDatabase();
+        fixtureOwners.push(fixture);
+        vi.spyOn(ConfigSync.prototype, "onBindFunction").mockImplementation(() => {});
+        fixture.settings.handleFilenameCaseSensitive = false;
+        fixture.settings.usePluginSyncV2 = true;
+        const canonicalPath = "ix:device/CONFIG/appearance.json.md" as FilePathWithPrefix;
+        const foldedId = canonicalPath.toLowerCase() as DocumentID;
+        const payload = JSON.stringify({
+            category: "CONFIG",
+            name: "appearance.json",
+            term: "device",
+            mtime: 1_000,
+            files: [{ filename: "appearance.json", data: ['{"theme":"obsidian"}'], mtime: 1_000, size: 20 }],
+        });
+        await fixture.localDatabase.putDBEntry({
+            ...optionalFileEntry(canonicalPath, payload),
+            _id: foldedId,
+        });
+        const before = await fixture.database.get(foldedId);
+        const config = new ConfigSync({
+            settings: fixture.settings,
+            localDatabase: fixture.localDatabase,
+            services: { ...fixture.services, API: { ...fixture.services.API, addRibbonIcon: vi.fn() } },
+            storageAccess: {},
+        } as unknown as ConstructorParameters<typeof ConfigSync>[0]);
+        vi.spyOn(config, "scanInternalFiles").mockResolvedValue([]);
+        vi.spyOn(config, "updatePluginList").mockResolvedValue();
+
+        const readingMeta = promiseWithResolvers<void>();
+        const releaseMeta = promiseWithResolvers<void>();
+        const getMeta = fixture.localDatabase.getDBEntryMeta.bind(fixture.localDatabase);
+        vi.spyOn(fixture.localDatabase, "getDBEntryMeta").mockImplementationOnce(async (...args) => {
+            readingMeta.resolve();
+            await releaseMeta.promise;
+            return getMeta(...args);
+        });
+
+        const scan = config.scanAllConfigFiles(false);
+        try {
+            await readingMeta.promise;
+            fixture.settings.pluginSyncExtendedSetting = {
+                "CONFIG/appearance.json": {
+                    key: "CONFIG/appearance.json",
+                    mode: MODE_PAUSED,
+                    files: ["appearance.json"],
+                },
+            };
+        } finally {
+            releaseMeta.resolve();
+            await scan;
+        }
+
+        await expect(fixture.database.get(foldedId)).resolves.toEqual(before);
     });
 
     it("fills an existing row during a second enumeration", async () => {

@@ -347,4 +347,29 @@ describe("Customisation Sync dialogue modes", () => {
             files: ["plugins/demo/manifest.json", "plugins/demo/main.js"],
         });
     });
+
+    it("resolves conflicting case-equivalent saved keys consistently regardless of caller spelling", () => {
+        const entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+            "SNIPPET/Theme.css": { key: "SNIPPET/Theme.css", mode: MODE_PAUSED, files: ["snippets/Theme.css"] },
+            "SNIPPET/theme.css": { key: "SNIPPET/theme.css", mode: MODE_AUTOMATIC, files: ["snippets/theme.css"] },
+        };
+        const settings = makeSettings({ pluginSyncExtendedSetting: entries });
+
+        expect(findCustomisationEntryMode("SNIPPET/Theme.css", entries, true)).toBe(MODE_PAUSED);
+        expect(findCustomisationEntryMode("SNIPPET/theme.css", entries, true)).toBe(MODE_PAUSED);
+        expect(
+            selectCustomisationOwner(".obsidian/snippets/Theme.css", {
+                configDir: ".obsidian",
+                settings,
+                insensitive: true,
+            })
+        ).toBe("ignored");
+        expect(
+            selectCustomisationOwner(".obsidian/snippets/theme.css", {
+                configDir: ".obsidian",
+                settings,
+                insensitive: true,
+            })
+        ).toBe("ignored");
+    });
 });

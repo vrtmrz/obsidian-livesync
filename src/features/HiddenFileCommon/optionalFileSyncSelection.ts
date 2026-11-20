@@ -2,6 +2,7 @@ import {
     MODE_AUTOMATIC,
     MODE_PAUSED,
     MODE_SELECTIVE,
+    MODE_SHINY,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
     type SYNC_MODE,
@@ -147,25 +148,38 @@ type CustomisationEntries = ObsidianLiveSyncSettings["pluginSyncExtendedSetting"
 
 const PLUGIN_SETTING_PREFIXES = new Set(["PLUGIN_ALL", "PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]);
 
+// Protective precedence for pre-existing case-equivalent duplicates before the next edit reconciles them:
+// Ignore > Flagged Selective > Selective > Automatic.
+const CONFLICTING_MODE_PRECEDENCE: Record<number, number> = {
+    [MODE_PAUSED]: 0,
+    [MODE_SHINY]: 1,
+    [MODE_SELECTIVE]: 2,
+    [MODE_AUTOMATIC]: 3,
+};
+
 export function findMatchingCustomisationEntryKeys(
     key: string,
     entries: CustomisationEntries | undefined,
     insensitive = false
 ): string[] {
-    if (!entries) return [];
-    const matched: string[] = [];
-    if (entries[key] !== undefined) {
-        matched.push(key);
+    if (!entries) {
+        return [];
     }
-    if (!insensitive) return matched;
+    if (!insensitive) {
+        return entries[key] !== undefined ? [key] : [];
+    }
     const lowered = key.toLowerCase();
-    for (const entryKey of Object.keys(entries)) {
-        if (entryKey === key) continue;
-        if (entryKey.toLowerCase() === lowered || entries[entryKey].key.toLowerCase() === lowered) {
-            matched.push(entryKey);
+    const matched = Object.keys(entries).filter(
+        (entryKey) => entryKey.toLowerCase() === lowered || entries[entryKey].key.toLowerCase() === lowered
+    );
+    return matched.sort((left, right) => {
+        const leftRank = CONFLICTING_MODE_PRECEDENCE[entries[left].mode] ?? 99;
+        const rightRank = CONFLICTING_MODE_PRECEDENCE[entries[right].mode] ?? 99;
+        if (leftRank !== rightRank) {
+            return leftRank - rightRank;
         }
-    }
-    return matched;
+        return left < right ? -1 : left > right ? 1 : 0;
+    });
 }
 
 export function findCustomisationEntryKey(
@@ -199,10 +213,12 @@ export function updateCustomisationEntryMode(
         }
         return;
     }
-    const savedKey = matchedKeys[0] ?? key;
+    const savedKey = matchedKeys.includes(key) ? key : (matchedKeys[0] ?? key);
     const existingFiles = [...new Set(matchedKeys.flatMap((matchedKey) => entries[matchedKey]?.files ?? []))];
-    for (const duplicateKey of matchedKeys.slice(1)) {
-        delete entries[duplicateKey];
+    for (const duplicateKey of matchedKeys) {
+        if (duplicateKey !== savedKey) {
+            delete entries[duplicateKey];
+        }
     }
     const nextFiles = files.length > 0 ? files : existingFiles;
     entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files: nextFiles };
@@ -244,7 +260,8 @@ export function isCustomisationItemExcludedFromConfigSync(
 
 export function extractCustomisationItemKeyFromUnifiedPath(unifiedPath: FilePathWithPrefix): string | undefined {
     const stripped = stripAllPrefixes(unifiedPath);
-    const [, category, ...rest] = stripped.split("/");
+    const [, rawCategory, ...rest] = stripped.split("/");
+    const category = rawCategory?.toUpperCase();
     if (!category || !CUSTOMISATION_CATEGORIES.has(category) || rest.length === 0) {
         return undefined;
     }
