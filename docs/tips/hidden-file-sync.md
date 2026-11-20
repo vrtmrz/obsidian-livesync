@@ -93,6 +93,8 @@ Once Hidden File Sync is enabled, choose the item's initial action in Customisat
 
 ### Known limitations
 
+- Customisation Sync handles CSS snippets directly inside the configuration directory's `snippets` folder. Snippets in subfolders, such as `snippets/team/top.css`, are eligible for Hidden File Sync under its own target and ignore patterns.
+
 - Customisation items or filenames containing `%` (such as snippets, themes, or plug-in files with `%` in their name) are not fully supported by Customisation Sync, because `%` is used as a key delimiter in per-file (V2) Customisation Sync records. Avoid `%` in customisation filenames when managing them with Customisation Sync.
 
 ## Related settings

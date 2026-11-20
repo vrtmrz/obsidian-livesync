@@ -12,6 +12,8 @@ vi.mock("./configureHiddenFileSyncMode.ts", () => ({ configureHiddenFileSyncMode
 
 import {
     DEFAULT_SETTINGS,
+    MODE_AUTOMATIC,
+    MODE_SELECTIVE,
     type DocumentID,
     type FilePathWithPrefix,
     type LoadedEntry,
@@ -63,6 +65,71 @@ afterEach(() => {
 });
 
 describe("HiddenFileSync conflict queue", () => {
+    it.each(["failed Vault write", "failed store", "ownership change", "successful store"])(
+        "only drops the losing JSON leaf after a successful store with unchanged ownership (%s)",
+        async (scenario) => {
+            const filename = ".obsidian/app.json";
+            const path = `i:${filename}` as FilePathWithPrefix;
+            const id = String(path) as DocumentID;
+            const revisions = new Set(["2-current", "2-other"]);
+            const localDatabase = {
+                getRaw: vi.fn(async () => ({
+                    _id: id,
+                    path,
+                    _rev: "2-current",
+                    _conflicts: revisions.has("2-other") ? ["2-other"] : [],
+                })),
+                removeRevision: vi.fn(async (_id: DocumentID, rev: string) => revisions.delete(rev)),
+                managers: { conflictManager: { mergeObject: vi.fn(async () => '{"combined":true}') } },
+            };
+            const { hiddenFileSync } = createHiddenFileSync(localDatabase);
+            const selection = { key: "CONFIG/app.json", mode: MODE_AUTOMATIC, files: ["app.json"] };
+            Object.assign(hiddenFileSync.core.settings, {
+                usePluginSync: true,
+                pluginSyncExtendedSetting: { [selection.key]: selection },
+            });
+            Object.assign(hiddenFileSync.core.services.API, { getSystemConfigDir: () => ".obsidian" });
+            hiddenFileSync.path2id = async () => id;
+            hiddenFileSync.ensureDir = vi.fn(async () => {});
+            const stat = { type: "file" as const, mtime: 3, ctime: 1, size: 17 };
+            if (scenario === "failed Vault write") {
+                Object.assign(hiddenFileSync.core, {
+                    storageAccess: {
+                        writeHiddenFileAuto: vi.fn(async () => false),
+                        statHidden: vi.fn(async () => stat),
+                    },
+                });
+            } else {
+                hiddenFileSync.writeFile = vi.fn(async () => stat);
+            }
+            const entered = deferred();
+            const release = deferred();
+            hiddenFileSync.storeInternalFileToDatabase = vi.fn(async () => {
+                entered.resolve();
+                await release.promise;
+                return scenario !== "failed store";
+            });
+            hiddenFileSync.extractInternalFileFromDatabase = vi.fn(async () => true);
+
+            hiddenFileSync.queueConflictCheck(path);
+            try {
+                if (scenario !== "failed Vault write") await entered.promise;
+                if (scenario === "ownership change") selection.mode = MODE_SELECTIVE;
+            } finally {
+                release.resolve();
+            }
+            await hiddenFileSync.conflictResolutionProcessor.waitForAllProcessed();
+
+            if (scenario === "successful store") {
+                expect(revisions).toEqual(new Set(["2-current"]));
+                expect(localDatabase.removeRevision).toHaveBeenCalledExactlyOnceWith(id, "2-other");
+            } else {
+                expect(revisions).toEqual(new Set(["2-current", "2-other"]));
+                expect(localDatabase.removeRevision).not.toHaveBeenCalled();
+            }
+        }
+    );
+
     it("keeps a self-requeued conflict check and waits for its follow-up", async () => {
         vi.useFakeTimers();
         const path = "i:.obsidian/plugins/example/data.txt" as FilePathWithPrefix;

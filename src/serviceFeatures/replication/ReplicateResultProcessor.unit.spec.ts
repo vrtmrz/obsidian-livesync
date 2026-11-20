@@ -70,7 +70,8 @@ type SetupOptions = {
     setSnapshot?: (key: string, value: unknown) => Promise<unknown>;
     getSnapshot?: (key: string) => Promise<unknown>;
     localVersionInfo?: unknown;
-    isTargetFile?: (path: string) => Promise<boolean>;
+    isTargetFile?: (path: string, options?: { internalFileEvent?: boolean }) => Promise<boolean>;
+    processOptionalSynchroniseResult?: (entry: unknown) => Promise<boolean>;
     databaseId?: string;
     pathNormalizationVersion?: number;
 };
@@ -107,7 +108,7 @@ function setup(options: SetupOptions = {}) {
                 storageApplyingCount: reactiveSource(0),
                 replicationResultCount: reactiveSource(0),
                 processVirtualDocument: vi.fn(async () => false),
-                processOptionalSynchroniseResult: vi.fn(async () => false),
+                processOptionalSynchroniseResult: vi.fn(options.processOptionalSynchroniseResult ?? (async () => false)),
                 processSynchroniseResult,
             },
             replicator: { onCloseActiveReplication, runBoundedLocalApplicationActivity },
@@ -1225,6 +1226,23 @@ describe("bounded reflection recovery", () => {
 });
 
 describe("ReplicateResultProcessor", () => {
+    it("delivers live hidden-file Metadata when the normal-file allow-list only includes notes", async () => {
+        const path = "i:.obsidian/appearance.json" as FilePathWithPrefix;
+        const doc = { ...note(path), path };
+        const syncOnlyRegEx = /^notes\//;
+        const isTargetFile = vi.fn(async (path: string, options?: { internalFileEvent?: boolean }) =>
+            options?.internalFileEvent === true || syncOnlyRegEx.test(path)
+        );
+        const processOptionalSynchroniseResult = vi.fn(async () => true);
+        const { processor, processSynchroniseResult } = setup({ isTargetFile, processOptionalSynchroniseResult });
+
+        await processor.parseDocumentChange(doc);
+
+        expect(isTargetFile).toHaveBeenCalledExactlyOnceWith(path, { internalFileEvent: true });
+        expect(processOptionalSynchroniseResult).toHaveBeenCalledExactlyOnceWith(doc);
+        expect(processSynchroniseResult).not.toHaveBeenCalled();
+    });
+
     it("holds new reflection while a database pause waits for already started work", async () => {
         let finish!: () => void;
         const first = new Promise<void>((resolve) => {

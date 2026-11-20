@@ -1,24 +1,24 @@
 import { compatGlobal, type CompatTimeoutHandle } from "@vrtmrz/livesync-commonlib/compat/common/coreEnvFunctions";
 
-type PendingSave = {
-    save: () => Promise<void>;
-    completion: Promise<void>;
-    resolve: () => void;
+type PendingSave<T> = {
+    save: () => Promise<T>;
+    completion: Promise<T>;
+    resolve: (result: T) => void;
     reject: (error: unknown) => void;
     timer?: CompatTimeoutHandle;
     started: boolean;
 };
 
 /** Owns the quiet-period delay and completion of coalesced customisation saves. */
-export class PendingConfigSaves {
-    private readonly pending = new Map<string, PendingSave>();
+export class PendingConfigSaves<T = void> {
+    private readonly pending = new Map<string, PendingSave<T>>();
 
-    enqueue(key: string, save: () => Promise<void>, whenFlushRequested?: Promise<void>): Promise<void> {
+    enqueue(key: string, save: () => Promise<T>, whenFlushRequested?: Promise<void>): Promise<T> {
         let group = this.pending.get(key);
         if (!group) {
-            let resolve!: () => void;
+            let resolve!: (result: T) => void;
             let reject!: (error: unknown) => void;
-            const completion = new Promise<void>((onResolve, onReject) => {
+            const completion = new Promise<T>((onResolve, onReject) => {
                 resolve = onResolve;
                 reject = onReject;
             });
@@ -39,7 +39,7 @@ export class PendingConfigSaves {
         return group.completion;
     }
 
-    private run(key: string, group: PendingSave): void {
+    private run(key: string, group: PendingSave<T>): void {
         if (group.started) return;
         group.started = true;
         if (group.timer !== undefined) compatGlobal.clearTimeout(group.timer);

@@ -11,11 +11,13 @@ import {
     categoryToFolder,
     classifyCustomisationFile,
     extractCustomisationItemKeyFromUnifiedPath,
+    findCustomisationEntryMode,
     getHiddenFileSyncPatternExcludedFiles,
     isCaseInsensitiveSelection,
     isCustomisationItemExcludedFromConfigSync,
     pathWithinConfigDirectory,
     selectCustomisationOwner,
+    updateCustomisationEntryMode,
 } from "./optionalFileSyncSelection";
 
 function makeSettings(
@@ -68,11 +70,11 @@ describe("classifyCustomisationFile", () => {
             relativePath: "snippets/MyStyle.css",
         });
         expect(classifyCustomisationFile(".obsidian/snippets/notes.txt", base)).toBeUndefined();
-        expect(classifyCustomisationFile(".obsidian/snippets/sub/MyStyle.css", base)).toEqual({
-            category: "SNIPPET",
-            key: "SNIPPET/MyStyle.css",
-            relativePath: "snippets/sub/MyStyle.css",
-        });
+        const nestedSnippet = ".obsidian/snippets/team/MyStyle.css";
+        expect(classifyCustomisationFile(nestedSnippet, base)).toBeUndefined();
+        expect(selectCustomisationOwner(nestedSnippet, { configDir: base.configDir, settings: makeSettings() })).toBe(
+            "hidden"
+        );
         expect(classifyCustomisationFile(".obsidian/themes/Minimal/theme.css", base)).toEqual({
             category: "THEME",
             key: "THEME/Minimal",
@@ -271,5 +273,30 @@ describe("extractCustomisationItemKeyFromUnifiedPath & helpers", () => {
                 (file) => file.endsWith(".json")
             )
         ).toEqual([".obsidian/plugins/demo/main.js"]);
+    });
+});
+
+
+describe("Customisation Sync dialogue modes", () => {
+    it("displays, updates, and clears a case-equivalent saved item", () => {
+        const savedKey = "SNIPPET/MyStyle.css";
+        const catalogueKey = "SNIPPET/mystyle.css";
+        const entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+            [savedKey]: { key: savedKey, mode: MODE_PAUSED, files: ["snippets/MyStyle.css"] },
+        };
+
+        expect(findCustomisationEntryMode(catalogueKey, entries, false)).toBeUndefined();
+        expect(findCustomisationEntryMode(catalogueKey, entries, true)).toBe(MODE_PAUSED);
+
+        updateCustomisationEntryMode(entries, catalogueKey, MODE_AUTOMATIC, ["snippets/mystyle.css"], true);
+
+        expect(findCustomisationEntryMode(catalogueKey, entries, true)).toBe(MODE_AUTOMATIC);
+        expect(Object.keys(entries)).toEqual([savedKey]);
+        expect(entries[savedKey].files).toEqual(["snippets/mystyle.css"]);
+
+        updateCustomisationEntryMode(entries, catalogueKey, MODE_SELECTIVE, [], true);
+
+        expect(entries).toEqual({});
+        expect(findCustomisationEntryMode(catalogueKey, entries, true)).toBeUndefined();
     });
 });

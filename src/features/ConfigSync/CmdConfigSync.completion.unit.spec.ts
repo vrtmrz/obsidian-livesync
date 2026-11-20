@@ -1,5 +1,8 @@
+import * as locks from "octagonal-wheels/concurrency/lock";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("octagonal-wheels/concurrency/lock", { spy: true });
 vi.mock("@/deps.ts", () => ({
     addIcon: vi.fn(),
     diff_match_patch: class DiffMatchPatch {},
@@ -47,7 +50,7 @@ vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 
-import { MODE_PAUSED, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { MODE_AUTOMATIC, MODE_PAUSED, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { ConfigSync } from "./CmdConfigSync";
 import { createOptionalFileSyncDatabase } from "../../../test/fixtures/optionalFileSyncDatabase";
@@ -104,6 +107,48 @@ afterEach(async () => {
 
 describe("Customisation Sync optional save completion", () => {
     const flush = { whenFlushRequested: Promise.resolve() };
+
+    it.each([
+        { useV2: false, operation: "upload" },
+        { useV2: true, operation: "upload" },
+        { useV2: false, operation: "deletion" },
+        { useV2: true, operation: "deletion" },
+    ])("skips a $operation that loses ownership while waiting for the DB lock (V2: $useV2)", async ({ useV2, operation }) => {
+        const { fixture, config, files, databasePath } = await createConfigSync(useV2);
+        let saved;
+        if (operation === "deletion") {
+            await expect(config._processOptionalFileEventWithResult(path, flush)).resolves.toEqual({ kind: "completed" });
+            saved = await fixture.database.get(databasePath);
+            files.delete(path);
+        }
+        const lock = vi.mocked(locks.withLock);
+        lock.mockClear();
+        const lockKey = `plugin-${databasePath}`;
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const holder = locks.withLock(lockKey, async () => {
+            entered.resolve();
+            await release.promise;
+        });
+        await entered.promise;
+        const pending = config._processOptionalFileEventWithResult(path, flush);
+        try {
+            await vi.waitFor(() => expect(lock.mock.calls.filter(([key]) => key === lockKey)).toHaveLength(2));
+            Object.assign(fixture.settings.pluginSyncExtendedSetting, {
+                "SNIPPET/test.css": { key: "SNIPPET/test.css", mode: MODE_AUTOMATIC, files: [] },
+            });
+        } finally {
+            release.resolve();
+            await holder;
+        }
+
+        await expect(pending).resolves.toEqual({ kind: "not-applicable" });
+        if (saved) {
+            await expect(fixture.database.get(databasePath)).resolves.toEqual(saved);
+        } else {
+            await expect(fixture.localDatabase.getDBEntryMeta(databasePath)).resolves.toBe(false);
+        }
+    });
 
     it("waits for the database write while the application is suspended or still starting", async () => {
         const { fixture, config } = await createConfigSync();

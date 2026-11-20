@@ -1,6 +1,7 @@
 import {
     MODE_AUTOMATIC,
     MODE_PAUSED,
+    MODE_SELECTIVE,
     type FilePathWithPrefix,
     type ObsidianLiveSyncSettings,
     type SYNC_MODE,
@@ -108,8 +109,8 @@ export function classifyCustomisationFile(
 
     const folder = normaliseSegment(parts[0], insensitive);
 
-    if (folder === "snippets" && parts.length >= 2) {
-        const filename = parts[parts.length - 1];
+    if (folder === "snippets" && parts.length === 2) {
+        const [, filename] = parts;
         if (normaliseSegment(filename, insensitive).endsWith(".css")) {
             return { category: "SNIPPET", key: `SNIPPET/${filename}`, relativePath };
         }
@@ -142,24 +143,44 @@ export function classifyCustomisationFile(
     return undefined;
 }
 
-export function findCustomisationEntryMode(
+type CustomisationEntries = ObsidianLiveSyncSettings["pluginSyncExtendedSetting"];
+
+export function findCustomisationEntryKey(
     key: string,
-    entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] | undefined,
+    entries: CustomisationEntries | undefined,
     insensitive = false
-): SYNC_MODE | undefined {
+): string | undefined {
     if (!entries) return undefined;
-    const direct = entries[key];
-    if (direct !== undefined) {
-        return direct.mode;
-    }
+    if (entries[key] !== undefined) return key;
     if (!insensitive) return undefined;
     const lowered = key.toLowerCase();
-    for (const [entryKey, entry] of Object.entries(entries)) {
-        if (entryKey.toLowerCase() === lowered || entry.key.toLowerCase() === lowered) {
-            return entry.mode;
-        }
+    return Object.keys(entries).find(
+        (entryKey) => entryKey.toLowerCase() === lowered || entries[entryKey].key.toLowerCase() === lowered
+    );
+}
+
+export function findCustomisationEntryMode(
+    key: string,
+    entries: CustomisationEntries | undefined,
+    insensitive = false
+): SYNC_MODE | undefined {
+    const savedKey = findCustomisationEntryKey(key, entries, insensitive);
+    return savedKey === undefined ? undefined : entries?.[savedKey]?.mode;
+}
+
+export function updateCustomisationEntryMode(
+    entries: CustomisationEntries,
+    key: string,
+    mode: SYNC_MODE,
+    files: string[],
+    insensitive: boolean
+): void {
+    const savedKey = findCustomisationEntryKey(key, entries, insensitive) ?? key;
+    if (mode === MODE_SELECTIVE) {
+        delete entries[savedKey];
+        return;
     }
-    return undefined;
+    entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files };
 }
 
 export function isCustomisationItemExcludedFromConfigSync(

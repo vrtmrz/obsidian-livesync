@@ -43,6 +43,14 @@ describe("getAutomaticSyncTargetFiles", () => {
         ]);
     });
 
+    it("uses case-equivalent saved child keys under case-insensitive selection", () => {
+        expect(getAutomaticSyncTargetFiles("PLUGIN_ALL/EXAMPLE", ".obsidian", createEntries(), true)).toEqual([
+            ".obsidian/plugins/example/data.json",
+            ".obsidian/plugins/example/main.js",
+            ".obsidian/plugins/example/manifest.json",
+        ]);
+    });
+
     it("retains the available child files when the other child has no saved entry", () => {
         const entries = createEntries();
         delete entries["PLUGIN_DATA/example"];

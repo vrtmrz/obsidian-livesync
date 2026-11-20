@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { withLock } from "octagonal-wheels/concurrency/lock";
+import * as locks from "octagonal-wheels/concurrency/lock";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 
+vi.mock("octagonal-wheels/concurrency/lock", { spy: true });
 vi.mock("@/deps.ts", () => ({}));
 const jsonResolveModalState = vi.hoisted(() => ({
     callbacks: [] as Array<(keep?: string, result?: string) => Promise<void> | void>,
@@ -33,6 +35,8 @@ import {
     type LoadedEntry,
     type MetaEntry,
     type ObsidianLiveSyncSettings,
+    type PluginSyncSettingEntry,
+    type UXFileInfo,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { createOptionalFileSyncDatabase, optionalFileEntry } from "../../../test/fixtures/optionalFileSyncDatabase";
@@ -43,6 +47,20 @@ const prefixedPath = `i:${hiddenPath}`;
 const body = "module.exports = class ExamplePlugin {};";
 const allowList = "\\.(?:md|png|pdf)$";
 const fixtureOwners: Awaited<ReturnType<typeof createOptionalFileSyncDatabase>>[] = [];
+
+function metadata(path: FilePathWithPrefix, revision: string) {
+    return {
+        _id: String(path) as DocumentID,
+        _rev: revision,
+        path,
+        ctime: 1000,
+        mtime: 2000,
+        size: 2,
+        type: "plain",
+        children: [],
+        eden: {},
+    } satisfies MetaEntry;
+}
 
 async function hiddenFiles() {
     const fixture = await createOptionalFileSyncDatabase();
@@ -59,7 +77,6 @@ async function hiddenFiles() {
             },
         },
         cacheFileRegExps: new Map(),
-        cacheCustomisationSyncIgnoredFiles: new Map(),
     });
     return { ...fixture, hiddenFileSync };
 }
@@ -294,15 +311,32 @@ describe("issue #825: incoming i: reflection, conflict guards, and Automatic pat
         },
     ])("retains incoming i: in DB without writing to Vault for $label", async ({ setting }) => {
         const fixture = await bothEnabled(setting);
-        const processReplicationResult = vi.fn(async () => true);
-        fixture.hiddenFileSync.processReplicationResult = processReplicationResult;
-        const doc = {
-            _id: "i:.obsidian/snippets/MyStyle.css" as DocumentID,
-            path: "i:.obsidian/snippets/MyStyle.css" as FilePathWithPrefix,
-        } as LoadedEntry;
+        const path = "i:.obsidian/snippets/MyStyle.css" as FilePathWithPrefix;
+        const incoming = "body { color: blue; }";
+        const saved = await fixture.localDatabase.putDBEntry(optionalFileEntry(path, incoming));
+        if (!saved) throw new Error("The incoming database revision could not be seeded");
+        const doc = await fixture.localDatabase.getDBEntry(path, { rev: saved.rev });
+        if (!doc) throw new Error("The incoming database revision could not be read");
+        const vaultPath = ".obsidian/snippets/MyStyle.css";
+        const original = "body { color: red; }";
+        const vault = new Map([[vaultPath, original]]);
+        const writeFile = vi.fn(async (file: string, content: string) => {
+            vault.set(file, content);
+        });
+        const deleteFile = vi.fn(async (file: string) => vault.delete(file));
+        Object.assign(fixture.hiddenFileSync.core, {
+            storageAccess: { writeHiddenFileAuto: writeFile, removeHidden: deleteFile },
+        });
+        const queueConflictCheck = vi.spyOn(fixture.hiddenFileSync, "queueConflictCheck");
 
         await expect(fixture.hiddenFileSync._anyProcessOptionalSyncFiles(doc)).resolves.toBe(true);
-        expect(processReplicationResult).not.toHaveBeenCalled();
+        const retained = await fixture.localDatabase.getDBEntry(path);
+        expect(retained && retained._rev).toBe(saved.rev);
+        expect(retained && readContent(retained)).toBe(incoming);
+        expect(vault.get(vaultPath)).toBe(original);
+        expect(writeFile).not.toHaveBeenCalled();
+        expect(deleteFile).not.toHaveBeenCalled();
+        expect(queueConflictCheck).not.toHaveBeenCalled();
     });
 
     it("does not queue conflict resolution for Selective, Flagged Selective, or Ignore items", async () => {
@@ -344,19 +378,14 @@ describe("issue #825: incoming i: reflection, conflict guards, and Automatic pat
         const path = "i:.obsidian/snippets/DefaultSelective.css" as FilePathWithPrefix;
         const id = path as unknown as DocumentID;
         const removeRevision = vi.spyOn(fixture.localDatabase, "removeRevision");
-        vi.spyOn(fixture.localDatabase, "getRaw").mockResolvedValue({
-            _id: id,
-            _rev: "2-b",
-            path,
-            mtime: 2000,
-        } as unknown as Awaited<ReturnType<typeof fixture.localDatabase.getRaw>>);
+        vi.spyOn(fixture.localDatabase, "getRaw").mockResolvedValue(metadata(path, "2-b"));
         const finishConflictCheck = vi.fn();
         fixture.hiddenFileSync.finishConflictCheck = finishConflictCheck;
 
         await fixture.hiddenFileSync.resolveByNewerEntry(
             id,
             path,
-            { _id: id, _rev: "2-a", path, mtime: 1000 } as unknown as MetaEntry,
+            { ...metadata(path, "2-a"), mtime: 1000 },
             "2-a",
             "2-b"
         );
@@ -443,6 +472,121 @@ describe("issue #825: incoming i: reflection, conflict guards, and Automatic pat
         expect(extract).not.toHaveBeenCalled();
     });
 
+    it.each(["upload", "deletion"])("skips automatic DB %s after ownership changes while waiting for the lock", async (kind) => {
+        const name = "app.json";
+        const path = `.obsidian/${name}` as FilePath;
+        const prefixed = `i:${path}` as FilePathWithPrefix;
+        const selection: PluginSyncSettingEntry = { key: `CONFIG/${name}`, mode: MODE_AUTOMATIC, files: [name] };
+        const fixture = await bothEnabled({ [selection.key]: selection });
+        await fixture.localDatabase.putDBEntry(optionalFileEntry(prefixed, "{}"));
+        const before = await fixture.database.get(prefixed);
+        const putEntry = vi.spyOn(fixture.localDatabase, "putDBEntry");
+        const putRaw = vi.spyOn(fixture.localDatabase, "putRaw");
+        fixture.hiddenFileSync.updateLastProcessed = vi.fn();
+        fixture.hiddenFileSync.updateLastProcessedDeletion = vi.fn();
+
+        const lock = vi.mocked(locks.withLock);
+        lock.mockClear();
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const key = `file-${prefixed}`;
+        const holder = locks.withLock(key, async () => {
+            entered.resolve();
+            await release.promise;
+        });
+        await entered.promise;
+        const file: UXFileInfo = {
+            name,
+            path,
+            stat: { type: "file", ctime: 1000, mtime: 3000, size: 7 },
+            body: new Blob(['{"a":1}']),
+        };
+        const operation = kind === "upload"
+            ? fixture.hiddenFileSync.storeInternalFileToDatabase(file)
+            : fixture.hiddenFileSync.deleteInternalFileOnDatabase(path);
+        try {
+            await vi.waitFor(() => expect(lock.mock.calls.filter(([lockKey]) => lockKey === key)).toHaveLength(2));
+            selection.mode = MODE_SELECTIVE;
+        } finally {
+            release.resolve();
+            await holder;
+        }
+        await expect(operation).resolves.toBe(false);
+        await expect(fixture.database.get(prefixed)).resolves.toEqual(before);
+        expect(putEntry).not.toHaveBeenCalled();
+        expect(putRaw).not.toHaveBeenCalled();
+    });
+
+    it("skips Vault reflection if ownership changes while reading incoming content", async () => {
+        const path = ".obsidian/app.json" as FilePath;
+        const prefixed = `i:${path}` as FilePathWithPrefix;
+        const selection: PluginSyncSettingEntry = { key: "CONFIG/app.json", mode: MODE_AUTOMATIC, files: ["app.json"] };
+        const fixture = await bothEnabled({ [selection.key]: selection });
+        await fixture.localDatabase.putDBEntry(optionalFileEntry(prefixed, '{"incoming":true}'));
+        const entry = await fixture.localDatabase.getDBEntryMeta(prefixed);
+        if (!entry) throw new Error("No incoming Metadata found");
+        const read = fixture.localDatabase.getDBEntryFromMeta.bind(fixture.localDatabase);
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        vi.spyOn(fixture.localDatabase, "getDBEntryFromMeta").mockImplementationOnce(async (...args) => {
+            entered.resolve();
+            await release.promise;
+            return read(...args);
+        });
+        const write = vi.fn(async () => false as const);
+        fixture.hiddenFileSync.__writeFile = write;
+        const operation = fixture.hiddenFileSync.extractInternalFileFromDatabase(path, true, entry, false);
+        try {
+            await entered.promise;
+            selection.mode = MODE_SELECTIVE;
+        } finally {
+            release.resolve();
+        }
+
+        const result = await operation;
+        expect(write).not.toHaveBeenCalled();
+        expect(result).toBeUndefined();
+    });
+
+    it("leaves the JSON conflict unresolved if ownership changes during Vault preparation", async () => {
+        const path = ".obsidian/app.json" as FilePath;
+        const prefixed = `i:${path}` as FilePathWithPrefix;
+        const selection: PluginSyncSettingEntry = { key: "CONFIG/app.json", mode: MODE_AUTOMATIC, files: ["app.json"] };
+        const fixture = await bothEnabled({ [selection.key]: selection });
+        jsonResolveModalState.callbacks.length = 0;
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const write = vi.fn(async () => ({ type: "file" as const, ctime: 1000, mtime: 2000, size: 7 }));
+        Object.assign(fixture.hiddenFileSync.core, {
+            storageAccess: {
+                isExistsIncludeHidden: async () => {
+                    entered.resolve();
+                    await release.promise;
+                    return true;
+                },
+            },
+        });
+        fixture.hiddenFileSync.writeFile = write;
+        fixture.hiddenFileSync.storeInternalFileToDatabase = vi.fn(async () => true);
+        fixture.hiddenFileSync.triggerEvent = vi.fn(async () => {});
+        const deleteEntry = vi.spyOn(fixture.localDatabase, "deleteDBEntry").mockResolvedValue(false);
+        const first: LoadedEntry = { ...metadata(prefixed, "2-a"), datatype: "plain", data: ["{}"] };
+        const second: LoadedEntry = { ...metadata(prefixed, "2-b"), datatype: "plain", data: ['{"a":1}'] };
+        const result = fixture.hiddenFileSync.showJSONMergeDialogAndMerge(first, second);
+        const confirm = jsonResolveModalState.callbacks[0](undefined, '{"a":1}');
+        try {
+            await entered.promise;
+            selection.mode = MODE_SELECTIVE;
+        } finally {
+            release.resolve();
+            await confirm;
+        }
+
+        await expect(result).resolves.toBe(false);
+        expect(write).not.toHaveBeenCalled();
+        expect(deleteEntry).not.toHaveBeenCalled();
+    });
+
     it("skips Vault deletion when ownership switches to Ignore while waiting for the inner file lock", async () => {
         const extendedSetting: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
             "CONFIG/app.json": { key: "CONFIG/app.json", mode: MODE_AUTOMATIC, files: ["app.json"] },
@@ -462,7 +606,7 @@ describe("issue #825: incoming i: reflection, conflict guards, and Automatic pat
             releaseLock = resolve;
         });
 
-        const holder = withLock("file-i:.obsidian/app.json", async () => {
+        const holder = locks.withLock("file-i:.obsidian/app.json", async () => {
             lockEntered();
             await lockGate;
         });

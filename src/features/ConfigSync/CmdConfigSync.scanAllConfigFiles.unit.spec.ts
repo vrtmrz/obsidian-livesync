@@ -327,6 +327,30 @@ describe("ConfigSync V2 scan behaviour", () => {
         expect(fixture.updatePluginList).toHaveBeenCalledExactlyOnceWith(false);
     });
 
+    it("retains a V1 deletion candidate that switches to Automatic during a V2 scan", async () => {
+        const stale = `${prefix}CONFIG/stale.json.md`;
+        const fixture = setup();
+        const waiting = promiseWithResolvers<void>();
+        const resume = promiseWithResolvers<void>();
+        fixture.findEntries.mockImplementation(async function* () {
+            yield { _id: stale, path: stale };
+            waiting.resolve();
+            await resume.promise;
+        });
+        const scan = fixture.configSync.scanAllConfigFiles(false);
+        try {
+            await waiting.promise;
+            Object.assign(fixture.configSync.core.settings.pluginSyncExtendedSetting, {
+                "CONFIG/stale.json": { key: "CONFIG/stale.json", mode: MODE_AUTOMATIC, files: [] },
+            });
+        } finally {
+            resume.resolve();
+            await scan;
+        }
+
+        expect(fixture.deleteConfigOnDatabase).not.toHaveBeenCalled();
+    });
+
     it("finishes database enumeration before dispatching database work", async () => {
         const fixture = setup();
         const enumerationPaused = promiseWithResolvers<void>();

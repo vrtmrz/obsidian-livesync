@@ -17,7 +17,7 @@ import {
     type MetaEntry,
     type ObsidianLiveSyncSettings,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import { isChunk } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
+import { isChunk, isInternalMetadata } from "@vrtmrz/livesync-commonlib/compat/common/typeUtils";
 import {
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,
@@ -1049,7 +1049,10 @@ export class ReplicateResultProcessor {
         // If the document is version info, check compatibility and return.
         if (isAnyNote(change)) {
             const docPath = this.getPath(change);
-            if (!(await this.services.vault.isTargetFile(docPath))) {
+            const target = isInternalMetadata(change._id)
+                ? await this.services.vault.isTargetFile(docPath, { internalFileEvent: true })
+                : await this.services.vault.isTargetFile(docPath);
+            if (!target) {
                 this.log(`Skipped: ${docPath}`, LOG_LEVEL_VERBOSE);
                 return;
             }
