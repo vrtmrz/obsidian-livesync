@@ -851,13 +851,18 @@ export class ConfigSync extends LiveSyncCommands {
             }
             this._log(`Migrated ${v1Path} / ${f.filename} to ${v2Path}`, LOG_LEVEL_INFO);
         }
-        if (pluginData.files.length === 0 || !canMigrate()) {
+        if (pluginData.files.length === 0 || this.isDatabaseEntryExcludedFromConfigSync(v1Path)) {
             return;
         }
-        const deleted = await this.deleteConfigOnDatabase(v1Path);
+        // All V2 members were already written above; finish removing the legacy V1 binder unless the item became excluded.
+        const deleted = await this.deleteConfigOnDatabaseCore(
+            v1Path,
+            false,
+            (canonicalPath = v1Path) => !this.isDatabaseEntryExcludedFromConfigSync(canonicalPath)
+        );
         if (deleted) {
             this._log(`Deleted ${v1Path} successfully`, LOG_LEVEL_INFO);
-        } else if (canMigrate()) {
+        } else if (!this.isDatabaseEntryExcludedFromConfigSync(v1Path)) {
             this._log(`Failed to delete ${v1Path}`, LOG_LEVEL_NOTICE);
         }
     }
