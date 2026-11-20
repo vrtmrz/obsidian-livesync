@@ -1074,9 +1074,14 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
                         .querySelector(".livesync-status-statusline .livesync-stat-file-skip")
                         ?.textContent?.trim() === "📄⚠️" &&
                     document
+                        .querySelector(".syncstatusbar .livesync-stat-file-skip:not(.livesync-stat-inactive)")
+                        ?.textContent?.trim() === "📄⚠️" &&
+                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer")
+                        ?.textContent === "⚡ E2E peer" &&
+                    document
                         .querySelector(".livesync-status-messagearea")
                         ?.textContent?.includes("E2E file warning") === false,
-                "The file warning did not switch to its existing compact icon."
+                "The compact file warning did not reach both status displays with the auxiliary peer present."
             );
             p2p.value = [];
             await wait.until(

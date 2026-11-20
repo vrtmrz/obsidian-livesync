@@ -30,6 +30,7 @@ import {
     initialiseSharedCoreFeatures,
     type HostFeatureInitialiser,
 } from "./serviceFeatures/coreFeatures";
+import type { ReplicationSchedulingViews } from "./serviceFeatures/replicationScheduling";
 
 export type { LiveSyncCoreFeatureViews } from "./serviceFeatures/coreFeatures";
 
@@ -285,7 +286,7 @@ export class LiveSyncBaseCore<
      * Initialise ServiceFeatures.
      * (Please refer `serviceFeatures` for more details)
      */
-    initialiseServiceFeatures(): ReturnType<typeof initialiseSharedCoreFeatures> {
+    initialiseServiceFeatures(): ReplicationSchedulingViews {
         return initialiseSharedCoreFeatures(this);
     }
 }

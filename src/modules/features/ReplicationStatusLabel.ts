@@ -135,15 +135,10 @@ function numericSequencePosition(lastSeq: string | number | undefined): number |
 
 function remainingSequenceLabel(
     key: string,
-    lastSyncSeq: number,
     maxSeq: number,
-    lastSeq: string | number | undefined,
-    transferredDocuments: number
+    lastSeq: string | number | undefined
 ): { text: string; part?: StatusBarPart } {
-    const sequencePosition = numericSequencePosition(lastSeq);
-    const lastKnownTransferPosition =
-        transferredDocuments > 0 && Number.isFinite(lastSyncSeq) && lastSyncSeq > 0 ? lastSyncSeq : undefined;
-    const currentPosition = sequencePosition ?? lastKnownTransferPosition;
+    const currentPosition = numericSequencePosition(lastSeq);
     if (currentPosition === undefined || !Number.isFinite(maxSeq)) return { text: "" };
     const remaining = Math.max(0, maxSeq - currentPosition);
     if (!Number.isFinite(remaining)) return { text: "" };
@@ -151,6 +146,10 @@ function remainingSequenceLabel(
         text: " (" + remaining + ")",
         part: { key, text: " (", value: remaining, suffix: ")" },
     };
+}
+
+function lastTransferPosition(transferredDocuments: number, lastSyncSeq: number): number | undefined {
+    return transferredDocuments > 0 && lastSyncSeq > 0 ? lastSyncSeq : undefined;
 }
 
 /** Projects the existing replication labels into reusable numeric status items. */
@@ -191,19 +190,18 @@ export function projectReplicationStatusLabel(
     }
 
     const couchDB = stats.couchDB;
+    // Commonlib can publish new maxima while the previous one-shot checkpoint is still idle.
+    // Within an attempt, only its directional checkpoints identify a current CouchDB position.
+    const checkpoints = stats.syncStatus === "STARTED" && couchDB?.phase === "idle" ? undefined : couchDB;
     const pushRemaining = remainingSequenceLabel(
         "push-remaining",
-        lastSyncPushSeq,
         maxPushSeq,
-        couchDB?.push?.lastSeq,
-        sent
+        couchDB ? checkpoints?.push?.lastSeq : lastTransferPosition(sent, lastSyncPushSeq)
     );
     const pullRemaining = remainingSequenceLabel(
         "pull-remaining",
-        lastSyncPullSeq,
         maxPullSeq,
-        couchDB?.pull?.lastSeq,
-        arrived
+        couchDB ? checkpoints?.pull?.lastSeq : lastTransferPosition(arrived, lastSyncPullSeq)
     );
     const isFastForwardChecking =
         stats.syncStatus !== "ERRORED" &&

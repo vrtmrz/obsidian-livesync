@@ -279,7 +279,6 @@ export class ModuleLog extends AbstractObsidianModule {
                 parts:
                     p2p.message === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" }, ...p2p.parts],
                 statusBarParts: firstLineParts,
-                hasP2P: p2p.message !== "",
             };
         });
 
@@ -287,7 +286,7 @@ export class ModuleLog extends AbstractObsidianModule {
             const scheduleMessage = this.services.appLifecycle.isReloadingScheduled()
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
                 : "";
-            const { message, parts, statusBarParts, hasP2P } = statusLineLabel();
+            const { message, parts, statusBarParts } = statusLineLabel();
             const fileStatus = this.activeFileStatus.value;
             const hideFileWarningNotice = this.hideFileWarningNoticeSetting.value;
             const status = scheduleMessage + this.statusLog.value;
@@ -300,7 +299,7 @@ export class ModuleLog extends AbstractObsidianModule {
                 message: `${message}${fileStatusIcon === "" ? "" : ` ${fileStatusIcon}`}`,
                 status,
                 parts: [...parts, ...skipPart],
-                statusBarParts: hasP2P ? statusBarParts : [...statusBarParts, ...skipPart],
+                statusBarParts: [...statusBarParts, ...skipPart],
             };
         });
         this.statusBarLabels = statusBarLabels;

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { P2PReplicationProgress } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 vi.mock("@/deps.ts", () => ({
@@ -109,6 +110,7 @@ async function createHarness(publishCompleted = true) {
     };
     const statusBarRenderer = { render: vi.fn(), dispose: vi.fn() };
     const statusLineRenderer = { render: vi.fn(), dispose: vi.fn() };
+    const p2pReplicationStats = reactiveSource<P2PReplicationProgress[]>([]);
     const module = Object.assign(Object.create(ModuleLog.prototype), {
         plugin: { app: { workspace: { getActiveFile: () => activeFile } } },
         core,
@@ -117,7 +119,7 @@ async function createHarness(publishCompleted = true) {
             { kind: "none"; message: "" } | { kind: "excluded" | "warning"; message: string }
         >({ kind: "none", message: "" }),
         hideFileWarningNoticeSetting: reactiveSource(false),
-        p2pLogCollector: { p2pReplicationStats: reactiveSource([]), dispose: vi.fn() },
+        p2pLogCollector: { p2pReplicationStats, dispose: vi.fn() },
         statusBarRenderer,
         statusLineRenderer,
         statusDiv: { setCssStyles: vi.fn() },
@@ -139,6 +141,7 @@ async function createHarness(publishCompleted = true) {
         core,
         services,
         stats,
+        p2pReplicationStats,
         statusBarRenderer,
         statusLineRenderer,
         flushDisplay,
@@ -309,27 +312,43 @@ describe("ModuleLog status displays", () => {
         expect(host.module.messageArea?.innerText).toContain("Warning:");
     });
 
+    it("keeps the compact warning in the status bar when an auxiliary P2P peer is active", async () => {
+        const host = await createHarness();
+        host.core.settings.hideFileWarningNotice = true;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        host.module.activeFileStatus.value = { kind: "warning", message: "File compatibility warning" };
+        const progress = { current: 1, max: 2, isActive: true };
+        host.p2pReplicationStats.value = [
+            { peerId: "peer", peerName: "Auxiliary peer", sending: progress, fetching: progress },
+        ];
+        await host.flushDisplay();
+
+        const { parts, statusBarParts } = host.module.statusBarLabels.value;
+        expect(parts).toContainEqual(expect.objectContaining({ key: "p2p-peer" }));
+        expect(statusBarParts).toContainEqual(expect.objectContaining({ key: "file-skip", text: "📄⚠️" }));
+        expect(host.statusBarRenderer.render).toHaveBeenLastCalledWith(statusBarParts);
+    });
+
     it("updates both displays when Commonlib publishes new replication statistics", async () => {
         const { stats, statusBarRenderer, statusLineRenderer, flushDisplay } = await createHarness(false);
         const renderers = [statusBarRenderer, statusLineRenderer];
         expect(stats.value.statsUpdatedAt).toBeNull();
         for (const renderer of renderers) {
-            expect(renderer.render).toHaveBeenLastCalledWith(
-                expect.arrayContaining([{ key: "sync", text: "◌" }])
-            );
+            expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: "◌" }]));
             renderer.render.mockClear();
         }
 
-        for (const [syncStatus, icon] of [["COMPLETED", "✅"], ["CONNECTED", "⚡"]] as const) {
+        for (const [syncStatus, icon] of [
+            ["COMPLETED", "✅"],
+            ["CONNECTED", "⚡"],
+        ] as const) {
             stats.value = { ...stats.value, syncStatus };
             expect(stats.value.statsUpdatedAt).toEqual(expect.any(Number));
             expect(stats.value.syncStatus).toBe(syncStatus);
             await flushDisplay();
 
             for (const renderer of renderers) {
-                expect(renderer.render).toHaveBeenLastCalledWith(
-                    expect.arrayContaining([{ key: "sync", text: icon }])
-                );
+                expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: icon }]));
                 renderer.render.mockClear();
             }
         }

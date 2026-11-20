@@ -1,19 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { KeyedNoticeManager } from "@vrtmrz/obsidian-plugin-kit/notice";
 
+import type { App, Plugin } from "@/deps";
 import { eventHub } from "@/common/events";
 import { translateLiveSyncMessage } from "@/common/translation";
+import type ObsidianLiveSyncPlugin from "@/main";
 import { observeServiceContext } from "../../../test/contracts/serviceContext";
+import type { ObsidianNoticeGroups } from "./ObsidianNoticeGroups";
 import { ObsidianServiceContext } from "./ObsidianServiceContext";
 
 const TRANSLATION_KEY = "Replicator.Message.InitialiseFatalError";
 
 function createContext() {
-    type Parameters = ConstructorParameters<typeof ObsidianServiceContext>;
-    const app = {} as Parameters[0];
-    const plugin = {} as Parameters[1];
-    const liveSyncPlugin = {} as Parameters[2];
-    const notices = {} as Parameters[3];
-    const noticeGroups = {} as Parameters[4];
+    const app = {} as App;
+    const plugin = {} as Plugin;
+    const liveSyncPlugin = {} as ObsidianLiveSyncPlugin;
+    const notices = {} as KeyedNoticeManager;
+    const noticeGroups = {} as ObsidianNoticeGroups;
     const context = new ObsidianServiceContext(app, plugin, liveSyncPlugin, notices, noticeGroups);
     return { context, app, plugin, liveSyncPlugin, notices, noticeGroups };
 }

@@ -1,6 +1,7 @@
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
 import type { ReactiveValue } from "octagonal-wheels/dataobject/reactive";
 import { REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import {
@@ -64,6 +65,8 @@ interface ReplicationSchedulingState {
     lifecycleAllowsScheduling: boolean;
     lifecycleGeneration: number;
     resumeWorkRunning: boolean;
+    resumeQueued: boolean;
+    unloading: boolean;
 }
 
 interface ReplicationSchedulingContext {
@@ -92,6 +95,8 @@ export function createReplicationSchedulingContext(
         lifecycleAllowsScheduling: false,
         lifecycleGeneration: 0,
         resumeWorkRunning: false,
+        resumeQueued: false,
+        unloading: false,
     };
     return {
         dependencies,
@@ -242,12 +247,12 @@ async function runAfterResume(
         try {
             result = await startContinuous(context, trigger, settings);
         } catch (error) {
-            if (isCurrentLifecycleGeneration(context, generation)) {
+            if (!context.state.resumeQueued) {
                 setContinuousOwnership(context, false);
             }
             throw error;
         }
-        if (!isReplicationCompleted(result) && isCurrentLifecycleGeneration(context, generation)) {
+        if (!isReplicationCompleted(result) && !context.state.resumeQueued) {
             setContinuousOwnership(context, false);
         }
         // A suspend/resume may have started a new lifecycle generation while
@@ -285,7 +290,7 @@ function scheduleAfterResume(context: ReplicationSchedulingContext, trigger: "re
         return;
     }
     const requestedGeneration = state.lifecycleGeneration;
-    context.updateState({ resumeWorkRunning: true });
+    context.updateState({ resumeWorkRunning: true, resumeQueued: false });
     void runAfterResume(context, requestedGeneration, trigger)
         .catch((error: unknown) => {
             dependencies.log(error);
@@ -293,8 +298,7 @@ function scheduleAfterResume(context: ReplicationSchedulingContext, trigger: "re
         .finally(() => {
             const latest = context.state;
             context.updateState({ resumeWorkRunning: false });
-            // Only a resume advances the generation, so a newer active generation takes priority.
-            if (latest.lifecycleAllowsScheduling && latest.lifecycleGeneration !== requestedGeneration) {
+            if (latest.resumeQueued) {
                 scheduleAfterResume(context);
             } else {
                 retryStartAfterNetworkReturn(context);
@@ -305,8 +309,13 @@ function scheduleAfterResume(context: ReplicationSchedulingContext, trigger: "re
 /** Schedule eligible work after the application has resumed. */
 export function resumeReplicationScheduling(context: ReplicationSchedulingContext): void {
     const { state } = context;
+    if (state.unloading) return;
     if (!state.lifecycleAllowsScheduling) {
-        context.updateState({ lifecycleGeneration: state.lifecycleGeneration + 1, lifecycleAllowsScheduling: true });
+        context.updateState({
+            lifecycleGeneration: state.lifecycleGeneration + 1,
+            lifecycleAllowsScheduling: true,
+            resumeQueued: state.resumeWorkRunning,
+        });
     }
     // runAfterResume executes synchronously until its first await. A Continuous
     // request therefore reserves ownership before Periodic is reconciled.
@@ -316,7 +325,7 @@ export function resumeReplicationScheduling(context: ReplicationSchedulingContex
 
 /** Stop generic Periodic scheduling before the application suspends. */
 export function suspendReplicationScheduling(context: ReplicationSchedulingContext): void {
-    context.updateState({ lifecycleAllowsScheduling: false });
+    context.updateState({ lifecycleAllowsScheduling: false, resumeQueued: false });
     context.dependencies.timer.disable();
 }
 
@@ -333,9 +342,12 @@ export function realiseReplicationScheduling(context: ReplicationSchedulingConte
 
 /** Prevent later timer callbacks from scheduling new work during unload. */
 export function unloadReplicationScheduling(context: ReplicationSchedulingContext): void {
+    if (context.state.unloading) return;
     context.updateState({
         continuousStart: undefined,
         lifecycleAllowsScheduling: false,
+        resumeQueued: false,
+        unloading: true,
     });
     context.dependencies.timer.disable();
 }
@@ -409,13 +421,19 @@ export function useReplicationScheduling(
     const forgetStart = () => {
         context.updateState({ continuousStart: undefined });
     };
-    const releaseAbort = services.context.events.onEvent(EVENT_REPLICATION_ABORT_REQUESTED, forgetStart);
+    const releaseAbort = services.context.events.onEvent(EVENT_REPLICATION_ABORT_REQUESTED, () => {
+        context.updateState({ continuousStart: undefined, resumeQueued: false });
+    });
+    const releaseUnload = services.context.events.onEvent(EVENT_PLUGIN_UNLOADED, () => {
+        unloadReplicationScheduling(context);
+    });
     services.replicator.onBeforeReplicatorPublication.addHandler(() => {
         forgetStart();
         return Promise.resolve(true);
     });
     services.appLifecycle.onUnload.addHandler(() => {
         releaseAbort();
+        releaseUnload();
         networkState?.offChanged(onNetworkChanged);
         unloadReplicationScheduling(context);
         return Promise.resolve(true);

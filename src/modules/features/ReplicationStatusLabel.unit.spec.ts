@@ -172,7 +172,7 @@ describe("projectReplicationStatusLabel", () => {
         );
         expect(opaqueCheckpoint.message).toBe("⚡ ↑ 0 ↓ 0");
 
-        const knownTransferPosition = projectReplicationStatusLabel(
+        const opaqueCheckpointWithTransferredDocuments = projectReplicationStatusLabel(
             stats({
                 maxPullSeq: 40,
                 lastSyncPullSeq: 31,
@@ -184,7 +184,7 @@ describe("projectReplicationStatusLabel", () => {
             }),
             noNetworkActivity
         );
-        expect(knownTransferPosition.message).toBe("⚡ ↑ 0 ↓ 1 (9)");
+        expect(opaqueCheckpointWithTransferredDocuments.message).toBe("⚡ ↑ 0 ↓ 1");
 
         const staleTransferPosition = projectReplicationStatusLabel(
             stats({ maxPullSeq: 40, lastSyncPullSeq: 31, arrived: 0 }),
@@ -194,6 +194,52 @@ describe("projectReplicationStatusLabel", () => {
 
         const unreported = projectReplicationStatusLabel(stats({ maxPushSeq: 40, lastSyncPushSeq: 0 }), noNetworkActivity);
         expect(unreported.message).toBe("⚡ ↑ 0 ↓ 0");
+    });
+
+    it("waits for new directional checkpoints when the same CouchDB Replicator starts again", () => {
+        const checkpoint = (lastSeq: number) => ({
+            checkedChanges: 0,
+            completedBatches: 1,
+            checking: false,
+            lastSeq,
+        });
+        const firstTransfer = stats({
+            sent: 4,
+            arrived: 2,
+            maxPushSeq: 30,
+            maxPullSeq: 20,
+            lastSyncPushSeq: 30,
+            lastSyncPullSeq: 20,
+            syncStatus: "COMPLETED",
+            couchDB: { phase: "idle", push: checkpoint(30), pull: checkpoint(20) },
+        });
+        const project = (snapshot: ReplicationStatics) =>
+            projectReplicationStatusLabel(snapshot, noNetworkActivity).message;
+        expect(project(firstTransfer)).toBe("✅ ↑ 4 (0) ↓ 2 (0)");
+
+        // Commonlib publishes new maxima with the previous idle progress before installing the next observer.
+        const secondStart = stats({ ...firstTransfer, syncStatus: "STARTED", maxPushSeq: 40, maxPullSeq: 50 });
+        const secondTransfer = stats({
+            ...secondStart,
+            syncStatus: "CONNECTED",
+            couchDB: couchDBProgress("one-shot"),
+        });
+        expect(project(secondStart)).toBe("🌀 ↑ 4 ↓ 2");
+        expect(project(secondTransfer)).toBe("⚡ ↑ 4 ↓ 2");
+        expect(project({ ...secondTransfer, couchDB: { phase: "one-shot", pull: checkpoint(45) } })).toBe(
+            "⚡ ↑ 4 ↓ 2 (5)"
+        );
+        expect(
+            project({ ...secondTransfer, couchDB: { phase: "one-shot", push: checkpoint(40), pull: checkpoint(50) } })
+        ).toBe("⚡ ↑ 4 (0) ↓ 2 (0)");
+    });
+
+    it("preserves the transfer countdown from Object Storage statistics", () => {
+        const projection = projectReplicationStatusLabel(
+            stats({ syncStatus: "JOURNAL_SEND", sent: 3, maxPushSeq: 20, lastSyncPushSeq: 17 }),
+            noNetworkActivity
+        );
+        expect(projection.message).toBe("📦↑ ↑ 3 (3) ↓ 0");
     });
 
     it("shows fast-forward checking with zero arrivals, transferred data, and the final idle count", () => {

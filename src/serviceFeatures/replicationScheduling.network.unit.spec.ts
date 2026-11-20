@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import { promiseWithResolvers } from "octagonal-wheels/promises";
-import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
+import { createServiceContext } from "@vrtmrz/livesync-commonlib/context";
 import { DEFAULT_SETTINGS, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
-import type { ContinuousReplicationRequest, ReplicationOutcome } from "@vrtmrz/livesync-commonlib/replication";
+import {
+    ControlService,
+    type ControlServiceDependencies,
+} from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
+import {
+    EVENT_REPLICATION_ABORT_REQUESTED,
+    type ContinuousReplicationRequest,
+    type ReplicationOutcome,
+} from "@vrtmrz/livesync-commonlib/replication";
 import type { HostNetworkState } from "@/common/core/hostNetworkState";
 import { useReplicationScheduling } from "./replicationScheduling";
 
@@ -19,16 +27,27 @@ function lifecycleHook() {
 
 function createVault() {
     const settings = { ...DEFAULT_SETTINGS, isConfigured: true, liveSync: true, syncOnStart: false };
-    const events = createLiveSyncEventHub();
+    const context = createServiceContext();
+    const { events } = context;
     const networkState = reactiveSource<HostNetworkState>({ online: true });
     const foreground = vi.fn(() => true);
     const appLifecycle = {
         isReady: () => true,
         isSuspended: () => false,
+        onLoaded: lifecycleHook(),
         onResumed: lifecycleHook(),
         onSuspending: lifecycleHook(),
+        onBeforeUnload: vi.fn(async () => true),
+        onAppUnload: vi.fn(),
         onUnload: lifecycleHook(),
     };
+    const API = { addLog: vi.fn(), isOnline: true };
+    const timer = { enable: vi.fn(), disable: vi.fn() };
+    const control = new ControlService(context, {
+        APIService: API,
+        appLifecycleService: { ...appLifecycle, onUnload: appLifecycle.onUnload.fire },
+        databaseService: { closeDatabase: vi.fn() },
+    } as unknown as ControlServiceDependencies);
     const startContinuous = vi.fn(
         async (_request: ContinuousReplicationRequest): Promise<ReplicationOutcome> => ({ status: "completed" })
     );
@@ -42,17 +61,14 @@ function createVault() {
     const host = {
         services: {
             context: { events, isHostActive: foreground, networkState },
-            API: { addLog: vi.fn(), isOnline: true },
+            API,
             appLifecycle,
             replication: { startContinuous, replicateUnattended },
             replicator,
             setting,
         },
     };
-    const { readPendingContinuousStart } = useReplicationScheduling(host as never, () => ({
-        enable: vi.fn(),
-        disable: vi.fn(),
-    }));
+    const { readPendingContinuousStart } = useReplicationScheduling(host as never, () => timer);
     const settle = (reason: "offline" | "remote-transport", failedAt = Date.now()) => {
         startContinuous.mock.lastCall![0].onStartSettled?.({
             status: "failed",
@@ -72,6 +88,8 @@ function createVault() {
         setting,
         replicator,
         appLifecycle,
+        control,
+        timer,
         events,
         network,
         foreground,
@@ -216,6 +234,65 @@ describe("CouchDB LiveSync after a network return", () => {
         expect(vault.readPendingContinuousStart()).toBeUndefined();
     });
 
+    it.each(["before", "after"] as const)(
+        "discards the queued resume on abort and honours a foreground resume %s admission settles",
+        async (laterResume) => {
+            const vault = createVault();
+            vault.settings.periodicReplication = true;
+            const admission = promiseWithResolvers<ReplicationOutcome>();
+            vault.startContinuous.mockReturnValueOnce(admission.promise);
+            const resumeFromBackground = async () => {
+                await vault.appLifecycle.onSuspending.fire();
+                await vault.appLifecycle.onResumed.fire();
+            };
+
+            await vault.appLifecycle.onResumed.fire();
+            await resumeFromBackground();
+            vault.events.emitEvent(EVENT_REPLICATION_ABORT_REQUESTED);
+            expect(vault.startContinuous).toHaveBeenCalledOnce();
+
+            if (laterResume === "before") await resumeFromBackground();
+            admission.resolve({ status: "cancelled" });
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+            if (laterResume === "after") {
+                expect(vault.startContinuous).toHaveBeenCalledOnce();
+                expect(vault.timer.enable).toHaveBeenCalledOnce();
+                await resumeFromBackground();
+            } else {
+                expect(vault.timer.enable).not.toHaveBeenCalled();
+            }
+            expect(vault.startContinuous.mock.calls.map(([request]) => request.trigger)).toEqual(["resume", "resume"]);
+            expect(vault.readPendingContinuousStart()).toBeUndefined();
+        }
+    );
+
+    it("discards a late network failure while before-unload work is still running", async () => {
+        const vault = createVault();
+        const teardown = promiseWithResolvers<boolean>();
+        vault.appLifecycle.onBeforeUnload.mockReturnValueOnce(teardown.promise);
+        const admission = promiseWithResolvers<ReplicationOutcome>();
+        vault.startContinuous.mockReturnValueOnce(admission.promise);
+        await vault.appLifecycle.onResumed.fire();
+        const unload = vault.control.onUnload();
+        try {
+            expect(vault.appLifecycle.onBeforeUnload).toHaveBeenCalledOnce();
+            vault.network(true, 1000);
+            vault.settle("offline", 1000);
+            admission.resolve({ status: "failed", error: new Error("Offline") });
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+            expect(vault.startContinuous.mock.calls.map(([request]) => request.trigger)).toEqual(["resume"]);
+            expect(vault.readPendingContinuousStart()).toBeUndefined();
+
+            await vault.appLifecycle.onResumed.fire();
+            expect(vault.startContinuous).toHaveBeenCalledOnce();
+        } finally {
+            teardown.resolve(true);
+            await unload;
+        }
+    });
+
     it("discards a failure reported after a newer start has replaced its attempt", async () => {
         const vault = createVault();
         await vault.appLifecycle.onResumed.fire();
@@ -239,7 +316,7 @@ describe("CouchDB LiveSync after a network return", () => {
         async (why) => {
             const vault = createVault();
             await vault.appLifecycle.onResumed.fire();
-            if (why === "cancel") vault.events.emitEvent("replication-abort-requested");
+            if (why === "cancel") vault.events.emitEvent(EVENT_REPLICATION_ABORT_REQUESTED);
             if (why === "settings") await vault.setting.onBeforeRealiseSetting.fire();
             if (why === "replicator") await vault.replicator.onBeforeReplicatorPublication.fire();
             if (why === "unload") await vault.appLifecycle.onUnload.fire();
