@@ -1033,8 +1033,9 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
             );
             await wait.until(
                 () =>
-                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer")
-                        ?.textContent === "⚡ E2E peer" &&
+                    document.querySelector(
+                        ".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer:not(.livesync-stat-inactive)"
+                    )?.textContent === "⚡ E2E peer" &&
                     document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-sending")
                         ?.textContent === " ↑ — (1)" &&
                     document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-fetching")
@@ -1076,8 +1077,9 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
                     document
                         .querySelector(".syncstatusbar .livesync-stat-file-skip:not(.livesync-stat-inactive)")
                         ?.textContent?.trim() === "📄⚠️" &&
-                    document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer")
-                        ?.textContent === "⚡ E2E peer" &&
+                    document.querySelector(
+                        ".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer:not(.livesync-stat-inactive)"
+                    )?.textContent === "⚡ E2E peer" &&
                     document
                         .querySelector(".livesync-status-messagearea")
                         ?.textContent?.includes("E2E file warning") === false,

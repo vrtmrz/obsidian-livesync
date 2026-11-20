@@ -309,7 +309,9 @@ function scheduleAfterResume(context: ReplicationSchedulingContext, trigger: "re
 /** Schedule eligible work after the application has resumed. */
 export function resumeReplicationScheduling(context: ReplicationSchedulingContext): void {
     const { state } = context;
-    if (state.unloading) return;
+    if (state.unloading) {
+        return;
+    }
     if (!state.lifecycleAllowsScheduling) {
         context.updateState({
             lifecycleGeneration: state.lifecycleGeneration + 1,
@@ -342,7 +344,9 @@ export function realiseReplicationScheduling(context: ReplicationSchedulingConte
 
 /** Prevent later timer callbacks from scheduling new work during unload. */
 export function unloadReplicationScheduling(context: ReplicationSchedulingContext): void {
-    if (context.state.unloading) return;
+    if (context.state.unloading) {
+        return;
+    }
     context.updateState({
         continuousStart: undefined,
         lifecycleAllowsScheduling: false,
