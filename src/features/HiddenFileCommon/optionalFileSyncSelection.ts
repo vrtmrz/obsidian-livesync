@@ -200,10 +200,12 @@ export function updateCustomisationEntryMode(
         return;
     }
     const savedKey = matchedKeys[0] ?? key;
+    const existingFiles = [...new Set(matchedKeys.flatMap((matchedKey) => entries[matchedKey]?.files ?? []))];
     for (const duplicateKey of matchedKeys.slice(1)) {
         delete entries[duplicateKey];
     }
-    entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files };
+    const nextFiles = files.length > 0 ? files : existingFiles;
+    entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files: nextFiles };
 }
 
 export function collectSavedCustomisationPluginNames(

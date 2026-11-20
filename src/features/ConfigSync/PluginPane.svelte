@@ -250,7 +250,9 @@
     const PREFIX_PLUGIN_MAIN = "PLUGIN_MAIN";
     const PREFIX_PLUGIN_ETC = "PLUGIN_ETC";
     function setMode(key: string, mode: SYNC_MODE) {
+        const entries = plugin.core.settings.pluginSyncExtendedSetting;
         if (key.startsWith(PREFIX_PLUGIN_ALL + "/")) {
+            updateCustomisationEntryMode(entries, key, MODE_SELECTIVE, [], insensitive);
             setMode(PREFIX_PLUGIN_DATA + key.substring(PREFIX_PLUGIN_ALL.length), mode);
             setMode(PREFIX_PLUGIN_MAIN + key.substring(PREFIX_PLUGIN_ALL.length), mode);
             return;
@@ -262,7 +264,6 @@
                 .flat()
                 .map((e) => e.filename)
         );
-        const entries = plugin.core.settings.pluginSyncExtendedSetting;
         updateCustomisationEntryMode(entries, key, mode, files, insensitive);
         modeEntries = entries;
         core.services.setting.saveSettingData();

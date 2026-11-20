@@ -329,4 +329,22 @@ describe("Customisation Sync dialogue modes", () => {
         expect(collectSavedCustomisationPluginNames(["example"], entries, true)).toEqual(["v1-only"]);
         expect(collectSavedCustomisationPluginNames(["example"], entries, false)).toEqual(["v1-only", "Example"]);
     });
+
+    it("preserves saved filenames when updating a catalogue-absent item to Automatic", () => {
+        const entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] = {
+            "PLUGIN_MAIN/demo": {
+                key: "PLUGIN_MAIN/demo",
+                mode: MODE_PAUSED,
+                files: ["plugins/demo/manifest.json", "plugins/demo/main.js"],
+            },
+        };
+
+        updateCustomisationEntryMode(entries, "PLUGIN_MAIN/demo", MODE_AUTOMATIC, [], true);
+
+        expect(entries["PLUGIN_MAIN/demo"]).toEqual({
+            key: "PLUGIN_MAIN/demo",
+            mode: MODE_AUTOMATIC,
+            files: ["plugins/demo/manifest.json", "plugins/demo/main.js"],
+        });
+    });
 });
