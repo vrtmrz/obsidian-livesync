@@ -742,7 +742,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         def: "Automatically broadcast changes to connected peers",
         ja: "接続中のピアに変更を自動ブロードキャスト",
         zh: "自动将更改广播给已连接的对等方",
-        "zh-tw": "自動通知已連線的對端有新變更",
+        "zh-tw": "自動通知已連線的 Peer 有新變更",
     },
     "Automatically start P2P connection on launch": {
         def: "Automatically start P2P connection on launch",
@@ -830,7 +830,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "필요 시 가져오기의 배치 크기",
         ru: "Размер пакета при запросе по требованию",
         zh: "按需获取的批量大小",
-        "zh-tw": "按需抓取的批次大小",
+        "zh-tw": "按需取回的批次大小",
     },
     "Before v0.17.16, we used an old adapter for the local database. Now the new adapter is preferred. However, it needs local database rebuilding. Please disable this toggle when you have enough time. If leave it enabled, also while fetching from the remote database, you will be asked to disable this.":
         {
@@ -843,7 +843,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "До v0.17.16 мы использовали старый адаптер для локальной базы данных. Теперь предпочтителен новый адаптер. Однако требуется перестроение локальной базы данных. Пожалуйста, отключите этот переключатель, когда у вас будет достаточно времени. Если оставить его включённым, отключить его предложат и при загрузке из удалённой базы данных.",
             zh: "在 v0.17.16 之前,我们使用旧适配器作为本地数据库。现在首选新适配器。但是,它需要重建本地数据库。请在有足够时间时禁用此开关。如果保持启用状态,并且在从远程数据库获取时,系统将要求您禁用此开关。",
             "zh-tw":
-                "在 v0.17.16 之前，本機資料庫使用的是舊版轉接器。現在建議使用新版轉接器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫抓取時也會要求你停用此選項。",
+                "在 v0.17.16 之前，本機資料庫使用的是舊版轉接器。現在建議使用新版轉接器，但需要重建本機資料庫。請在時間充裕時停用此開關。若保持啟用，從遠端資料庫取回時也會要求你停用此選項。",
         },
     "Broadcasting?": {
         def: "Broadcasting?",
@@ -1556,7 +1556,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "데이터베이스 접미사",
         ru: "Суффикс базы данных",
         zh: "数据库后缀",
-        "zh-tw": "資料庫後綴",
+        "zh-tw": "資料庫名稱字尾",
     },
     Date: {
         def: "Date",
@@ -1874,7 +1874,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Self-hosted LiveSync имеет переводы для вашего языка, поэтому была включена настройка «Язык интерфейса».\n\nПримечание: Не все сообщения переведены. Мы ждём ваших предложений!\nПримечание 2: При создании Issue, пожалуйста, вернитесь к lang-def, затем сделайте скриншоты, сообщения и логи. Это можно сделать в настройках.\nНадеемся, вам будет удобно использовать!",
         zh: "Self-hosted LiveSync已提供您语言的翻译,因此启用了显示语言\n\n注意：并非所有消息都已翻译。我们期待您的贡献！\n注意 2：若您创建问题报告， **请切换回默认** ，然后截取屏幕截图、消息和日志，此操作可在设置对话框中完成\n愿您使用顺心！",
         "zh-tw":
-            "Self-hosted LiveSync 已提供你目前語言的翻譯，因此已啟用顯示語言設定。\n\n注意：並非所有訊息都已完成翻譯，歡迎協助補充！\n注意 2：如果你要回報問題，請先切回預設語言，再附上截圖、訊息與日誌。\n\n希望你使用愉快！",
+            "Self-hosted LiveSync 已提供你目前語言的翻譯，因此已啟用「顯示語言」設定。\n\n注意：並非所有訊息都已完成翻譯，歡迎協助補充！\n注意 2：如果你要回報問題，**請先切回預設語言**，再附上截圖、訊息與記錄。語言可以在設定對話框中切換。\n\n希望你使用愉快！",
     },
     "dialog.yourLanguageAvailable.btnRevertToDefault": {
         def: "Keep Default",
@@ -1934,7 +1934,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로깅을 비활성화하고 알림만 표시합니다. 문제를 신고하는 경우 비활성화해 주세요.",
         ru: "Отключает логирование, показывает только уведомления. Пожалуйста, отключите при сообщении о проблеме.",
         zh: "禁用日志记录,仅显示通知。如果您报告问题,请禁用此选项",
-        "zh-tw": "停用日誌記錄，只顯示通知。如果你要回報問題，請關閉此選項。",
+        "zh-tw": "停用記錄功能，只顯示通知。如果你要回報問題，請關閉此選項。",
     },
     Disconnect: {
         def: "Disconnect",
@@ -2857,7 +2857,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기",
         ru: "Получить",
         zh: "获取",
-        "zh-tw": "抓取",
+        "zh-tw": "取回",
     },
     "Fetch chunks on demand": {
         def: "Fetch chunks on demand",
@@ -2868,7 +2868,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "필요 시 청크 원격 가져오기",
         ru: "Загружать чанки по требованию",
         zh: "按需获取块",
-        "zh-tw": "按需抓取 chunks",
+        "zh-tw": "按需取回 chunks",
     },
     "Fetch database with previous behaviour": {
         def: "Fetch database with previous behaviour",
@@ -2879,7 +2879,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이전 동작으로 데이터베이스 가져오기",
         ru: "Загрузить базу данных с предыдущим поведением",
         zh: "使用以前的行为获取数据库",
-        "zh-tw": "以先前的行為抓取資料庫",
+        "zh-tw": "以先前的行為取回資料庫",
     },
     "Fetch remote settings": {
         def: "Fetch remote settings",
@@ -2888,7 +2888,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 설정 가져오기",
         ru: "Получить настройки с удалённого хранилища",
         zh: "获取远端设置",
-        "zh-tw": "抓取遠端設定",
+        "zh-tw": "取回遠端設定",
     },
     FETCHING: {
         def: "FETCHING",
@@ -2897,7 +2897,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오는 중",
         ru: "ЗАГРУЗКА",
         zh: "获取中",
-        "zh-tw": "擷取中",
+        "zh-tw": "取回中",
     },
     "Fetching status...": {
         def: "Fetching status...",
@@ -3180,7 +3180,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "숨김 파일 동기화가 일시적으로 비활성화되었습니다. 필요하다면 가져오기가 끝난 뒤에 다시 활성화해 주세요.",
             ru: "Синхронизация скрытых файлов временно выключена. Включите её после того, как заберёте данные с сервера, если она вам нужна.",
             zh: "隐藏文件同步已被临时停用。获取完成后如需使用，请重新启用。",
-            "zh-tw": "隱藏檔案同步已暫時停用。如有需要，請在抓取完成後重新啟用。",
+            "zh-tw": "隱藏檔案同步已暫時停用。如有需要，請在取回完成後重新啟用。",
         },
     "Hidden Files": {
         def: "Hidden Files",
@@ -3444,7 +3444,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             def: "If enabled, changes will be automatically broadcasted to all connected peers. Notified peers will start fetching the changes.",
             ja: "有効にすると、接続されているすべてのピアに変更が自動的にブロードキャストされます。通知を受け取ったピアは変更の取得を開始します。",
             zh: "启用后，更改将自动广播给所有已连接的对等方。收到通知的对等方将开始获取这些更改。",
-            "zh-tw": "啟用後，所有已連線的對端都會自動收到變更通知，並開始取回變更。",
+            "zh-tw": "啟用後，所有已連線的 Peer 都會自動收到變更通知，並開始取回變更。",
         },
     "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.": {
         def: "If enabled, chunks will be split into no more than 100 items. However, dedupe is slightly weaker.",
@@ -3682,7 +3682,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "`LiveSync`를 사용하려면 변경 사항을 브로드캐스트해야 합니다. 이를 감지한 모든 `watching` 상태의 피어가 가져오기를 위한 복제를 시작합니다.",
             ru: "Для работы `LiveSync` включите вещание изменений. Все устройства в режиме `watching` заметят это и запустят репликацию, чтобы забрать данные с сервера.",
             zh: "如果要使用 `LiveSync`，你应当广播变更。所有检测到变更的 `watching` 对等方都会启动复制以获取数据。",
-            "zh-tw": "若要使用 `LiveSync`，你需要廣播變更。所有偵測到廣播的「監看中」Peer 都會開始執行複寫以進行擷取。",
+            "zh-tw": "若要使用 `LiveSync`，你需要廣播變更。所有偵測到廣播的「監看中」Peer 都會開始執行複寫以進行取回。",
         },
     Ignore: {
         def: "Ignore",
@@ -3798,7 +3798,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 저널 기록을 초기화합니다. 다음 동기화 때 모든 항목을 다시 받고 다시 보냅니다.",
         ru: "Инициализирует всю историю журнала. При следующей синхронизации каждый элемент будет заново получен и отправлен.",
         zh: "初始化所有日志历史。下次同步时，所有项目都会重新接收并发送。",
-        "zh-tw": "初始化所有日誌歷史。下次同步時，每個項目都會重新接收與傳送。",
+        "zh-tw": "初始化所有日誌歷程。下次同步時，每個項目都會重新接收與傳送。",
     },
     "Initialise journal received history. On the next sync, every item except this device sent will be downloaded again.":
         {
@@ -3808,7 +3808,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ko: "저널 수신 기록을 초기화합니다. 다음 동기화 때 이 기기가 보낸 항목을 제외한 모든 항목을 다시 내려받습니다.",
             ru: "Обнуляет историю полученных записей журнала. При следующей синхронизации всё, кроме отправленного этим устройством, будет загружено заново.",
             zh: "初始化日志的已接收历史。下次同步时，除本设备已发送的项外，其余都会重新下载。",
-            "zh-tw": "初始化接收日誌歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。",
+            "zh-tw": "初始化日誌接收歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。",
         },
     "Initialise journal sent history. On the next sync, every item except this device received will be sent again.": {
         def: "Initialise journal sent history. On the next sync, every item except this device received will be sent again.",
@@ -3817,7 +3817,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 송신 기록을 초기화합니다. 다음 동기화 때 이 기기가 받은 항목을 제외한 모든 항목을 다시 보냅니다.",
         ru: "Обнуляет историю отправленных записей журнала. При следующей синхронизации всё, кроме полученного этим устройством, будет отправлено заново.",
         zh: "初始化日志的已发送历史。下次同步时，除本设备已接收的项外，其余都会重新发送。",
-        "zh-tw": "初始化傳送日誌歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。",
+        "zh-tw": "初始化日誌傳送歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。",
     },
     "Internal timestamp for resolving compatible tweak mismatches.": {
         def: "Internal timestamp for resolving compatible tweak mismatches.",
@@ -3852,7 +3852,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "문제 감지 로그:",
         ru: "Журнал поиска проблем:",
         zh: "问题检测日志：",
-        "zh-tw": "問題偵測日誌：",
+        "zh-tw": "問題偵測記錄：",
     },
     "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.": {
         def: "It is strongly advised to create a backup before proceeding. Continuing without a backup may lead to data loss.",
@@ -4567,7 +4567,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로그 창이 열렸습니다",
         ru: "Окно лога открыто",
         zh: "日志窗口已打开",
-        "zh-tw": "日誌視窗已開啟",
+        "zh-tw": "記錄視窗已開啟",
     },
     "logPane.pause": {
         def: "Pause",
@@ -4589,7 +4589,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "Self-hosted LiveSync 로그",
         ru: "Лог Self-hosted LiveSync",
         zh: "Self-hosted LiveSync 日志",
-        "zh-tw": "Self-hosted LiveSync 日誌",
+        "zh-tw": "Self-hosted LiveSync 記錄",
     },
     "logPane.wrap": {
         def: "Wrap",
@@ -5098,7 +5098,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "LiveSync가 업데이트되었습니다. 변경사항을 읽어보세요!",
         ru: "LiveSync обновлён, пожалуйста, прочитайте список изменений!",
         zh: "LiveSync 已更新,请阅读更新日志！",
-        "zh-tw": "LiveSync 已更新，請閱讀更新日誌！",
+        "zh-tw": "LiveSync 已更新，請閱讀變更紀錄！",
     },
     "moduleLiveSyncMain.logSafetyScanCompleted": {
         def: "Additional safety scan completed",
@@ -5155,7 +5155,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Self-hosted LiveSync настроен игнорировать некоторые события. Это верно?\n\n| Тип | Статус | Примечание |\n|:---:|:---:|---|\n| События хранилища | ${fileWatchingStatus} | Любое изменение будет проигнорировано |\n| События базы данных | ${parseReplicationStatus} | Любое синхронизированное изменение будет отложено |\n\nВозобновить их и перезапустить Obsidian?\n\n> [!DETAILS]-\n> Эти флаги устанавливает плагин во время перестроения или загрузки. Если процесс завершится аварийно, они могут остаться включёнными непреднамеренно.\n> Если вы не уверены, попробуйте выполнить эти процессы заново. Обязательно сделайте резервную копию хранилища.\n",
         zh: "Self-hosted LiveSync 已被配置为忽略某些事件。这样对吗？\n\n| 类型 | 状态 | 说明 |\n|:---:|:---:|---|\n| 存储事件 | ${fileWatchingStatus} | 所有修改都将被忽略 |\n| 数据库事件 | ${parseReplicationStatus} | 所有同步的更改都将被推迟 |\n\n您想恢复它们并重启 Obsidian 吗？\n\n> [!DETAILS]-\n> 这些标志是在重建或获取时由插件设置的。如果过程异常结束,它们可能会被无意中保留。\n> 如果您不确定,可以尝试重新运行这些过程。请确保备份您的库。\n",
         "zh-tw":
-            "Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？\n\n| 類型 | 狀態 | 說明 |\n|:---:|:---:|---|\n| 儲存空間事件 | ${fileWatchingStatus} | 所有修改都會被忽略 |\n| 資料庫事件 | ${parseReplicationStatus} | 所有已同步的變更都會被延後 |\n\n你想要恢復它們並重新啟動 Obsidian 嗎？\n\n> [!DETAILS]-\n> 這些標記是外掛在重建或抓取時設定的。如果程序異常結束，可能會非預期地留存下來。\n> 如果你不確定，可以嘗試重新執行這些程序。請務必先備份你的 Vault。\n",
+            "Self-hosted LiveSync 已設定為忽略某些事件。這樣正確嗎？\n\n| 類型 | 狀態 | 說明 |\n|:---:|:---:|---|\n| 儲存空間事件 | ${fileWatchingStatus} | 所有修改都會被忽略 |\n| 資料庫事件 | ${parseReplicationStatus} | 所有已同步的變更都會被延後 |\n\n你想要恢復它們並重新啟動 Obsidian 嗎？\n\n> [!DETAILS]-\n> 這些標記是外掛在重建或取回時設定的。如果程序異常結束，可能會非預期地留存下來。\n> 如果你不確定，可以嘗試重新執行這些程序。請務必先備份你的 Vault。\n",
     },
     "moduleLiveSyncMain.optionKeepLiveSyncDisabled": {
         def: "Keep LiveSync disabled",
@@ -5218,7 +5218,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "로그 표시",
         ru: "Показать лог",
         zh: "显示日志",
-        "zh-tw": "顯示日誌",
+        "zh-tw": "顯示記錄",
     },
     "moduleLog.syncMode.configured": {
         def: "Configured automatic synchronisation: ${modes}.",
@@ -5309,7 +5309,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격을 이미 재구축했습니다. 원격에서 가져오기",
         ru: "Я уже перестроил удалённую. Загрузить с удалённой",
         zh: "我已经重建了远程数据库，将从远程获取",
-        "zh-tw": "我已重建遠端，從遠端抓取",
+        "zh-tw": "我已重建遠端，從遠端取回",
     },
     "moduleMigration.insecureChunkExist.buttons.later": {
         def: "I will do it later",
@@ -5354,7 +5354,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Некоторые чанки хранятся небезопасно. Пожалуйста, перестройте базу данных.",
         zh: "一些块未安全存储，并且在数据库中未加密\n**请重建数据库以修复此问题**.\n\n如果你的远程数据库未配置 SSL，或者使用了不安全的凭据 **你可能面临暴露敏感数据的风险**.\n\n注意：请在所有设备上将 Self-hosted LiveSync 升级到 v0.25.6 或更高版本，并确保备份你的保险库\n\n注意2：重建所有内容和获取操作会消耗一些时间和流量，请在非高峰时段进行，并确保网络连接稳定\n",
         "zh-tw":
-            "部分 chunks 未安全儲存，在資料庫中也未加密。\n**請重建資料庫以修正此問題**。\n\n如果你的遠端資料庫未設定 SSL，或使用了安全性較低的憑證，**敏感資料就有外洩風險**。\n\n注意：請將所有裝置上的 Self-hosted LiveSync 升級到 v0.25.6 或更新版本，並確實備份你的 Vault。\n注意 2：重建全部與抓取會耗用一些時間與流量，請在離峰時段進行，並確保網路連線穩定。\n",
+            "部分 chunks 未安全儲存，在資料庫中也未加密。\n**請重建資料庫以修正此問題**。\n\n如果你的遠端資料庫未設定 SSL，或使用了安全性較低的憑證，**敏感資料就有外洩風險**。\n\n注意：請將所有裝置上的 Self-hosted LiveSync 升級到 v0.25.6 或更新版本，並確實備份你的 Vault。\n注意 2：重建全部與取回會耗用一些時間與流量，請在離峰時段進行，並確保網路連線穩定。\n",
     },
     "moduleMigration.insecureChunkExist.title": {
         def: "Insecure chunks found!",
@@ -5465,7 +5465,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Удалённая база данных, похоже, уже была мигрирована. Конфигурация этого устройства несовместима.",
         zh: "您可能已经知道,Self-hosted LiveSync 更改了其默认行为和数据库结构。\n\n值得庆幸的是,在您的时间和努力下,远程数据库似乎已经迁移完成。恭喜！\n\n但是,我们还需要一点点操作。此设备的配置与远程数据库不兼容。我们需要再次从远程数据库获取。我们现在应该再次从远程获取吗？\n\n___注意:在更改配置并再次获取数据库之前,我们无法进行同步。___\n___注意2:chunks 是完全不可变的,我们只能获取元数据和差异",
         "zh-tw":
-            "你可能已經知道，Self-hosted LiveSync 變更了預設行為與資料庫結構。\n\n值得慶幸的是，在你的努力下，遠端資料庫似乎已經完成遷移。恭喜！\n\n不過，還需要再多做一點。此裝置的設定與遠端資料庫不相容，我們需要再次從遠端資料庫抓取。現在要再次從遠端抓取嗎？\n\n___注意：在變更設定並再次抓取資料庫之前，我們無法進行同步。___\n___注意 2：chunks 完全不可變，我們只需要抓取中繼資料與差異部分。___",
+            "你可能已經知道，Self-hosted LiveSync 變更了預設行為與資料庫結構。\n\n值得慶幸的是，在你的努力下，遠端資料庫似乎已經完成遷移。恭喜！\n\n不過，還需要再多做一點。此裝置的設定與遠端資料庫不相容，我們需要再次從遠端資料庫取回。現在要再次從遠端取回嗎？\n\n___注意：在變更設定並再次取回資料庫之前，我們無法進行同步。___\n___注意 2：chunks 完全不可變，我們只需要取回中繼資料與差異部分。___",
     },
     "moduleMigration.msgSinceV02321": {
         def: "Since v0.23.21, the self-hosted LiveSync has changed the default behaviour and database structure. The following changes have been made:\n\n1. **Case sensitivity of filenames**\n   The handling of filenames is now case-insensitive. This is a beneficial change for most platforms, other than Linux and iOS, which do not manage filename case sensitivity effectively.\n   (On These, a warning will be displayed for files with the same name but different cases).\n\n2. **Revision handling of the chunks**\n   Chunks are immutable, which allows their revisions to be fixed. This change will enhance the performance of file saving.\n\n___However, to enable either of these changes, both remote and local databases need to be rebuilt. This process takes a few minutes, and we recommend doing it when you have ample time.___\n\n- If you wish to maintain the previous behaviour, you can skip this process by using `${KEEP}`.\n- If you do not have enough time, please choose `${DISMISS}`. You will be prompted again later.\n- If you have rebuilt the database on another device, please select `${DISMISS}` and try synchronizing again. Since a difference has been detected, you will be prompted again.",
@@ -5565,7 +5565,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예 (다시 가져오기)",
         ru: "Да, загрузить снова",
         zh: "是的,再次获取",
-        "zh-tw": "是，再次抓取",
+        "zh-tw": "是，再次取回",
     },
     "moduleMigration.titleCaseSensitivity": {
         def: "Case Sensitivity",
@@ -6070,7 +6070,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기",
         ru: "Загрузить",
         zh: "获取",
-        "zh-tw": "抓取",
+        "zh-tw": "取回",
     },
     "obsidianLiveSyncSettingTab.defaultLanguage": {
         def: "Default",
@@ -6125,7 +6125,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이미 구성된 원격 서버에서 필요한 설정을 가져옵니다.",
         ru: "Получить необходимые настройки с уже настроенного удалённого сервера.",
         zh: "从已配置的远程服务器获取必要的设置",
-        "zh-tw": "從已設定完成的遠端伺服器抓取必要的設定。",
+        "zh-tw": "從已設定完成的遠端伺服器取回必要的設定。",
     },
     "obsidianLiveSyncSettingTab.descManualSetup": {
         def: "Not recommended, but useful if you don't have a Setup URI",
@@ -6598,7 +6598,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "동기화가 비활성화되었습니다. 원하는 경우 가져오기 후 다시 활성화하세요.",
         ru: "Синхронизация отключена, загрузите и включите снова при желании.",
         zh: "同步已禁用,如果需要,请获取并重新启用",
-        "zh-tw": "同步已停用；如有需要，請先抓取再重新啟用。",
+        "zh-tw": "同步已停用；如有需要，請先取回再重新啟用。",
     },
     "obsidianLiveSyncSettingTab.logSelectAnyPreset": {
         def: "Select any preset.",
@@ -6760,7 +6760,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 서버에서 구성을 가져오시겠습니까?",
         ru: "Вы хотите загрузить конфигурацию с удалённого сервера?",
         zh: "要从远端服务器获取配置吗？",
-        "zh-tw": "要從遠端伺服器抓取設定嗎？",
+        "zh-tw": "要從遠端伺服器取回設定嗎？",
     },
     "obsidianLiveSyncSettingTab.msgIfConfigNotPersistent": {
         def: "If the server configuration is not persistent (e.g., running on docker), the values here may change. Once you are able to connect, please update the settings in the server's local.ini.",
@@ -6862,7 +6862,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Требуется перестроение баз данных для применения изменений. Выберите способ применения изменений.\n\n<details>\n<summary>Обозначения</summary>\n\n| Символ | Значение |\n|: ------ :| ------- |\n| ⇔ | Актуально |\n| ⇄ | Синхронизация для выравнивания |\n| ⇐,⇒ | Передача с перезаписью |\n| ⇠,⇢ | Передача с перезаписью с другой стороны |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\nКоротко:  📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\nПерестроить локальную и удалённую базы данных по файлам, которые уже есть на этом устройстве.\nДругие устройства будут заблокированы, им потребуется загрузка с удалённого.\n## ${OPTION_FETCH}\nКоротко: 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\nОчистить локальную базу данных и построить её заново по данным, загруженным из удалённой базы данных.\nЭтот вариант подходит и тогда, когда вы перестроили удалённую базу данных.\n## ${OPTION_ONLY_SETTING}\nСохранить только настройки. **Внимание: это может привести к повреждению данных**; обычно перестроение базы данных необходимо.",
         zh: "需要重建数据库以应用更改。请选择应用更改的方法。\n\n<details>\n<summary>图例</summary>\n\n| 符号 | 含义 |\n|: ------ :| ------- |\n| ⇔ | 最新 |\n| ⇄ | 同步以平衡 |\n| ⇐,⇒ | 传输以覆盖 |\n| ⇠,⇢ | 从另一侧传输以覆盖 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概览:📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n使用此设备的现有文件重建本地和远程数据库。\n这将导致其他设备被锁定,并且它们需要执行获取操作。\n## ${OPTION_FETCH}\n概览:📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本地数据库并使用从远程数据库获取的数据重建它。\n这种情况包括您已经重建了远程数据库的情况。\n## ${OPTION_ONLY_SETTING}\n仅存储设置。**注意：这可能导致数据损坏**；通常需要重建数据库",
         "zh-tw":
-            "需要重建資料庫才能套用變更。請選擇套用變更的方式。\n\n<details>\n<summary>圖例</summary>\n\n| 符號 | 含意 |\n|: ------ :| ------- |\n| ⇔ | 已是最新 |\n| ⇄ | 同步以取得一致 |\n| ⇐,⇒ | 傳輸並覆寫 |\n| ⇠,⇢ | 從另一端傳輸並覆寫 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n以此裝置上現有的檔案重建本機與遠端資料庫。\n這會鎖定其他裝置，它們必須執行抓取。\n## ${OPTION_FETCH}\n概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本機資料庫，並以從遠端資料庫抓取的資料重建。\n這也涵蓋你已重建遠端資料庫的情況。\n## ${OPTION_ONLY_SETTING}\n僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。",
+            "需要重建資料庫才能套用變更。請選擇套用變更的方式。\n\n<details>\n<summary>圖例</summary>\n\n| 符號 | 含意 |\n|: ------ :| ------- |\n| ⇔ | 已是最新 |\n| ⇄ | 同步以取得一致 |\n| ⇐,⇒ | 傳輸並覆寫 |\n| ⇠,⇢ | 從另一端傳輸並覆寫 |\n\n</details>\n\n## ${OPTION_REBUILD_BOTH}\n概覽： 📄 ⇒¹ 💻 ⇒² 🛰️ ⇢ⁿ 💻 ⇄ⁿ⁺¹ 📄\n以此裝置上現有的檔案重建本機與遠端資料庫。\n這會鎖定其他裝置，它們必須執行取回。\n## ${OPTION_FETCH}\n概覽： 📄 ⇄² 💻 ⇐¹ 🛰️ ⇔ 💻 ⇔ 📄\n初始化本機資料庫，並以從遠端資料庫取回的資料重建。\n這也涵蓋你已重建遠端資料庫的情況。\n## ${OPTION_ONLY_SETTING}\n僅儲存設定。**注意：這可能導致資料損毀**；通常仍需要重建資料庫。",
     },
     "obsidianLiveSyncSettingTab.msgSetCorsCredentials": {
         def: "Set cors.credentials",
@@ -7280,7 +7280,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에서 가져오기",
         ru: "Загрузить с удалённого",
         zh: "从远程获取",
-        "zh-tw": "從遠端抓取",
+        "zh-tw": "從遠端取回",
     },
     "obsidianLiveSyncSettingTab.optionHere": {
         def: "HERE",
@@ -7565,7 +7565,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "구성 가져오기",
         ru: "Загрузить конфигурацию",
         zh: "获取配置",
-        "zh-tw": "抓取設定",
+        "zh-tw": "取回設定",
     },
     "obsidianLiveSyncSettingTab.titleFetchConfigFromRemote": {
         def: "Fetch config from remote server",
@@ -7576,7 +7576,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 서버에서 구성 가져오기",
         ru: "Загрузить конфигурацию с удалённого сервера",
         zh: "从远程服务器获取配置",
-        "zh-tw": "從遠端伺服器抓取設定",
+        "zh-tw": "從遠端伺服器取回設定",
     },
     "obsidianLiveSyncSettingTab.titleFetchSettings": {
         def: "Fetch Settings",
@@ -7587,7 +7587,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "설정 가져오기",
         ru: "Загрузить настройки",
         zh: "获取设置",
-        "zh-tw": "抓取設定",
+        "zh-tw": "取回設定",
     },
     "obsidianLiveSyncSettingTab.titleHelpAndInformation": {
         def: "Help and information",
@@ -7867,7 +7867,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이전 대체 방식 (느림, WebAssembly 없음)",
         ru: "Старый вариант fallback (медленный, без WebAssembly)",
         zh: "旧版回退（较慢，无 WebAssembly）",
-        "zh-tw": "舊版回退（較慢，無 WebAssembly）",
+        "zh-tw": "舊版備援（較慢，無 WebAssembly）",
     },
     On: {
         def: "On",
@@ -8755,7 +8755,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "서버에서 구성 가져오기 방지",
         ru: "Не забирать настройки с сервера",
         zh: "阻止从服务器获取配置",
-        "zh-tw": "阻止從伺服器擷取設定",
+        "zh-tw": "阻止從伺服器取回設定",
     },
     Proceed: {
         def: "Proceed",
@@ -8855,7 +8855,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "PureJS 대체 방식 (빠름, WebAssembly 없음)",
         ru: "Вариант PureJS (быстрый, без WebAssembly)",
         zh: "PureJS 回退（快速，无 WebAssembly）",
-        "zh-tw": "PureJS 回退（快速，無 WebAssembly）",
+        "zh-tw": "PureJS 備援（快速，無 WebAssembly）",
     },
     "Purge all download/upload cache.": {
         def: "Purge all download/upload cache.",
@@ -8880,7 +8880,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         es: "Reiniciar para volver a ejecutar el proceso",
         ja: "再起動して処理を再実行",
         zh: "重启以重新运行此流程",
-        "zh-tw": "重新啟動以重跑程序",
+        "zh-tw": "重新啟動以重新執行程序",
     },
     "Rebuild local and remote database with local files.": {
         def: "Rebuild local and remote database with local files.",
@@ -8937,7 +8937,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Как вы хотите загрузить?",
         zh: "你希望如何获取？\n- 获取前先创建一次本地数据库。\n  **低流量**，**高 CPU**，**低风险**\n  在以下情况下推荐使用：\n  - 文件可能不一致\n  - 文件数量不多\n- 获取前先创建本地文件的数据块。\n  **低流量**，**中等 CPU**，**低到中等风险**\n  在以下情况下推荐使用：\n  - 文件基本一致\n  - 你有大量文件。\n- 从远程获取全部内容。\n  **高流量**，**低 CPU**，**低到中等风险**\n\n>[!INFO]- 详情\n> ## 获取前先创建一次本地数据库。\n> **低流量**，**高 CPU**，**低风险**\n> 此选项会先利用现有的本地文件创建本地数据库，然后再从远程源获取数据。\n> 如果本地和远程存在相同的文件，则只会传输两者之间的差异。\n> 但是，两边都存在的文件最初会被视为冲突文件。如果它们实际上并无冲突，将会被自动解决，不过这一过程可能需要一些时间。\n> 这通常是最安全的方法，能将数据丢失风险降到最低。\n> ## 获取前先创建本地文件的数据块。\n> **低流量**，**中等 CPU**，**低到中等风险**（视具体操作而定）\n> 此选项会先根据本地文件为数据库创建数据块，然后再获取数据。因此，只会传输本地缺少的数据块。但是，所有元数据都取自远程源。\n> 启动时，系统会将本地文件与这些元数据进行比较。被认为更新的内容（按修改时间判断）将覆盖较旧的版本。随后，这一结果会同步回远程数据库。\n> 如果本地文件的时间戳确实是最新的，这通常是安全的。但如果某个文件的时间戳较新、内容却较旧（例如最初的 `welcome.md`），就可能引发问题。\n> 这种方式比“获取前先创建一次本地数据库”占用更少的 CPU、速度更快，但如果使用不当，可能会导致数据丢失。\n> ## 从远程获取全部内容。\n> **高流量**，**低 CPU**，**低到中等风险**（视具体操作而定）\n> 所有内容都将从远程获取。\n> 与 获取前先创建本地文件的数据块 相似，但所有数据块都从远程源获取。\n> 这是最传统的获取方式，通常消耗最多的网络流量和时间。与“获取前先创建本地文件的数据块”选项类似，它同样存在覆盖远程文件的风险。\n> 不过，它通常被认为是最稳定的方法，因为它是历史最悠久、最直接的做法。",
         "zh-tw":
-            "你想要如何抓取？\n- 先建立一次本機資料庫，再抓取。\n  **低流量**、**高 CPU 使用率**、**低風險**\n  建議情況：\n  - 檔案可能不一致\n  - 檔案數量不多\n- 先建立本機檔案的 chunks，再抓取。\n  **低流量**、**中等 CPU 使用率**、**低至中等風險**\n  建議情況：\n  - 檔案應該是一致的\n  - 你有大量檔案\n- 從遠端抓取所有內容。\n  **高流量**、**低 CPU 使用率**、**低至中等風險**\n\n>[!INFO]- 詳細說明\n> ## 先建立一次本機資料庫，再抓取。\n> **低流量**、**高 CPU 使用率**、**低風險**\n> 這個選項會先使用現有的本機檔案建立本機資料庫，再從遠端來源抓取資料。\n> 若本機與遠端都存在相符的檔案，只會傳輸兩者之間的差異部分。\n> 不過，兩邊都存在的檔案一開始會被當作衝突檔案處理。若實際上並無衝突，會自動解決，但這個過程可能需要一些時間。\n> 這通常是最安全的方式，能將資料遺失的風險降到最低。\n> ## 先建立本機檔案的 chunks，再抓取。\n> **低流量**、**中等 CPU 使用率**、**低至中等風險**（依操作而異）\n> 這個選項會先從本機檔案為資料庫建立 chunks，再抓取資料。因此只會傳輸本機缺少的 chunks，但所有中繼資料都會取自遠端來源。\n> 啟動時本機檔案會與這份中繼資料比對，內容較新的一方（依修改時間判斷）會覆寫較舊的一方，其結果會同步回遠端資料庫。\n> 如果本機檔案的時間戳記確實是最新的，這通常是安全的；但如果某個檔案時間戳記較新卻內容較舊（例如初始的 `welcome.md`），可能會出問題。\n> 這比「先建立一次本機資料庫，再抓取」耗用更少 CPU、速度也更快，但若不小心使用可能導致資料遺失。\n> ## 從遠端抓取所有內容。\n> **高流量**、**低 CPU 使用率**、**低至中等風險**（依操作而異）\n> 所有內容都會從遠端抓取。\n> 與「先建立本機檔案的 chunks，再抓取」類似，但所有 chunks 都是從遠端來源抓取。\n> 這是最傳統的抓取方式，通常會耗用最多的網路流量與時間，覆寫遠端檔案的風險也與「先建立本機檔案的 chunks，再抓取」選項相近。\n> 不過，由於這是歷史最久、最直接的做法，通常被認為是最穩定的方式。",
+            "你想要如何取回？\n- 先建立一次本機資料庫，再取回。\n  **低流量**、**高 CPU 使用率**、**低風險**\n  建議情況：\n  - 檔案可能不一致\n  - 檔案數量不多\n- 先建立本機檔案的 chunks，再取回。\n  **低流量**、**中等 CPU 使用率**、**低至中等風險**\n  建議情況：\n  - 檔案應該是一致的\n  - 你有大量檔案\n- 從遠端取回所有內容。\n  **高流量**、**低 CPU 使用率**、**低至中等風險**\n\n>[!INFO]- 詳細說明\n> ## 先建立一次本機資料庫，再取回。\n> **低流量**、**高 CPU 使用率**、**低風險**\n> 這個選項會先使用現有的本機檔案建立本機資料庫，再從遠端來源取回資料。\n> 若本機與遠端都存在相符的檔案，只會傳輸兩者之間的差異部分。\n> 不過，兩邊都存在的檔案一開始會被當作衝突檔案處理。若實際上並無衝突，會自動解決，但這個過程可能需要一些時間。\n> 這通常是最安全的方式，能將資料遺失的風險降到最低。\n> ## 先建立本機檔案的 chunks，再取回。\n> **低流量**、**中等 CPU 使用率**、**低至中等風險**（依操作而異）\n> 這個選項會先從本機檔案為資料庫建立 chunks，再取回資料。因此只會傳輸本機缺少的 chunks，但所有中繼資料都會取自遠端來源。\n> 啟動時本機檔案會與這份中繼資料比對，內容較新的一方（依修改時間判斷）會覆寫較舊的一方，其結果會同步回遠端資料庫。\n> 如果本機檔案的時間戳記確實是最新的，這通常是安全的；但如果某個檔案時間戳記較新卻內容較舊（例如初始的 `welcome.md`），可能會出問題。\n> 這比「先建立一次本機資料庫，再取回」耗用更少 CPU、速度也更快，但若不小心使用可能導致資料遺失。\n> ## 從遠端取回所有內容。\n> **高流量**、**低 CPU 使用率**、**低至中等風險**（依操作而異）\n> 所有內容都會從遠端取回。\n> 與「先建立本機檔案的 chunks，再取回」類似，但所有 chunks 都是從遠端來源取回。\n> 這是最傳統的取回方式，通常會耗用最多的網路流量與時間，覆寫遠端檔案的風險也與「先建立本機檔案的 chunks，再取回」選項相近。\n> 不過，由於這是歷史最久、最直接的做法，通常被認為是最穩定的方式。",
     },
     "RedFlag.Fetch.Method.FetchSafer": {
         def: "Create a local database once before fetching",
@@ -8948,7 +8948,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기 전에 로컬 데이터베이스를 한 번 생성",
         ru: "Создать локальную базу данных перед загрузкой",
         zh: "获取前先创建一次本地数据库",
-        "zh-tw": "先建立一次本機資料庫，再抓取",
+        "zh-tw": "先建立一次本機資料庫，再取回",
     },
     "RedFlag.Fetch.Method.FetchSmoother": {
         def: "Create local file chunks before fetching",
@@ -8959,7 +8959,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기 전에 로컬 파일 청크 생성",
         ru: "Создать локальные чанки перед загрузкой",
         zh: "获取前先创建本地文件的数据块",
-        "zh-tw": "先建立本機檔案的 chunks，再抓取",
+        "zh-tw": "先建立本機檔案的 chunks，再取回",
     },
     "RedFlag.Fetch.Method.FetchTraditional": {
         def: "Fetch everything from the remote",
@@ -8970,7 +8970,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에서 모든 것 가져오기",
         ru: "Загрузить всё с удалённого",
         zh: "从远程获取全部内容",
-        "zh-tw": "從遠端抓取所有內容",
+        "zh-tw": "從遠端取回所有內容",
     },
     "RedFlag.Fetch.Method.Title": {
         def: "How do you want to fetch?",
@@ -8981,7 +8981,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "어떻게 가져오시겠습니까?",
         ru: "Как вы хотите загрузить?",
         zh: "你想如何获取？",
-        "zh-tw": "你想要如何抓取？",
+        "zh-tw": "你想要如何取回？",
     },
     "RedFlag.FetchRemoteConfig.Buttons.Cancel": {
         def: "No, use local settings",
@@ -9003,7 +9003,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 원격 설정을 가져와 적용합니다",
         ru: "Да, загрузить и применить удалённые настройки",
         zh: "是，获取并应用远程设置",
-        "zh-tw": "要，抓取並套用遠端設定",
+        "zh-tw": "要，取回並套用遠端設定",
     },
     "RedFlag.FetchRemoteConfig.Message": {
         def: "Do you want to fetch and apply remotely stored preference settings to the device?",
@@ -9014,7 +9014,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격에 저장된 환경 설정을 가져와 이 기기에 적용하시겠습니까?",
         ru: "Вы хотите загрузить и применить удалённые настройки?",
         zh: "是否要获取远程保存的偏好设置，并将其应用到此设备？",
-        "zh-tw": "要將遠端儲存的偏好設定抓取並套用到此裝置嗎？",
+        "zh-tw": "要將遠端儲存的偏好設定取回並套用到此裝置嗎？",
     },
     "RedFlag.FetchRemoteConfig.Title": {
         def: "Fetch Remote Configuration",
@@ -9025,7 +9025,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 구성 가져오기",
         ru: "Загрузить удалённую конфигурацию",
         zh: "获取远程配置",
-        "zh-tw": "抓取遠端設定",
+        "zh-tw": "取回遠端設定",
     },
     "Reduces storage space by discarding all non-latest revisions. This requires the same amount of free space on the remote server and the local client.":
         {
@@ -9253,7 +9253,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 것 가져오기가 예약되었습니다. 이를 수행하기 위해 플러그인이 재시작됩니다.",
         ru: "Загрузка всего запланирована. Плагин будет перезапущен.",
         zh: "已安排获取全部内容。插件将重启以执行该操作。",
-        "zh-tw": "已排定執行全部抓取。外掛將重新啟動以執行此作業。",
+        "zh-tw": "已排定執行全部取回。外掛將重新啟動以執行此作業。",
     },
     "Replicator.Dialogue.Locked.Message.Unlocked": {
         def: "The remote database has been unlocked. Please retry the operation.",
@@ -9448,7 +9448,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 수신 기록 재설정",
         ru: "Сбросить историю полученных записей журнала",
         zh: "重置日志接收历史",
-        "zh-tw": "重設日誌接收歷史",
+        "zh-tw": "重設日誌接收歷程",
     },
     "Reset journal sent history": {
         def: "Reset journal sent history",
@@ -9457,7 +9457,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 송신 기록 재설정",
         ru: "Сбросить историю отправленных записей журнала",
         zh: "重置日志发送历史",
-        "zh-tw": "重設日誌傳送歷史",
+        "zh-tw": "重設日誌傳送歷程",
     },
     "Reset notification threshold and check the remote database usage": {
         def: "Reset notification threshold and check the remote database usage",
@@ -9644,7 +9644,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "룸 ID 접미사:",
         ru: "Суффикс ID комнаты:",
         zh: "房间 ID 后缀：",
-        "zh-tw": "房間 ID 後綴：",
+        "zh-tw": "房間 ID 字尾：",
     },
     "Rotation Duration": {
         def: "Rotation Duration",
@@ -10190,7 +10190,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "변경 사항을 적용하려면 원격 데이터베이스에서 가져와야 합니다. 계속 진행하시겠습니까?",
         ru: "Ваши изменения требуют загрузки из удалённой базы данных. Хотите продолжить?",
         zh: "你的更改需要从远程数据库获取数据。是否继续？",
-        "zh-tw": "你的變更需要從遠端資料庫抓取，要繼續嗎？",
+        "zh-tw": "你的變更需要從遠端資料庫取回，要繼續嗎？",
     },
     "Setup Complete: Preparing to Fetch Synchronisation Data": {
         def: "Setup Complete: Preparing to Fetch Synchronisation Data",
@@ -10237,7 +10237,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "적용 후 가져오기",
         ru: "Применить и загрузить",
         zh: "应用并获取",
-        "zh-tw": "套用並抓取",
+        "zh-tw": "套用並取回",
     },
     "Setup.Apply.Buttons.ApplyAndMerge": {
         def: "Apply and Merge",
@@ -10293,7 +10293,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Новая конфигурация готова. Есть несколько способов применить её.",
         zh: "新配置已准备就绪，让我们继续应用它。\n应用此配置有以下几种方式：\n\n- 应用并获取\n  将此设备配置为新客户端。应用后，从远程服务器同步。\n- 应用并合并\n  在已有文件的设备上进行配置。它会处理本地文件并传输差异。可能会出现冲突。\n- 应用并重建\n  使用本地文件重建远程。通常在服务器损坏或希望从头开始时使用。\n  其他设备将被锁定，并需要重新获取。\n- 仅应用\n  仅应用配置。如果需要重建，可能会出现冲突。",
         "zh-tw":
-            "新的設定已經就緒，接下來要套用它。\n有幾種套用方式：\n\n- 套用並抓取\n  將此裝置設定為新的用戶端。套用後會從遠端伺服器同步。\n- 套用並合併\n  在已經有檔案的裝置上設定。會處理本機檔案並傳輸差異部分，可能會產生衝突。\n- 套用並重建\n  使用本機檔案重建遠端。通常在伺服器損毀或想要從頭開始時執行。\n  其他裝置會被鎖定，需要重新抓取。\n- 僅套用\n  只套用設定。若需要重建，可能會產生衝突。",
+            "新的設定已經就緒，接下來要套用它。\n有幾種套用方式：\n\n- 套用並取回\n  將此裝置設定為新的用戶端。套用後會從遠端伺服器同步。\n- 套用並合併\n  在已經有檔案的裝置上設定。會處理本機檔案並傳輸差異部分，可能會產生衝突。\n- 套用並重建\n  使用本機檔案重建遠端。通常在伺服器損毀或想要從頭開始時執行。\n  其他裝置會被鎖定，需要重新取回。\n- 僅套用\n  只套用設定。若需要重建，可能會產生衝突。",
     },
     "Setup.Apply.Title": {
         def: "Apply new configuration from the ${method}",
@@ -10371,7 +10371,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "예, 구성을 가져옵니다",
         ru: "Да, загрузить конфигурацию",
         zh: "是，请获取配置",
-        "zh-tw": "要，請抓取設定",
+        "zh-tw": "要，請取回設定",
     },
     "Setup.FetchRemoteConf.Buttons.Skip": {
         def: "No, please use the settings in the URI",
@@ -10405,7 +10405,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 데이터베이스에서 구성을 가져올까요?",
         ru: "Загрузить конфигурацию с удалённой базы данных?",
         zh: "要从远程数据库获取配置吗？",
-        "zh-tw": "要從遠端資料庫抓取設定嗎？",
+        "zh-tw": "要從遠端資料庫取回設定嗎？",
     },
     "Setup.QRCode": {
         def: 'We have generated a QR code to transfer the settings. Please scan the QR code with your phone or other device.\nNote: The QR code is not encrypted, so be careful to open this.\n\n>[!FOR YOUR EYES ONLY]-\n> <div class="sls-qr">${qr_image}</div>',
@@ -10923,7 +10923,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자세한 로그를 표시합니다. 문제를 신고하는 경우 활성화해 주세요.",
         ru: "Показывать подробный лог. Пожалуйста, включите при сообщении о проблеме.",
         zh: "显示详细日志。如果您报告问题,请启用此选项 ",
-        "zh-tw": "顯示詳細日誌。如果你要回報問題，請啟用此選項。",
+        "zh-tw": "顯示詳細記錄。如果你要回報問題，請啟用此選項。",
     },
     "Signaling Server Connection": {
         def: "Signaling Server Connection",
@@ -11387,7 +11387,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "연속 청크 요청 간 대기 시간",
         ru: "Задержка для последовательных запросов по требованию",
         zh: "连续按需获取的延迟",
-        "zh-tw": "連續按需抓取之間的延遲",
+        "zh-tw": "連續按需取回之間的延遲",
     },
     "The files in this Vault are almost identical to the server's.": {
         def: "The files in this Vault are almost identical to the server's.",
@@ -11690,7 +11690,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Эта функция обеспечивает прямую синхронизацию между устройствами. Сервер не требуется, но для синхронизации оба устройства должны быть одновременно в сети, а некоторые функции могут быть ограничены. Подключение к Интернету нужно только для сигнализации (обнаружения пиров), а не для передачи данных.",
             zh: "此功能可在设备之间直接同步，无需服务器；但同步时两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令（发现对端），不用于数据传输。",
             "zh-tw":
-                "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。",
+                "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時上線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測 Peer），不用於資料傳輸。",
         },
     "This first setup has several short steps because it confirms encryption, the connection method, and which device provides the initial data. Once it is complete, additional devices can reuse a Setup URI.":
         {
@@ -11987,7 +11987,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "이 기기에 설정 적용하고 다시 가져오기",
         ru: "Применить настройки и загрузить снова",
         zh: "将设置应用到此设备，并重新获取",
-        "zh-tw": "將設定套用到此裝置，並再次抓取",
+        "zh-tw": "將設定套用到此裝置，並再次取回",
     },
     "TweakMismatchResolve.Message.AutoAcceptCompatibleUndefined": {
         def: "\nIt appears that the settings differ for each device. You can now automatically apply compatible changes to these configurations.\nWould you like to enable this `auto-accept` setting?",
@@ -12291,7 +12291,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기",
         ru: "Забрать с сервера",
         zh: "获取",
-        "zh-tw": "抓取",
+        "zh-tw": "取回",
     },
     "Ui.Settings.Common.Lock": {
         def: "Lock",
@@ -12922,7 +12922,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "모든 저널 기록을 초기화합니다. 다음 동기화 때 모든 항목을 다시 주고받습니다.",
         ru: "Обнуляет всю историю журнала. При следующей синхронизации каждый элемент будет получен и отправлен заново.",
         zh: "初始化全部日志历史。下次同步时，所有项目都会重新接收并重新发送。",
-        "zh-tw": "初始化所有日誌歷史。下次同步時，每個項目都會重新接收並再次傳送。",
+        "zh-tw": "初始化所有日誌歷程。下次同步時，每個項目都會重新接收並再次傳送。",
     },
     "Ui.Settings.Maintenance.ResetJournalReceived": {
         def: "Reset journal received history",
@@ -12931,7 +12931,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 수신 기록 재설정",
         ru: "Сбросить историю полученных записей журнала",
         zh: "重置日志接收历史",
-        "zh-tw": "重設日誌接收歷史",
+        "zh-tw": "重設日誌接收歷程",
     },
     "Ui.Settings.Maintenance.ResetJournalReceivedDesc": {
         def: "Initialise journal received history. On the next sync, every item except those sent by this device will be downloaded again.",
@@ -12940,7 +12940,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 수신 기록을 초기화합니다. 다음 동기화 때 이 기기가 보낸 항목을 제외한 모든 항목을 다시 내려받습니다.",
         ru: "Обнуляет историю полученных записей журнала. При следующей синхронизации всё, кроме отправленного этим устройством, будет загружено заново.",
         zh: "初始化日志接收历史。下次同步时，除当前设备发送的项目外，其余项目都会重新下载。",
-        "zh-tw": "初始化接收日誌歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。",
+        "zh-tw": "初始化日誌接收歷程。下次同步時，除了此裝置已送出的項目外，其他項目都會再次下載。",
     },
     "Ui.Settings.Maintenance.ResetJournalSent": {
         def: "Reset journal sent history",
@@ -12949,7 +12949,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 송신 기록 재설정",
         ru: "Сбросить историю отправленных записей журнала",
         zh: "重置日志发送历史",
-        "zh-tw": "重設日誌傳送歷史",
+        "zh-tw": "重設日誌傳送歷程",
     },
     "Ui.Settings.Maintenance.ResetJournalSentDesc": {
         def: "Initialise journal sent history. On the next sync, every item except those received by this device will be sent again.",
@@ -12958,7 +12958,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "저널 송신 기록을 초기화합니다. 다음 동기화 때 이 기기가 받은 항목을 제외한 모든 항목을 다시 보냅니다.",
         ru: "Обнуляет историю отправленных записей журнала. При следующей синхронизации всё, кроме полученного этим устройством, будет отправлено заново.",
         zh: "初始化日志发送历史。下次同步时，除当前设备已接收的项目外，其余项目都会重新发送。",
-        "zh-tw": "初始化傳送日誌歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。",
+        "zh-tw": "初始化日誌傳送歷程。下次同步時，除了此裝置已接收的項目外，其他項目都會再次傳送。",
     },
     "Ui.Settings.Maintenance.ResetLocalSyncInfo": {
         def: "Reset Synchronisation information",
@@ -13320,7 +13320,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "접미사가 변경되었습니다. 데이터베이스를 다시 여는 중...",
         ru: "Суффикс изменён. Открываем базу заново...",
         zh: "后缀已更改，正在重新打开数据库...",
-        "zh-tw": "後綴已變更，正在重新開啟資料庫⋯",
+        "zh-tw": "字尾已變更，正在重新開啟資料庫⋯",
     },
     "Ui.Settings.Patches.RemediationWithValue": {
         def: "Limit: ${date} (${timestamp})",
@@ -13563,7 +13563,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "원격 설정 가져오기",
         ru: "Забрать настройки с сервера",
         zh: "获取远程设置",
-        "zh-tw": "抓取遠端設定",
+        "zh-tw": "取回遠端設定",
     },
     "Ui.Settings.Remote.ImportConnection": {
         def: "Import connection",
@@ -13842,7 +13842,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "가져오기",
         ru: "Забрать с сервера",
         zh: "获取",
-        "zh-tw": "抓取",
+        "zh-tw": "取回",
     },
     "Ui.Settings.SyncSettings.Merge": {
         def: "Merge",
@@ -14671,7 +14671,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ru: "Устройства синхронизируются напрямую. Сервер не нужен, но оба устройства должны быть в сети одновременно, и часть возможностей может не работать. Интернет нужен только для установки связи, данные через него не идут.",
         zh: "启用设备之间的直接同步。无需服务器，但两台设备必须同时在线，且部分功能可能受限。互联网连接仅用于信令，不用于传输数据。",
         "zh-tw":
-            "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時在線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測對端），不用於資料傳輸。",
+            "此功能可在裝置之間直接同步，無需伺服器；但同步時兩台裝置必須同時上線，且部分功能可能受限。網際網路連線僅用於訊號交換（偵測 Peer），不用於資料傳輸。",
     },
     "Ui.SetupWizard.SetupRemote.ProceedBucket": {
         def: "Continue to Object Storage setup",
@@ -14957,7 +14957,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "자세한 로그",
         ru: "Подробный лог",
         zh: "详细日志",
-        "zh-tw": "詳細日誌",
+        "zh-tw": "詳細記錄",
     },
     "Verify all": {
         def: "Verify all",
@@ -14988,7 +14988,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
             ru: "Внимание! Это серьёзно повлияет на производительность. Кроме того, логи не будут синхронизироваться под именем по умолчанию. Пожалуйста, будьте осторожны с логами: они часто содержат вашу конфиденциальную информацию.",
             zh: "警告！这将严重影响性能。并且日志不会以默认名称同步。请小心处理日志；它们通常包含您的敏感信息 ",
             "zh-tw":
-                "警告！這會嚴重影響效能，而且日誌不會以預設名稱同步。請小心處理日誌，因為它們通常包含你的機密資訊。",
+                "警告！這會嚴重影響效能，而且記錄不會以預設名稱同步。請小心處理記錄，因為它們通常包含你的機密資訊。",
         },
     WATCHING: {
         def: "WATCHING",
@@ -15122,7 +15122,7 @@ export const allMessages: Readonly<Record<string, Readonly<Record<string, string
         ko: "파일에 로그 기록",
         ru: "Записывать логи в файл",
         zh: "将日志写入文件",
-        "zh-tw": "將日誌寫入檔案",
+        "zh-tw": "將記錄寫入檔案",
     },
     "xxhash32 (Fast but less collision resistance)": {
         def: "xxhash32 (Fast but less collision resistance)",
