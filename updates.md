@@ -14,7 +14,7 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
-- In CouchDB LiveSync mode, an offline start can recover when the device returns online with the Vault open. A continuous start that failed because of a confirmed connection problem is tried once on that return. Its initial pull lets waiting files resume through the usual recovery process. (#1224)
+- In CouchDB LiveSync mode, an offline start can recover when the device returns online with the Vault in the foreground. A continuous start that failed because of a confirmed connection problem is tried once on that return. Its initial pull lets waiting files resume through the usual recovery process. (#1224)
 
 ### Improved
 
@@ -23,6 +23,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
 
 - When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
+
+- Splitting large files with V3 Rabin-Karp chunking uses less input-buffer memory by reading Blobs in blocks of up to 1 MiB as Chunks are produced, rather than loading the entire Blob into memory at once.
+    - Small files which fit within one block are read directly without creating a block iterator, and prepared Chunk batches pass straight to the writer without an extra array copy.
+
+### Miscellaneous
+
+- Updated dependencies (including `@vrtmrz/livesync-commonlib` 0.7.0, which adopts `@vrtmrz/rpc` 0.1.0 for hosted P2P rooms, and `octagonal-wheels` 0.1.57).
 
 ## 1.0.51
 
