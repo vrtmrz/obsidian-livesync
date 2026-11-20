@@ -29,34 +29,53 @@ const cleanups: (() => void)[] = [];
 async function createHarness() {
     const { ModuleLog } = await import("./ModuleLog.ts");
     const { reactiveSource } = await import("octagonal-wheels/dataobject/reactive");
-    const { createLiveSyncEventHub } = await import("@vrtmrz/livesync-commonlib/context");
+    const { createServiceContext } = await import("@vrtmrz/livesync-commonlib/context");
     const { DEFAULT_SETTINGS, REMOTE_COUCHDB } = await import("@vrtmrz/livesync-commonlib/compat/common/types");
     const { EVENT_SETTING_SAVED } = await import("@vrtmrz/livesync-commonlib/compat/events/coreEvents");
+    const { HeadlessAPIService } =
+        await import("@vrtmrz/livesync-commonlib/compat/services/implements/headless/HeadlessAPIService");
+    const { InjectableAppLifecycleService } =
+        await import("@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableAppLifecycleService");
+    const { InjectableDatabaseEventService } =
+        await import("@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableDatabaseEventService");
+    const { InjectableReplicatorService } =
+        await import("@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableReplicatorService");
+    const { InjectableSettingService } =
+        await import("@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService");
+    const { MemoryValueStore } = await import("@vrtmrz/value-store");
     const callbacks: FrameRequestCallback[] = [];
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => callbacks.push(callback));
-    const stats = reactiveSource({
-        sent: 0,
-        arrived: 0,
-        maxPullSeq: 0,
-        maxPushSeq: 0,
-        lastSyncPullSeq: 0,
-        lastSyncPushSeq: 0,
-        syncStatus: "COMPLETED" as const,
+
+    const context = createServiceContext();
+    const settingService = new InjectableSettingService(context, {
+        APIService: new HeadlessAPIService(context),
+        deviceValues: new MemoryValueStore(),
     });
+    class TestAppLifecycleService extends InjectableAppLifecycleService {}
+    const appLifecycle = new TestAppLifecycleService(context, { settingService });
+    appLifecycle.isReloadingScheduled.setHandler(() => false);
+    const replicator = new InjectableReplicatorService(context, {
+        settingService,
+        appLifecycleService: appLifecycle,
+        databaseEventService: new InjectableDatabaseEventService(context),
+    });
+    const stats = replicator.replicationStatics;
+    stats.value = { ...stats.value, syncStatus: "COMPLETED" };
+
     const services = {
         API: {
             requestCount: reactiveSource(0),
             responseCount: reactiveSource(0),
             registerCleanup: (cleanup: () => void) => cleanups.push(cleanup),
         },
-        context: { events: createLiveSyncEventHub() },
-        appLifecycle: { isReloadingScheduled: () => false },
+        context,
+        appLifecycle,
         replication: {
             replicationResultCount: reactiveSource(0),
             databaseQueueCount: reactiveSource(0),
             storageApplyingCount: reactiveSource(0),
         },
-        replicator: { replicationStatics: stats, boundedRemoteActivityCount: reactiveSource(0) },
+        replicator,
         conflict: { conflictProcessQueueCount: reactiveSource(0) },
         fileProcessing: { processing: reactiveSource(0), totalQueued: reactiveSource(0), batched: reactiveSource(0) },
     };
@@ -110,7 +129,7 @@ async function createHarness() {
     } as const;
 }
 
-describe("synchronisation mode display", () => {
+describe("ModuleLog status displays", () => {
     beforeEach(() => {
         vi.resetModules();
         vi.useFakeTimers();
@@ -190,5 +209,25 @@ describe("synchronisation mode display", () => {
         expect(host.module.statusBarLabels.value.statusBarParts).toContainEqual(
             expect.objectContaining({ key: "sync-mode", text: "⏰" })
         );
+    });
+
+    it("updates both displays when Commonlib publishes new replication statistics", async () => {
+        const { stats, statusBarRenderer, statusLineRenderer, flushDisplay } = await createHarness();
+        for (const renderer of [statusBarRenderer, statusLineRenderer]) {
+            expect(renderer.render).toHaveBeenLastCalledWith(
+                expect.arrayContaining([{ key: "sync", text: "Sync: ⏹" }])
+            );
+            renderer.render.mockClear();
+        }
+
+        stats.value = { ...stats.value, syncStatus: "CONNECTED" };
+        expect(stats.value.syncStatus).toBe("CONNECTED");
+        await flushDisplay();
+
+        for (const renderer of [statusBarRenderer, statusLineRenderer]) {
+            expect(renderer.render).toHaveBeenLastCalledWith(
+                expect.arrayContaining([{ key: "sync", text: "Sync: ⚡" }])
+            );
+        }
     });
 });

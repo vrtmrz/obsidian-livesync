@@ -14,14 +14,21 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ### Fixed
 
-- When both **Customisation sync** and **Hidden File Sync** are enabled, **Selective** (including unconfigured default items) and **Flagged Selective** items are no longer automatically modified, uploaded, or conflict-resolved by **Hidden File Sync**, and exclusions no longer rely on a cached file list. (#825)
-    - **Ignore** excludes the item from both features, **Automatic** delegates the item to **Hidden File Sync** while still obeying its target and ignore patterns (displaying a Notice when chosen if any files are excluded by those patterns), and disabling **Customisation sync** returns hidden files to **Hidden File Sync**'s own selectors.
+- When both **Customisation Sync** and **Hidden File Sync** are enabled, **Customisation Sync** owns **Selective** items (including items with the default mode) and **Flagged Selective** items. Hidden File Sync no longer uploads these files, overwrites them, or resolves their conflicts. (#825)
+    - **Ignore** excludes the item from both features, **Automatic** delegates the item to **Hidden File Sync** while still obeying its target and ignore patterns (displaying a Notice when chosen if any files are excluded by those patterns), and disabling **Customisation Sync** returns hidden files to **Hidden File Sync**'s own selectors.
 
 ### Improved
 
 - When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
 
 - When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
+
+- Splitting large files with V3 Rabin-Karp chunking uses less input-buffer memory by reading Blobs in blocks of up to 1 MiB as Chunks are produced, rather than loading the entire Blob into memory at once.
+    - Small files which fit within one block are read directly without creating a block iterator, and prepared Chunk batches pass straight to the writer without an extra array copy.
+
+### Miscellaneous
+
+- Updated dependencies (including `@vrtmrz/livesync-commonlib` 0.7.0, which adopts `@vrtmrz/rpc` 0.1.0 for hosted P2P rooms, and `octagonal-wheels` 0.1.57).
 
 ## 1.0.51
 
