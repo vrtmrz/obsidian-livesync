@@ -235,15 +235,22 @@ describe("createStatusBarRenderer", () => {
         renderer.dispose();
     });
 
-    it("renders a suffix when the prefix carries an unavailable numeric value", () => {
+    it("renders a placeholder value in the tabular value slot with the same 1ch width as a digit", () => {
         const { root, parent } = createFixture();
         const renderer = createStatusBarRenderer(parent);
 
-        renderer.render([{ key: "p2p", text: " ↑ —", suffix: " (1)" }]);
+        renderer.render([{ key: "p2p", text: " ↑ ", value: "‒", suffix: " (1)" }]);
 
         const item = findItem(root, "p2p");
-        expect(item.textContent).toBe(" ↑ — (1)");
-        expect(findValue(item).hidden).toBe(true);
+        const value = findValue(item);
+        expect(item.textContent).toBe(" ↑ ‒ (1)");
+        expect(value.hidden).toBe(false);
+        expect(value.textContent).toBe("‒");
+        expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("1ch");
+
+        renderer.render([{ key: "p2p", text: " ↑ ", value: 0, suffix: " (1)" }]);
+        expect(item.textContent).toBe(" ↑ 0 (1)");
+        expect(value.style.getPropertyValue("--livesync-stat-width")).toBe("1ch");
         renderer.dispose();
     });
 

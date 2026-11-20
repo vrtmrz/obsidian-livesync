@@ -41,11 +41,16 @@ describe("P2P progress display", () => {
         expect(source.value[0].fetching.statistics).toEqual({ documents: 0, checkedChanges: 33 });
     });
 
-    it("shows an em dash for unreported document counts and retains reported sequence progress", () => {
+    it("shows a figure dash in the value slot for unreported document counts and retains reported sequence progress", () => {
         const legacy = peer();
         delete legacy.sending.statistics;
         const { display } = displayFor([legacy]);
-        expect(display.value.message).toContain("↑ — (100)");
+        expect(display.value.message).toContain("↑ ‒ (100)");
+        expect(display.value.parts.find((part) => part.key === "p2p-peer-a-sending")).toMatchObject({
+            text: " ↑ ",
+            value: "‒",
+            suffix: " (100)",
+        });
         expect(display.value.message).toContain("↓ 0 (100) ⏩↓ 33");
         expect(display.value.message).not.toContain("⏩↑");
 
@@ -54,8 +59,8 @@ describe("P2P progress display", () => {
         initial.sending.current = 0;
         initial.sending.max = 0;
         const { display: initialDisplay } = displayFor([initial]);
-        expect(initialDisplay.value.message).toContain("↑ —");
-        expect(initialDisplay.value.message).not.toContain("↑ — (");
+        expect(initialDisplay.value.message).toContain("↑ ‒");
+        expect(initialDisplay.value.message).not.toContain("↑ ‒ (");
     });
 
     it("expires independently by direction and peer without extending on unrelated activity", () => {

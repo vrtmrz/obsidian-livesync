@@ -995,7 +995,7 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
             p2p: p2p.value,
             hideFileWarningNotice: settings.hideFileWarningNotice,
         };
-        const peerLine = "⚡ E2E peer ↑ — (1) ↓ — (1)";
+        const peerLine = "⚡ E2E peer ↑ ‒ (1) ↓ ‒ (1)";
         const wait = {
             async until(condition: () => boolean, message: string | (() => string)) {
                 const deadline = Date.now() + timeout;
@@ -1037,9 +1037,9 @@ async function assertLegacyStatusPaths(page: Page): Promise<void> {
                         ".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer:not(.livesync-stat-inactive)"
                     )?.textContent === "⚡ E2E peer" &&
                     document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-sending")
-                        ?.textContent === " ↑ — (1)" &&
+                        ?.textContent === " ↑ ‒ (1)" &&
                     document.querySelector(".livesync-status-statusline .livesync-stat-p2p-e2e-status-peer-fetching")
-                        ?.textContent === " ↓ — (1)" &&
+                        ?.textContent === " ↓ ‒ (1)" &&
                     document
                         .querySelector(".livesync-status-messagearea")
                         ?.textContent?.includes("⚠️ E2E file warning") === true,

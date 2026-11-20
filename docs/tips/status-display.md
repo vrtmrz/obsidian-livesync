@@ -31,7 +31,7 @@ Use [General Settings](../settings.md#2-general-settings) to choose whether sync
      -   🔁 Pending chunk retries, including retry delays
      -   🔌 Working customisation items (configuration, snippets, and plug-ins)
 
-For CouchDB and P2P, numbers in parentheses show the remaining sequence distance to the source's sequence at the start of that replication direction. The value counts down to `(0)` when the position reaches or passes that boundary. The parentheses are omitted when the position has not been reported. For P2P, the number after `↑` or `↓` is the transferred document revision count; `—` means that count has not been reported, while `0` is a measured zero. For example, an active peer at sequence 800 of 900 with two sent revisions shows `⚡ peer-a ↑ 2 (100)`. The P2P peer name identifies the other device.
+For CouchDB and P2P, numbers in parentheses show the remaining sequence distance to the source's sequence at the start of that replication direction. The value counts down to `(0)` when the position reaches or passes that boundary. The parentheses are omitted when the position has not been reported. For P2P, the number after `↑` or `↓` is the transferred document revision count; `‒` means that count has not been reported, while `0` is a measured zero. For example, an active peer at sequence 800 of 900 with two sent revisions shows `⚡ peer-a ↑ 2 (100)`. The P2P peer name identifies the other device.
 
 To prevent file and database corruption, please avoid closing Obsidian until all progress indicators have disappeared as much as possible (although the plug-in will attempt to resume if interrupted). This is especially important if you have deleted or renamed files.
 

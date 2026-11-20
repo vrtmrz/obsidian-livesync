@@ -25,6 +25,7 @@ export function selectReplicationStatus(
 
 const directions = ["sending", "fetching"] as const;
 type Direction = (typeof directions)[number];
+const UNAVAILABLE_DOCUMENT_COUNT = "‒";
 
 function directionParts(
     peer: P2PReplicationProgress,
@@ -41,8 +42,8 @@ function directionParts(
     const parts: StatusBarPart[] = [
         {
             key,
-            text: hasDocumentCount ? ` ${arrow} ` : ` ${arrow} —`,
-            ...(hasDocumentCount ? { value: documentCount } : {}),
+            text: ` ${arrow} `,
+            value: hasDocumentCount ? documentCount : UNAVAILABLE_DOCUMENT_COUNT,
             ...(remaining === undefined ? {} : { suffix: ` (${remaining})` }),
             title: direction === "sending" ? "Sent document revisions" : "Received document revisions",
         },

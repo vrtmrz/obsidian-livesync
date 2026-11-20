@@ -3,7 +3,7 @@ const INACTIVE_CLASS = "livesync-stat-inactive";
 export type StatusBarPart = {
     key: string;
     text: string;
-    value?: number;
+    value?: number | string;
     suffix?: string;
     title?: string;
 };
