@@ -80,9 +80,22 @@ A later conflict check for the same file cancels the earlier comparison and chec
 
 ## Automatic in Customisation Sync
 
-**Automatic** delegates an item's files to Hidden File Sync. Enable Hidden File Sync on this device through the steps above before choosing Automatic. If Hidden File Sync is disabled, the choice displays a Notice without changing the item's mode or starting initialisation. Previously saved Automatic assignments remain saved, so this prerequisite also applies after importing settings from another device.
+When both **Customisation Sync** and **Hidden File Sync** are enabled:
+
+- **Selective** (including the default state for items without an explicit mode) and **Flagged Selective** remain managed by Customisation Sync. Hidden File Sync does not automatically upload, overwrite, or resolve conflicts for those files; incoming hidden-file documents stay in the local database without modifying the Vault, and Customisation Sync candidates can still be applied manually.
+- **Ignore** excludes the item from both Customisation Sync and Hidden File Sync.
+- **Automatic** delegates an item's files to Hidden File Sync. Those files remain subject to Hidden File Sync's target and ignore patterns; if any files in the selected item are excluded by those patterns, a Notice appears when you choose Automatic.
+- Disabling Customisation Sync pauses its saved item modes so Hidden File Sync uses its own selectors again.
+
+Enable Hidden File Sync on this device through the steps above before choosing Automatic. If Hidden File Sync is disabled, the choice displays a Notice without changing the item's mode or starting initialisation. Previously saved Automatic assignments remain saved, so this prerequisite also applies after importing settings from another device.
 
 Once Hidden File Sync is enabled, choose the item's initial action in Customisation Sync. Selecting a whole plug-in applies that action to both its **MAIN** and **DATA** selections.
+
+### Known limitations
+
+- Customisation Sync handles CSS snippets directly inside the configuration directory's `snippets` folder. Snippets in subfolders, such as `snippets/team/top.css`, are eligible for Hidden File Sync under its own target and ignore patterns.
+
+- Customisation items or filenames containing `%` (such as snippets, themes, or plug-in files with `%` in their name) are not fully supported by Customisation Sync, because `%` is used as a key delimiter in per-file (V2) Customisation Sync records. Avoid `%` in customisation filenames when managing them with Customisation Sync.
 
 ## Related settings
 

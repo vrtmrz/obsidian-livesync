@@ -6,6 +6,10 @@ import {
     StorageEventManagerBase,
     type StorageEventManagerBaseDependencies,
 } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
+import {
+    isCaseInsensitiveSelection,
+    pathWithinConfigDirectory,
+} from "@/features/HiddenFileCommon/optionalFileSyncSelection";
 import { ObsidianStorageEventManagerAdapter } from "./ObsidianStorageEventManagerAdapter";
 
 export class StorageEventManagerObsidian extends StorageEventManagerBase<ObsidianStorageEventManagerAdapter> {
@@ -16,7 +20,14 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
 
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, dependencies: StorageEventManagerBaseDependencies) {
         const adapter = new ObsidianStorageEventManagerAdapter(plugin, core, dependencies.fileProcessing);
-        super(adapter, dependencies);
+        super(adapter, {
+            ...dependencies,
+            // Pass `internalFileEvent: true` so ordinary `syncOnlyRegEx` allow-lists and the dot-file gate
+            // when `syncInternalFiles` is off do not drop `INTERNAL` raw events before optional-sync dispatch.
+            isTargetInternalFile:
+                dependencies.isTargetInternalFile ??
+                ((path) => dependencies.vaultService.isTargetFile(path, { internalFileEvent: true })),
+        });
         this.core = core;
     }
 
@@ -40,11 +51,13 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
     protected override async _watchVaultRawEvents(path: FilePath) {
         if (!this.settings.syncInternalFiles && !this.settings.usePluginSync) return;
         if (!this.settings.watchInternalFileChanges) return;
-        if (!path.startsWith(this.core.services.API.getSystemConfigDir())) return;
         if (path.endsWith("/")) {
             // Folder
             return;
         }
+        const insensitive = isCaseInsensitiveSelection(this.settings, this.vaultService);
+        // Enforce a config-directory boundary so sibling folders (for example, `.obsidian-extra/...`) are skipped.
+        if (!pathWithinConfigDirectory(path, this.core.services.API.getSystemConfigDir(), insensitive)) return;
         const isTargetFile = await this.vaultService.isTargetFileInExtra(path);
         if (!isTargetFile) return;
 

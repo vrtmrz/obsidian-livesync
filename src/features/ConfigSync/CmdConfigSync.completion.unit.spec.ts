@@ -1,5 +1,8 @@
+import * as locks from "octagonal-wheels/concurrency/lock";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("octagonal-wheels/concurrency/lock", { spy: true });
 vi.mock("@/deps.ts", () => ({
     addIcon: vi.fn(),
     diff_match_patch: class DiffMatchPatch {},
@@ -47,7 +50,7 @@ vi.mock("@/features/HiddenFileCommon/obsidianCommunityPlugins.ts", () => ({
     getObsidianCommunityPluginManager: vi.fn(),
 }));
 
-import type { FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { MODE_AUTOMATIC, MODE_PAUSED, type FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { getDocData } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { ConfigSync } from "./CmdConfigSync";
 import { createOptionalFileSyncDatabase } from "../../../test/fixtures/optionalFileSyncDatabase";
@@ -104,6 +107,48 @@ afterEach(async () => {
 
 describe("Customisation Sync optional save completion", () => {
     const flush = { whenFlushRequested: Promise.resolve() };
+
+    it.each([
+        { useV2: false, operation: "upload" },
+        { useV2: true, operation: "upload" },
+        { useV2: false, operation: "deletion" },
+        { useV2: true, operation: "deletion" },
+    ])("skips a $operation that loses ownership while waiting for the DB lock (V2: $useV2)", async ({ useV2, operation }) => {
+        const { fixture, config, files, databasePath } = await createConfigSync(useV2);
+        let saved;
+        if (operation === "deletion") {
+            await expect(config._processOptionalFileEventWithResult(path, flush)).resolves.toEqual({ kind: "completed" });
+            saved = await fixture.database.get(databasePath);
+            files.delete(path);
+        }
+        const lock = vi.mocked(locks.withLock);
+        lock.mockClear();
+        const lockKey = `plugin-${databasePath}`;
+        const entered = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const holder = locks.withLock(lockKey, async () => {
+            entered.resolve();
+            await release.promise;
+        });
+        await entered.promise;
+        const pending = config._processOptionalFileEventWithResult(path, flush);
+        try {
+            await vi.waitFor(() => expect(lock.mock.calls.filter(([key]) => key === lockKey)).toHaveLength(2));
+            Object.assign(fixture.settings.pluginSyncExtendedSetting, {
+                "SNIPPET/test.css": { key: "SNIPPET/test.css", mode: MODE_AUTOMATIC, files: [] },
+            });
+        } finally {
+            release.resolve();
+            await holder;
+        }
+
+        await expect(pending).resolves.toEqual({ kind: "not-applicable" });
+        if (saved) {
+            await expect(fixture.database.get(databasePath)).resolves.toEqual(saved);
+        } else {
+            await expect(fixture.localDatabase.getDBEntryMeta(databasePath)).resolves.toBe(false);
+        }
+    });
 
     it("waits for the database write while the application is suspended or still starting", async () => {
         const { fixture, config } = await createConfigSync();
@@ -216,5 +261,43 @@ describe("Customisation Sync optional save completion", () => {
         await expect(config.deleteConfigOnDatabase(databasePath)).resolves.toBe(false);
         const unchanged = await fixture.localDatabase.getDBEntry(databasePath);
         expect(unchanged && getDocData(unchanged.data)).toBe(original && getDocData(original.data));
+    });
+
+    it("skips a queued optional save when ownership switches to Ignore before flush", async () => {
+        const { fixture, config, storageAccess, databasePath } = await createConfigSync();
+        let releaseFlush!: () => void;
+        const whenFlushRequested = new Promise<void>((resolve) => {
+            releaseFlush = resolve;
+        });
+        const put = vi.spyOn(fixture.localDatabase, "putDBEntry");
+
+        const pending = config._processOptionalFileEventWithResult(path, { whenFlushRequested });
+        await vi.waitFor(() => expect(storageAccess.statHidden).toHaveBeenCalledOnce());
+        await Promise.resolve();
+        fixture.settings.pluginSyncExtendedSetting = {
+            "SNIPPET/test.css": {
+                key: "SNIPPET/test.css",
+                mode: MODE_PAUSED,
+                files: ["snippets/test.css"],
+            },
+        };
+        releaseFlush();
+
+        await expect(pending).resolves.toEqual({ kind: "not-applicable" });
+        expect(put).not.toHaveBeenCalled();
+        await expect(fixture.localDatabase.getDBEntry(databasePath)).resolves.toBe(false);
+    });
+
+    it("collects V1 fixed plug-in members using their on-disk spelling when case-insensitive matching is active", async () => {
+        const { fixture, config, files } = await createConfigSync(false);
+        fixture.settings.handleFilenameCaseSensitive = false;
+        const uppercaseMain = ".obsidian/plugins/demo/MAIN.JS" as FilePath;
+        files.set(uppercaseMain, { content: "module.exports = 'upper';", mtime: 4000 });
+
+        await config.storeCustomizationFiles(uppercaseMain);
+
+        const stored = await fixture.localDatabase.getDBEntry(config.filenameToUnifiedKey(uppercaseMain));
+        expect(stored).not.toBe(false);
+        expect(stored && getDocData(stored.data)).toContain("plugins/demo/MAIN.JS");
     });
 });
