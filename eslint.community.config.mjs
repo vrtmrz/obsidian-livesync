@@ -50,7 +50,7 @@ export default defineConfig(
         rules: {
             // The directory review reports console usage as guidance rather than a release blocker.
             "obsidianmd/rule-custom-message": "off",
-            "no-console": "warn",
+            "no-console": ["warn", { allow: ["warn", "error", "debug"] }],
             "obsidianmd/no-unsupported-api": "error",
             // Treat direct globalThis access as an error so the CI gate rejects it.
             "obsidianmd/no-global-this": "error",

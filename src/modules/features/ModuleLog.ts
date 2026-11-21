@@ -87,8 +87,9 @@ function createBufferedLog(entries: ReactiveSource<LogEntry[]>) {
     };
 }
 
+// Not called during normal operation; retained as a fallback for logs emitted after the plug-in unloads.
 function logToConsole(message: unknown, level?: number, key?: string) {
-    console.log({ message, level, key });
+    console.debug({ message, level, key });
 }
 
 // Legacy Logger calls use this shared buffer; service logs use their owner's buffer.
