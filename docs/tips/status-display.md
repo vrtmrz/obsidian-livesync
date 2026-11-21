@@ -72,7 +72,7 @@ The item classes include `livesync-stat-sync-mode`, `livesync-stat-network`, `li
 
 The former `livesync-stat-ff` class has been replaced by `livesync-stat-ff-push` and `livesync-stat-ff-pull`. Update existing CSS snippets to target one or both of the directional classes.
 
-All items also have `livesync-stat-item`. Numeric children use `livesync-stat-value`, tabular digits, and right alignment. Each numeric item retains its widest displayed digit count during an active period, reducing movement as counts decrease. The editor overlay uses wider gaps between items, while remaining counts stay beside their transfer totals.
+All items also have `livesync-stat-item`. Numeric children use `livesync-stat-value`, tabular digits, and right alignment. Each numeric item retains its widest displayed digit count during an active period, reducing movement as counts decrease. The editor overlay uses wider gaps between items (narrowed on mobile) and wraps right-aligned by item when space is narrow, whilst remaining counts stay beside their transfer totals.
 
 Inactive items receive `livesync-stat-inactive` instead of the HTML `hidden` attribute. The default CSS hides them immediately. They retain their last text, numeric width, and position amongst the other items so that CSS snippets can customise how they disappear. The numeric width starts afresh when an item becomes active again.
 

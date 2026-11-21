@@ -540,8 +540,13 @@ async function assertEditorItemSpacing(page: Page, mobile: boolean): Promise<voi
     });
     const editor = spacing.find((entry) => entry.selector === ".livesync-status-statusline");
     failUnless(editor?.gapsEm.length === 2, "The editor status gaps could not be measured.");
+    const minGapEm = mobile ? 0.45 : 1;
+    const maxGapEm = mobile ? 1 : 1.5;
     for (const gap of editor.gapsEm) {
-        failUnless(gap >= 1 && gap <= 1.5, `Editor status items need a 1–1.5em gap; found ${gap.toFixed(3)}em.`);
+        failUnless(
+            gap >= minGapEm && gap <= maxGapEm,
+            `Editor status items need a ${minGapEm}–${maxGapEm}em gap; found ${gap.toFixed(3)}em.`
+        );
     }
     if (!mobile) {
         const statusBar = spacing.find((entry) => entry.selector === ".syncstatusbar");
