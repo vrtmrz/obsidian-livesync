@@ -22,6 +22,8 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
         const adapter = new ObsidianStorageEventManagerAdapter(plugin, core, dependencies.fileProcessing);
         super(adapter, {
             ...dependencies,
+            // Pass `internalFileEvent: true` so ordinary `syncOnlyRegEx` allow-lists and the dot-file gate
+            // when `syncInternalFiles` is off do not drop `INTERNAL` raw events before optional-sync dispatch.
             isTargetInternalFile:
                 dependencies.isTargetInternalFile ??
                 ((path) => dependencies.vaultService.isTargetFile(path, { internalFileEvent: true })),
@@ -54,6 +56,7 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
             return;
         }
         const insensitive = isCaseInsensitiveSelection(this.settings, this.vaultService);
+        // Enforce a config-directory boundary so sibling folders (for example, `.obsidian-extra/...`) are skipped.
         if (!pathWithinConfigDirectory(path, this.core.services.API.getSystemConfigDir(), insensitive)) return;
         const isTargetFile = await this.vaultService.isTargetFileInExtra(path);
         if (!isTargetFile) return;

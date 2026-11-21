@@ -74,6 +74,7 @@ const HIDDEN_FILE_NOTICE_DURATION_MS = 20_000;
 export const HIDDEN_FILE_SYNC_DISABLED_NOTICE =
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.";
 
+/** Notice shown when an item switched to Automatic contains files excluded by Hidden File Sync patterns. */
 export const HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE =
     "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.";
 
@@ -278,6 +279,8 @@ export class HiddenFileSync extends LiveSyncCommands {
 
     async _anyGetOptionalConflictCheckMethod(path: FilePathWithPrefix): Promise<boolean | "newer"> {
         if (isInternalMetadata(path)) {
+            // Only queue conflict resolution for Automatic hidden targets; still return `true` for every `i:`
+            // document so ordinary note conflict handling does not touch Selective or Ignored customisation items.
             if (await this.isAutomaticHiddenTarget(stripAllPrefixes(path))) {
                 this.queueConflictCheck(path);
             }
@@ -998,6 +1001,7 @@ Offline Changed files: ${processFiles.length}`;
                         res(false);
                         return;
                     }
+                    // Re-verify ownership on dialogue confirmation in case the item moved out of Automatic while open.
                     if (!(await this.isAutomaticHiddenTarget(storageFilePath))) {
                         this._log(`Skipped merging (no longer Hidden File Sync target): ${displayFilename}`);
                         res(false);
@@ -1006,6 +1010,8 @@ Offline Changed files: ${processFiles.length}`;
                     if (keep && keep !== docA._rev && keep !== docB._rev) {
                         return res(false);
                     }
+                    // Persist the merged revision before deleting the losing leaf so a failed write or ownership
+                    // change mid-merge cannot remove the only remaining revision.
                     if (!keep && result) {
                         const stored = await this.storeMergedHiddenFile(storageFilePath, result, docA._rev);
                         if (!stored || !this.isAutomaticHiddenOwner(storageFilePath)) {
@@ -1157,6 +1163,11 @@ Offline Changed files: ${processFiles.length}`;
         return result;
     }
 
+    /**
+     * Checks whether Hidden File Sync should descend into a hidden folder. Unlike `isTargetFile`, this
+     * omits Customisation Sync ownership so containers such as `.obsidian/snippets` and `.obsidian/plugins`
+     * are still traversed to reach Automatic items and nested files inside them.
+     */
     async isTargetFolder(path: FilePath): Promise<boolean> {
         const result = this.isTargetFileInPatterns(path) && this.isHiddenFileSyncHandlingPath(path);
         if (!result) {
@@ -2043,6 +2054,8 @@ Offline Changed files: ${files.length}`;
                         return;
                     }
                 }
+                // Re-verify ownership after async DB/storage reads so a concurrent switch to Selective or Ignore
+                // cannot write or delete a Vault file after the lock was entered.
                 if (!canReflect()) return;
                 const deleted = metaOnDB.deleted || metaOnDB._deleted || false;
                 if (deleted) {

@@ -572,6 +572,7 @@ export class ConfigSync extends LiveSyncCommands {
                 work.data = [file.hash];
                 xFiles.push(work);
             }
+            // Avoid writing back missing digests for excluded (`Ignore` or `Automatic`) V1 binders.
             if (missingHash && !this.isDatabaseEntryExcludedFromConfigSync(path)) {
                 this._log(`Digest created for ${path} to improve checking`, LOG_LEVEL_VERBOSE);
                 wx.data = serialize(data);
@@ -811,6 +812,8 @@ export class ConfigSync extends LiveSyncCommands {
         const prefixPath = v1Path.slice(0, -".md".length) + "%";
         const category = pluginData.category;
 
+        // Recheck enablement and exclusion before each V2 write so disabling Customisation Sync or changing
+        // the item's mode mid-read stops migration before creating new V2 records.
         const canMigrate = () => this.isThisModuleEnabled() && !this.isDatabaseEntryExcludedFromConfigSync(v1Path);
         for (const f of pluginData.files) {
             const stripTable: Record<string, number> = {
@@ -1370,6 +1373,10 @@ export class ConfigSync extends LiveSyncCommands {
             }
         });
     }
+    /**
+     * Resolves V1 fixed plug-in/theme member paths using on-disk casing when case-insensitive matching
+     * is active, so uppercase filenames (for example, `MAIN.JS`) on case-sensitive storage are not missed.
+     */
     private async resolveV1FixedMemberTargets(
         parentPath: string,
         members: readonly string[],
@@ -1771,6 +1778,8 @@ export class ConfigSync extends LiveSyncCommands {
                 const old = (await this.localDatabase.getDBEntryMeta(prefixedFileName, undefined, false)) as
                     | InternalFileEntry
                     | false;
+                // Recheck against the stored canonical path after reading metadata: callers such as V2 scans
+                // may pass a case-folded `_id`, and item mode or enablement can change during the async read.
                 const resolvedPath = old !== false ? (old.path || this.getPath(old)) : prefixedFileName;
                 if (canDelete && !canDelete(resolvedPath)) {
                     return false;

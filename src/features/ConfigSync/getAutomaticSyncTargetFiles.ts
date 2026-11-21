@@ -2,6 +2,10 @@ import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat
 
 import { findCustomisationEntryKey } from "@/features/HiddenFileCommon/optionalFileSyncSelection";
 
+/**
+ * Resolves Vault-relative file paths for a Customisation Sync item key switched to `Automatic` mode,
+ * expanding aggregate `PLUGIN_ALL/<name>` keys into both `PLUGIN_DATA` and `PLUGIN_MAIN` entries.
+ */
 export function getAutomaticSyncTargetFiles(
     key: string,
     configDir: string,

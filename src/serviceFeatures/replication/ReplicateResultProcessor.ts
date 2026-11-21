@@ -1049,6 +1049,8 @@ export class ReplicateResultProcessor {
         // If the document is version info, check compatibility and return.
         if (isAnyNote(change)) {
             const docPath = this.getPath(change);
+            // Route live internal `i:` Metadata through `internalFileEvent: true` so ordinary `syncOnlyRegEx`
+            // allow-lists do not block live Automatic hidden-file reflection before Hidden File Sync checks it.
             const target = isInternalMetadata(change._id)
                 ? await this.services.vault.isTargetFile(docPath, { internalFileEvent: true })
                 : await this.services.vault.isTargetFile(docPath);

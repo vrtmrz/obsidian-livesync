@@ -9,11 +9,15 @@ import {
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { stripAllPrefixes } from "@vrtmrz/livesync-commonlib/compat/string_and_binary/path";
 
+/** Customisation Sync item category used as the prefix of saved `pluginSyncExtendedSetting` keys. */
 export type CustomisationCategory = "CONFIG" | "THEME" | "SNIPPET" | "PLUGIN_MAIN" | "PLUGIN_ETC" | "PLUGIN_DATA";
 
+/** Feature responsible for a Vault path when Customisation Sync and Hidden File Sync interact. */
 export type OptionalFileSyncOwner = "config" | "hidden" | "ignored";
 
+/** Fixed files bundled into a V1 `PLUGIN_MAIN` binder. */
 export const PLUGIN_MAIN_FILES = ["manifest.json", "main.js", "styles.css"] as const;
+/** Fixed files bundled into a V1 `THEME` binder. */
 export const THEME_FILES = ["manifest.json", "theme.css"] as const;
 
 const CUSTOMISATION_CATEGORIES = new Set<string>([
@@ -25,26 +29,40 @@ const CUSTOMISATION_CATEGORIES = new Set<string>([
     "PLUGIN_DATA",
 ]);
 
+/** Result of mapping a Vault path under the configuration directory to its Customisation Sync item. */
 export interface CustomisationFileClassification {
+    /** Customisation Sync category that owns this file shape. */
     category: CustomisationCategory;
+    /** Saved-setting key in `<CATEGORY>/<itemName>` form (for example, `SNIPPET/example.css`). */
     key: string;
+    /** Path relative to the Vault's configuration directory, without a leading slash. */
     relativePath: string;
 }
 
+/** Options controlling whether a Vault path is classified as a Customisation Sync file. */
 export interface CustomisationClassificationOptions {
+    /** Vault configuration directory (for example, `.obsidian` or a nested custom config path). */
     configDir: string;
+    /** Whether Customisation Sync V2 is enabled; V1 restricts themes to `THEME_FILES`. */
     useV2: boolean;
+    /** Whether extra plug-in files (`PLUGIN_ETC`) are enabled in settings. */
     usePluginEtc: boolean;
+    /** Optional override for `PLUGIN_ETC` inclusion (defaults to `useV2 && usePluginEtc`). */
     includePluginEtc?: boolean;
+    /** Whether directory, category, and filename matching should be case-insensitive. */
     insensitive?: boolean;
 }
 
+/** Options used to resolve which optional sync feature owns a Vault path. */
 export interface CustomisationOwnershipOptions {
+    /** Vault configuration directory (for example, `.obsidian`). */
     configDir: string;
+    /** Current plug-in sync settings governing ownership and saved item modes. */
     settings: Pick<
         ObsidianLiveSyncSettings,
         "usePluginSync" | "usePluginSyncV2" | "usePluginEtc" | "pluginSyncExtendedSetting"
     >;
+    /** Whether path and saved-key comparisons should be case-insensitive. */
     insensitive?: boolean;
 }
 
@@ -60,6 +78,7 @@ function isFixedV1Member(files: readonly string[], filename: string, insensitive
     return files.includes(normaliseSegment(filename, insensitive));
 }
 
+/** Maps a Customisation Sync category name to its folder prefix under `configDir`. */
 export function categoryToFolder(category: string, configDir: string = ""): string {
     switch (category) {
         case "CONFIG":
@@ -77,6 +96,10 @@ export function categoryToFolder(category: string, configDir: string = ""): stri
     }
 }
 
+/**
+ * Returns the file path relative to `configDir`, enforcing a directory boundary so sibling paths
+ * (such as `.obsidian-extra/...`) do not match `.obsidian`, and rejecting directory paths.
+ */
 export function pathWithinConfigDirectory(path: string, configDir: string, insensitive = false): string | undefined {
     const dir = normaliseConfigDir(configDir);
     if (!dir) return undefined;
@@ -90,6 +113,10 @@ export function pathWithinConfigDirectory(path: string, configDir: string, insen
     return relative;
 }
 
+/**
+ * Classifies a Vault path into its Customisation Sync category and item key, or `undefined` when
+ * the path is outside Customisation Sync's scope and remains eligible for Hidden File Sync.
+ */
 export function classifyCustomisationFile(
     filePath: string,
     options: CustomisationClassificationOptions
@@ -110,6 +137,8 @@ export function classifyCustomisationFile(
 
     const folder = normaliseSegment(parts[0], insensitive);
 
+    // Restrict snippets to direct `<configDir>/snippets/*.css` files; Obsidian loads only top-level CSS
+    // snippets, and nested files remain with Hidden File Sync to avoid V2 key collisions and wrong-path restores.
     if (folder === "snippets" && parts.length === 2) {
         const [, filename] = parts;
         if (normaliseSegment(filename, insensitive).endsWith(".css")) {
@@ -157,6 +186,10 @@ const CONFLICTING_MODE_PRECEDENCE: Record<number, number> = {
     [MODE_AUTOMATIC]: 3,
 };
 
+/**
+ * Finds all saved keys in `pluginSyncExtendedSetting` matching `key`, ordered deterministically by
+ * protective mode precedence (and then key spelling) so reads do not depend on caller casing.
+ */
 export function findMatchingCustomisationEntryKeys(
     key: string,
     entries: CustomisationEntries | undefined,
@@ -182,6 +215,7 @@ export function findMatchingCustomisationEntryKeys(
     });
 }
 
+/** Returns the winning saved key for `key` under the active case-sensitivity policy, if any. */
 export function findCustomisationEntryKey(
     key: string,
     entries: CustomisationEntries | undefined,
@@ -190,6 +224,7 @@ export function findCustomisationEntryKey(
     return findMatchingCustomisationEntryKeys(key, entries, insensitive)[0];
 }
 
+/** Returns the effective saved `SYNC_MODE` for `key`, or `undefined` when unconfigured (default Selective). */
 export function findCustomisationEntryMode(
     key: string,
     entries: CustomisationEntries | undefined,
@@ -199,6 +234,11 @@ export function findCustomisationEntryMode(
     return savedKey === undefined ? undefined : entries?.[savedKey]?.mode;
 }
 
+/**
+ * Updates `pluginSyncExtendedSetting` for `key`, reconciling any case-equivalent duplicate keys.
+ * Setting `MODE_SELECTIVE` deletes matching entries (returning to the unconfigured default), whilst
+ * non-empty saved `files` are preserved when `files` is empty for an item absent from the catalogue.
+ */
 export function updateCustomisationEntryMode(
     entries: CustomisationEntries,
     key: string,
@@ -220,10 +260,16 @@ export function updateCustomisationEntryMode(
             delete entries[duplicateKey];
         }
     }
+    // Retain existing recorded filenames when the item is not currently listed in the catalogue.
     const nextFiles = files.length > 0 ? files : existingFiles;
     entries[savedKey] = { key: entries[savedKey]?.key ?? key, mode, files: nextFiles };
 }
 
+/**
+ * Returns plug-in names present in saved `pluginSyncExtendedSetting` entries but absent from
+ * `existingNames`. V2 catalogue scans skip excluded V1 binders (`Ignore` or `Automatic`), so these
+ * names keep saved-only plug-in rows visible in the UI and recoverable by the user.
+ */
 export function collectSavedCustomisationPluginNames(
     existingNames: readonly string[],
     entries: CustomisationEntries | undefined,
@@ -249,6 +295,7 @@ export function collectSavedCustomisationPluginNames(
     return savedOnly;
 }
 
+/** Reports whether Customisation Sync must skip `key` because it is set to `Ignore` or `Automatic`. */
 export function isCustomisationItemExcludedFromConfigSync(
     key: string,
     entries: ObsidianLiveSyncSettings["pluginSyncExtendedSetting"] | undefined,
@@ -258,20 +305,27 @@ export function isCustomisationItemExcludedFromConfigSync(
     return mode === MODE_PAUSED || mode === MODE_AUTOMATIC;
 }
 
+/**
+ * Extracts `<CATEGORY>/<itemName>` from an `ix:` database path or case-folded document ID for both
+ * V1 binders (`.../<name>.md`) and V2 per-file records (`.../<name>%<relativeFile>`).
+ */
 export function extractCustomisationItemKeyFromUnifiedPath(unifiedPath: FilePathWithPrefix): string | undefined {
     const stripped = stripAllPrefixes(unifiedPath);
     const [, rawCategory, ...rest] = stripped.split("/");
+    // Normalise category casing because V2 scans can pass PouchDB's case-folded `_id` (`ix:device/config/...`).
     const category = rawCategory?.toUpperCase();
     if (!category || !CUSTOMISATION_CATEGORIES.has(category) || rest.length === 0) {
         return undefined;
     }
     const relativePath = rest.join("/");
     const percentIndex = relativePath.indexOf("%");
+    // V1 binders end in `.md`, whereas V2 `THEME` and `PLUGIN_ETC` records may legitimately contain `.md` members after `%`.
     const isV2Format =
         percentIndex !== -1 &&
         (!relativePath.endsWith(".md") ||
             ((category === "THEME" || category === "PLUGIN_ETC") && relativePath.slice(percentIndex + 1) !== ".md"));
     if (isV2Format) {
+        // V2 `CONFIG` and `SNIPPET` paths repeat the filename on both sides of `%` (`a.json%a.json`).
         if (category === "CONFIG" || category === "SNIPPET") {
             const midpoint = Math.floor(relativePath.length / 2);
             if (relativePath.length % 2 === 1 && relativePath[midpoint] === "%") {
@@ -289,6 +343,12 @@ export function extractCustomisationItemKeyFromUnifiedPath(unifiedPath: FilePath
     return itemName ? `${category}/${itemName}` : undefined;
 }
 
+/**
+ * Resolves which feature owns `filePath`:
+ * - `"hidden"` when Customisation Sync is disabled, the path is outside its scope, or the item is `Automatic`.
+ * - `"ignored"` when the item is `Ignore` (`MODE_PAUSED`), excluding it from both features.
+ * - `"config"` for `Selective` (including unconfigured default items) and `Flagged Selective`.
+ */
 export function selectCustomisationOwner(
     filePath: string,
     options: CustomisationOwnershipOptions
@@ -320,6 +380,7 @@ export function selectCustomisationOwner(
     return "config";
 }
 
+/** Returns whether optional-file selection should match paths and saved keys case-insensitively. */
 export function isCaseInsensitiveSelection(
     settings: Pick<Partial<ObsidianLiveSyncSettings>, "handleFilenameCaseSensitive"> | undefined,
     vault?: { isStorageInsensitive?: () => boolean }
@@ -327,6 +388,7 @@ export function isCaseInsensitiveSelection(
     return !settings?.handleFilenameCaseSensitive || (vault?.isStorageInsensitive?.() ?? false);
 }
 
+/** Filters `files` to those excluded by Hidden File Sync's target or ignore regular-expression patterns. */
 export function getHiddenFileSyncPatternExcludedFiles(
     files: readonly string[],
     isTargetFileInPatterns: (path: string) => boolean

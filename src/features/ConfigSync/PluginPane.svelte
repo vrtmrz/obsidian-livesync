@@ -252,6 +252,8 @@
     function setMode(key: string, mode: SYNC_MODE) {
         const entries = plugin.core.settings.pluginSyncExtendedSetting;
         if (key.startsWith(PREFIX_PLUGIN_ALL + "/")) {
+            // Clear any legacy aggregate `PLUGIN_ALL/<name>` entry before writing the concrete data/main entries,
+            // so it does not linger as a stale saved-only plug-in row.
             updateCustomisationEntryMode(entries, key, MODE_SELECTIVE, [], insensitive);
             setMode(PREFIX_PLUGIN_DATA + key.substring(PREFIX_PLUGIN_ALL.length), mode);
             setMode(PREFIX_PLUGIN_MAIN + key.substring(PREFIX_PLUGIN_ALL.length), mode);
