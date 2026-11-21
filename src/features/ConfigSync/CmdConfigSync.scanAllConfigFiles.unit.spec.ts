@@ -138,15 +138,18 @@ describe.each([false, true])("ConfigSync scan mode selection (V2: %s)", (useV2) 
     const legacyWorkspace = `${prefix}CONFIG/workspace.json.md`;
     const v2Workspace = `${prefix}CONFIG/workspace.json%workspace.json`;
 
-    function setupMode(mode?: number, localFiles = [workspace], registeredFiles = ["workspace.json"]) {
+    function setupMode(
+        mode?: number,
+        localFiles = [workspace],
+        registeredFiles = ["workspace.json"],
+        settingKey = "CONFIG/workspace.json"
+    ) {
         const rows: Row[] = [];
         const fixture = setup(localFiles, rows);
         Object.assign(fixture.configSync.core.settings, {
             usePluginSyncV2: useV2,
             pluginSyncExtendedSetting:
-                mode === undefined
-                    ? {}
-                    : { "CONFIG/workspace.json": { key: "CONFIG/workspace.json", mode, files: registeredFiles } },
+                mode === undefined ? {} : { [settingKey]: { key: settingKey, mode, files: registeredFiles } },
         });
         Object.assign(fixture.configSync, {
             isTargetPath: ConfigSync.prototype.isTargetPath,
@@ -207,18 +210,24 @@ describe.each([false, true])("ConfigSync scan mode selection (V2: %s)", (useV2) 
     });
 
     it.each([{ registeredFiles: [] }, { registeredFiles: ["different.json"] }])(
-        "retains the existing file-inventory limitation for $registeredFiles",
+        "excludes items by key even when the recorded file list is empty or outdated ($registeredFiles)",
         async ({ registeredFiles }) => {
             const fixture = setupMode(MODE_PAUSED, [workspace], registeredFiles);
+            fixture.rows.push({ _id: legacyWorkspace, path: legacyWorkspace }, { _id: v2Workspace, path: v2Workspace });
 
             await fixture.configSync.scanAllConfigFiles(false);
 
-            expect(fixture.events).toEqual([`store:${workspace}`]);
+            expect(fixture.events).toEqual([]);
         }
     );
 
     it("preserves an excluded plug-in group even when all its local files are absent", async () => {
-        const fixture = setupMode(MODE_PAUSED, [], ["plugins/example/main.js", "plugins/example/manifest.json"]);
+        const fixture = setupMode(
+            MODE_PAUSED,
+            [],
+            ["plugins/example/main.js", "plugins/example/manifest.json"],
+            "PLUGIN_MAIN/example"
+        );
         fixture.rows.push({ _id: `${prefix}PLUGIN_MAIN/example.md`, path: `${prefix}PLUGIN_MAIN/example.md` });
 
         await fixture.configSync.scanAllConfigFiles(false);
@@ -268,6 +277,34 @@ describe.each([
         expect(fixture.storeCustomisationFileV2).not.toHaveBeenCalled();
         expect(fixture.configSync.isTargetPath(path)).toBe(settings.usePluginSyncV2 && settings.usePluginEtc);
     });
+
+    it("skips deleting a V1 candidate that switches to Ignore mid-scan", async () => {
+        if (settings.usePluginSyncV2) return;
+        const keepLocal = ".obsidian/snippets/keep.css";
+        const stale = `${prefix}SNIPPET/stale.css.md`;
+        const fixture = setup([keepLocal], [{ _id: stale, path: stale }]);
+        const extendedSetting: Record<string, { key: string; mode: number; files: string[] }> = {};
+        Object.assign(fixture.configSync.core.settings, {
+            ...settings,
+            pluginSyncExtendedSetting: extendedSetting,
+        });
+        Object.assign(fixture.configSync, {
+            isTargetPath: ConfigSync.prototype.isTargetPath,
+            filenameToUnifiedKey: ConfigSync.prototype.filenameToUnifiedKey,
+        });
+        fixture.storeCustomizationFiles.mockImplementationOnce(async () => {
+            extendedSetting["SNIPPET/stale.css"] = {
+                key: "SNIPPET/stale.css",
+                mode: MODE_PAUSED,
+                files: ["snippets/stale.css"],
+            };
+        });
+
+        await fixture.configSync.scanAllConfigFiles(false);
+
+        expect(fixture.storeCustomizationFiles).toHaveBeenCalledExactlyOnceWith(keepLocal);
+        expect(fixture.deleteConfigOnDatabase).not.toHaveBeenCalled();
+    });
 });
 
 describe("ConfigSync V2 scan behaviour", () => {
@@ -288,6 +325,30 @@ describe("ConfigSync V2 scan behaviour", () => {
             include_docs: true,
         });
         expect(fixture.updatePluginList).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it("retains a V1 deletion candidate that switches to Automatic during a V2 scan", async () => {
+        const stale = `${prefix}CONFIG/stale.json.md`;
+        const fixture = setup();
+        const waiting = promiseWithResolvers<void>();
+        const resume = promiseWithResolvers<void>();
+        fixture.findEntries.mockImplementation(async function* () {
+            yield { _id: stale, path: stale };
+            waiting.resolve();
+            await resume.promise;
+        });
+        const scan = fixture.configSync.scanAllConfigFiles(false);
+        try {
+            await waiting.promise;
+            Object.assign(fixture.configSync.core.settings.pluginSyncExtendedSetting, {
+                "CONFIG/stale.json": { key: "CONFIG/stale.json", mode: MODE_AUTOMATIC, files: [] },
+            });
+        } finally {
+            resume.resolve();
+            await scan;
+        }
+
+        expect(fixture.deleteConfigOnDatabase).not.toHaveBeenCalled();
     });
 
     it("finishes database enumeration before dispatching database work", async () => {

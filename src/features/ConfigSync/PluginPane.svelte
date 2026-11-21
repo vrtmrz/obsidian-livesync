@@ -18,12 +18,22 @@
         MODE_PAUSED,
         type SYNC_MODE,
         MODE_SHINY,
+        type FilePath,
     } from "@vrtmrz/livesync-commonlib/compat/common/types";
     import { normalizePath } from "@/deps";
     import {
         HiddenFileSync,
         HIDDEN_FILE_SYNC_DISABLED_NOTICE,
+        HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE,
     } from "@/features/HiddenFileSync/CmdHiddenFileSync.ts";
+    import {
+        collectSavedCustomisationPluginNames,
+        findCustomisationEntryMode,
+        findMatchingCustomisationEntryKeys,
+        getHiddenFileSyncPatternExcludedFiles,
+        isCaseInsensitiveSelection,
+        updateCustomisationEntryMode,
+    } from "@/features/HiddenFileCommon/optionalFileSyncSelection.ts";
     import { LOG_LEVEL_NOTICE, Logger } from "octagonal-wheels/common/logger";
     import type { LiveSyncBaseCore } from "@/LiveSyncBaseCore.ts";
     import { $msg as translateMessage } from "@/common/translation";
@@ -152,7 +162,7 @@
         const menu = new Menu();
         menu.addItem((item) => item.setTitle(title).setIsLabel(true));
         menu.addSeparator();
-        const prevMode = automaticList.get(key) ?? MODE_SELECTIVE;
+        const prevMode = findCustomisationEntryMode(key, modeEntries, insensitive) ?? MODE_SELECTIVE;
         for (const mode of [MODE_SELECTIVE, MODE_AUTOMATIC, MODE_PAUSED, MODE_SHINY]) {
             menu.addItem((item) => {
                 item.setTitle(`${getIcon(mode as SYNC_MODE)}:${TITLES[mode]}`)
@@ -174,7 +184,13 @@
         if (!checkAutomaticSyncAvailable()) return;
         setMode(key, MODE_AUTOMATIC);
         const configDir = normalizePath(plugin.core.services.API.getSystemConfigDir());
-        const files = getAutomaticSyncTargetFiles(key, configDir, plugin.core.settings.pluginSyncExtendedSetting);
+        const files = getAutomaticSyncTargetFiles(key, configDir, modeEntries, insensitive);
+        const excludedFiles = getHiddenFileSyncPatternExcludedFiles(files, (file) =>
+            addOnHiddenFileSync.isTargetFileInPatterns(file as FilePath)
+        );
+        if (excludedFiles.length > 0) {
+            Logger(translateMessage(HIDDEN_FILE_SYNC_PATTERN_EXCLUDED_NOTICE), LOG_LEVEL_NOTICE);
+        }
         void addOnHiddenFileSync.initialiseInternalFileSync(direction, true, files);
     }
     function askOverwriteModeForAutomatic(evt: MouseEvent, key: string) {
@@ -234,35 +250,24 @@
     const PREFIX_PLUGIN_MAIN = "PLUGIN_MAIN";
     const PREFIX_PLUGIN_ETC = "PLUGIN_ETC";
     function setMode(key: string, mode: SYNC_MODE) {
+        const entries = plugin.core.settings.pluginSyncExtendedSetting;
         if (key.startsWith(PREFIX_PLUGIN_ALL + "/")) {
+            // Clear any legacy aggregate `PLUGIN_ALL/<name>` entry before writing the concrete data/main entries,
+            // so it does not linger as a stale saved-only plug-in row.
+            updateCustomisationEntryMode(entries, key, MODE_SELECTIVE, [], insensitive);
             setMode(PREFIX_PLUGIN_DATA + key.substring(PREFIX_PLUGIN_ALL.length), mode);
             setMode(PREFIX_PLUGIN_MAIN + key.substring(PREFIX_PLUGIN_ALL.length), mode);
             return;
         }
         const files = unique(
             list
-                .filter((e) => `${e.category}/${e.name}` == key)
+                .filter((e) => `${e.category}/${e.name}` === key)
                 .map((e) => e.files)
                 .flat()
                 .map((e) => e.filename)
         );
-        if (mode == MODE_SELECTIVE) {
-            automaticList.delete(key);
-            delete plugin.core.settings.pluginSyncExtendedSetting[key];
-            automaticListDisp = automaticList;
-        } else {
-            automaticList.set(key, mode);
-            automaticListDisp = automaticList;
-            if (!(key in plugin.core.settings.pluginSyncExtendedSetting)) {
-                plugin.core.settings.pluginSyncExtendedSetting[key] = {
-                    key,
-                    mode,
-                    files: [],
-                };
-            }
-            plugin.core.settings.pluginSyncExtendedSetting[key].files = files;
-            plugin.core.settings.pluginSyncExtendedSetting[key].mode = mode;
-        }
+        updateCustomisationEntryMode(entries, key, mode, files, insensitive);
+        modeEntries = entries;
         core.services.setting.saveSettingData();
     }
     function getIcon(mode: SYNC_MODE) {
@@ -272,20 +277,16 @@
             ("");
         }
     }
-    let automaticList = new Map<string, SYNC_MODE>();
-    let automaticListDisp = new Map<string, SYNC_MODE>();
-
-    // apply current configuration to the dialogue
-    for (const { key, mode } of Object.values(plugin.core.settings.pluginSyncExtendedSetting)) {
-        automaticList.set(key, mode);
-    }
-
-    automaticListDisp = automaticList;
+    let modeEntries = plugin.core.settings.pluginSyncExtendedSetting;
+    $: insensitive = isCaseInsensitiveSelection(plugin.core.settings, core.services.vault);
 
     let displayKeys: Record<string, string[]> = {};
 
-    function computeDisplayKeys(list: IPluginDataExDisplay[]) {
-        const extraKeys = Object.keys(plugin.core.settings.pluginSyncExtendedSetting);
+    function computeDisplayKeys(list: IPluginDataExDisplay[], entries: typeof modeEntries, insensitive: boolean) {
+        const representedKeys = new Set(
+            list.flatMap((item) => findMatchingCustomisationEntryKeys(`${item.category}/${item.name}`, entries, insensitive))
+        );
+        const extraKeys = Object.keys(entries).filter((key) => !representedKeys.has(key));
         return [
             ...list,
             ...extraKeys
@@ -298,14 +299,14 @@
                 (p, c) => ({
                     ...p,
                     [c.category]: unique(
-                        c.category in p ? [...p[c.category], c.displayName ?? c.name] : [c.displayName ?? c.name]
+                        c.category in p ? [...p[c.category], c.name] : [c.name]
                     ),
                 }),
                 {} as Record<string, string[]>
             );
     }
     $: {
-        displayKeys = computeDisplayKeys(list);
+        displayKeys = computeDisplayKeys(list, modeEntries, insensitive);
     }
 
     let deleteTerm = "";
@@ -345,7 +346,16 @@
 
     let pluginEntries = [] as [string, IPluginDataExDisplay[]][];
     $: {
-        pluginEntries = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
+        const grouped = groupBy(filterList(list, ["PLUGIN_MAIN", "PLUGIN_DATA", "PLUGIN_ETC"]), "name");
+        const savedOnlyNames = collectSavedCustomisationPluginNames(
+            grouped.map(([name]) => name),
+            modeEntries,
+            insensitive
+        );
+        pluginEntries = [
+            ...grouped,
+            ...savedOnlyNames.map((name) => [name, [] as IPluginDataExDisplay[]] as [string, IPluginDataExDisplay[]]),
+        ].sort(([a], [b]) => (nameMap.get(`plugins/${a}`) || a).localeCompare(nameMap.get(`plugins/${b}`) || b));
     }
     let useSyncPluginEtc = plugin.core.settings.usePluginEtc;
 </script>
@@ -374,7 +384,7 @@
     {/if}
 </div>
 <div class="list">
-    {#if list.length == 0}
+    {#if list.length == 0 && displayEntries.length == 0 && pluginEntries.length == 0}
         <div class="center">{translateMessage("No Items.")}</div>
     {:else}
         {#each displayEntries as [key, label]}
@@ -382,20 +392,23 @@
                 <h3>{label}</h3>
                 {#each displayKeys[key] as name}
                     {@const bindKey = `${key}/${name}`}
-                    {@const mode = automaticListDisp.get(bindKey) ?? MODE_SELECTIVE}
+                    {@const items = list.filter((entry) => entry.category === key && entry.name === name)}
+                    {@const mode = findCustomisationEntryMode(bindKey, modeEntries, insensitive) ?? MODE_SELECTIVE}
                     <div class="labelrow {hideEven ? 'hideeven' : ''}">
                         <div class="title">
                             <button class="status" on:click={(evt) => askMode(evt, `${key}/${name}`, bindKey)}>
                                 {getIcon(mode)}
                             </button>
-                            <span class="name">{(key == "THEME" && nameMap.get(`themes/${name}`)) || name}</span>
+                            <span class="name">
+                                {(key == "THEME" && nameMap.get(`themes/${name}`)) || items[0]?.displayName || name}
+                            </span>
                         </div>
                         <div class="body">
                             {#if mode == MODE_SELECTIVE || mode == MODE_SHINY}
                                 <PluginCombo
                                     {...options}
                                     isFlagged={mode == MODE_SHINY}
-                                    list={list.filter((e) => e.category == key && e.name == name)}
+                                    list={items}
                                     hidden={false}
                                 />
                             {:else}
@@ -410,13 +423,13 @@
             <h3>{translateMessage("Plugins")}</h3>
             {#each pluginEntries as [name, listX]}
                 {@const bindKeyAll = `${PREFIX_PLUGIN_ALL}/${name}`}
-                {@const modeAll = automaticListDisp.get(bindKeyAll) ?? MODE_SELECTIVE}
+                {@const modeAll = findCustomisationEntryMode(bindKeyAll, modeEntries, insensitive) ?? MODE_SELECTIVE}
                 {@const bindKeyMain = `${PREFIX_PLUGIN_MAIN}/${name}`}
-                {@const modeMain = automaticListDisp.get(bindKeyMain) ?? MODE_SELECTIVE}
+                {@const modeMain = findCustomisationEntryMode(bindKeyMain, modeEntries, insensitive) ?? MODE_SELECTIVE}
                 {@const bindKeyData = `${PREFIX_PLUGIN_DATA}/${name}`}
-                {@const modeData = automaticListDisp.get(bindKeyData) ?? MODE_SELECTIVE}
+                {@const modeData = findCustomisationEntryMode(bindKeyData, modeEntries, insensitive) ?? MODE_SELECTIVE}
                 {@const bindKeyETC = `${PREFIX_PLUGIN_ETC}/${name}`}
-                {@const modeEtc = automaticListDisp.get(bindKeyETC) ?? MODE_SELECTIVE}
+                {@const modeEtc = findCustomisationEntryMode(bindKeyETC, modeEntries, insensitive) ?? MODE_SELECTIVE}
                 <div class="labelrow {hideEven ? 'hideeven' : ''}">
                     <div class="title">
                         <button

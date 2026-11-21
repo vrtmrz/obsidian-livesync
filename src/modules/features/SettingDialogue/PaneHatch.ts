@@ -389,7 +389,7 @@ export function paneHatch(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement,
             if (path.startsWith(".")) {
                 const hidden = await findHiddenFile(path);
                 return hidden
-                    ? Boolean(await hidden.addOn.storeInternalFileToDatabase(hidden.file, true))
+                    ? Boolean(await hidden.addOn.storeInternalFileToDatabaseForRecovery(hidden.file))
                     : false;
             }
             return Boolean(await this.core.fileHandler.storeFileToDB(path as FilePath, true));

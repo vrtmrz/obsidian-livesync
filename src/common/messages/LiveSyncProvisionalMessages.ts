@@ -85,6 +85,8 @@ export const liveSyncProvisionalEnglishMessages = {
     "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.":
         "Hidden File Sync is disabled on this device. Enable it in Sync Settings before using Automatic or initialising hidden files.",
     "Hidden File Sync initialisation was not started.": "Hidden File Sync initialisation was not started.",
+    "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.":
+        "Some files in this Automatic item are excluded by Hidden File Sync's target or ignore patterns and will not be synchronised automatically.",
     "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.":
         "(RegExp) Limit normal files to matching paths. Leave empty to allow all normal file paths. Hidden File Sync uses its own target patterns.",
     "(RegExp) Skip changes to matching normal and hidden files, locally and remotely.":
