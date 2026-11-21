@@ -36,6 +36,8 @@ For JWT-specific setup and key-format errors, see [JWT Authentication on CouchDB
 
 ## CouchDB was working but synchronisation stopped
 
+When a CouchDB LiveSync start fails while the device is offline, keep the Vault in the foreground as the device returns online. The plug-in retries the start once. Its initial pull gives files marked **Waiting** another opportunity to fetch their missing content. If only the server or VPN recovered and the device received no network event, **Replicate now** can start a finite transfer to recover the waiting files.
+
 Do not switch to P2P or reset the database as the first response. Check:
 
 1. the active remote profile and connection state;

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
 import { DEFAULT_SETTINGS, REMOTE_MINIO } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { NO_INTERACTION, type ReplicationOutcome } from "@vrtmrz/livesync-commonlib/replication";
 import {
@@ -299,7 +300,7 @@ describe("replication scheduling context", () => {
 });
 
 describe("replication scheduling serviceFeature", () => {
-    it("binds lifecycle handlers and exposes only daemon scheduling controls", async () => {
+    it("binds lifecycle handlers and exposes daemon controls and read-only pending state", async () => {
         const handlers: Record<string, () => Promise<boolean>> = {};
         const timer: ReplicationSchedulingTimer = {
             enable: vi.fn(),
@@ -313,7 +314,8 @@ describe("replication scheduling serviceFeature", () => {
                 return () => undefined;
             });
         const services = {
-            context: {},
+            context: { events: createLiveSyncEventHub() },
+            replicator: { onBeforeReplicatorPublication: { addHandler: addHandler("replicator-change") } },
             API: { addLog: vi.fn() },
             appLifecycle: {
                 isReady: vi.fn(() => true),
@@ -340,14 +342,19 @@ describe("replication scheduling serviceFeature", () => {
             },
         };
 
-        const control = useReplicationScheduling({ services, serviceModules: {} } as never, (process) => {
-            periodicProcess = process;
-            return timer;
-        });
+        const { replicationScheduling: control, readPendingContinuousStart } = useReplicationScheduling(
+            { services, serviceModules: {} } as never,
+            (process) => {
+                periodicProcess = process;
+                return timer;
+            }
+        );
 
         expect(Object.keys(control).sort()).toEqual(["markInitialOneShotSatisfied", "setExternalPollingMode"]);
+        expect(readPendingContinuousStart()).toBeUndefined();
         expect(Object.keys(handlers).sort()).toEqual([
             "before-setting",
+            "replicator-change",
             "resumed",
             "setting-realised",
             "suspending",

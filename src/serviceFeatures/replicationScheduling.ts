@@ -1,22 +1,23 @@
 import { LOG_LEVEL_VERBOSE } from "octagonal-wheels/common/logger";
-import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type { ReactiveValue } from "octagonal-wheels/dataobject/reactive";
+import { REMOTE_COUCHDB, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { EVENT_PLUGIN_UNLOADED } from "@vrtmrz/livesync-commonlib/compat/events/coreEvents";
 import type { NecessaryServices } from "@vrtmrz/livesync-commonlib/compat/interfaces/ServiceModule";
 import { createInstanceLogFunction } from "@vrtmrz/livesync-commonlib/compat/services/lib/logUtils";
 import {
     CAPABILITY_UNAVAILABLE_REASONS,
+    EVENT_REPLICATION_ABORT_REQUESTED,
     isReplicationCompleted,
     NO_INTERACTION,
+    type ContinuousReplicationNetworkFailure,
     type ContinuousReplicationRequest,
     type ReplicationOutcome,
     type UnattendedOneShotRequest,
 } from "@vrtmrz/livesync-commonlib/replication";
 import { PeriodicProcessor } from "@/common/PeriodicProcessor";
 import { secondsToMilliseconds } from "@/common/core/time";
-
-type ReplicationSchedulingSettings = Pick<
-    ObsidianLiveSyncSettings,
-    "isConfigured" | "liveSync" | "syncOnStart" | "periodicReplication" | "periodicReplicationInterval"
->;
+import type { HostNetworkState } from "@/common/core/hostNetworkState";
+import { getCouchDBReplicatorConfigurationIdentity } from "@/common/core/replication/configurationIdentity";
 
 /** Timer operations required by the scheduling state owner. */
 export interface ReplicationSchedulingTimer {
@@ -24,7 +25,7 @@ export interface ReplicationSchedulingTimer {
     disable(): void;
 }
 
-/** Daemon-only controls which do not expose mutable scheduling state. */
+/** Controls used by the daemon when it owns recurring work. */
 export interface ReplicationSchedulingControl {
     /** Let an external daemon poller become, or cease to be, the recurring-work owner. */
     setExternalPollingMode(enabled: boolean): void;
@@ -32,31 +33,46 @@ export interface ReplicationSchedulingControl {
     markInitialOneShotSatisfied(): void;
 }
 
+export interface ReplicationSchedulingViews {
+    readonly replicationScheduling: ReplicationSchedulingControl;
+    readonly readPendingContinuousStart: () => ContinuousReplicationNetworkFailure | undefined;
+}
+
 interface ReplicationSchedulingDependencies {
     isReady(): boolean;
     isSuspended(): boolean;
-    currentSettings(): ReplicationSchedulingSettings;
+    isHostActive?: () => boolean;
+    readonly networkState?: ReactiveValue<HostNetworkState>;
+    currentSettings(): ObsidianLiveSyncSettings;
     replicateUnattended(request: UnattendedOneShotRequest): Promise<ReplicationOutcome>;
     startContinuous(request: ContinuousReplicationRequest): Promise<ReplicationOutcome>;
     timer: ReplicationSchedulingTimer;
     log(error: unknown): void;
 }
 
+interface CouchDBStartAttempt {
+    /** Private provider identity, used only for comparison while this Vault remains open. */
+    readonly configurationIdentity: string;
+    readonly networkAtStart: HostNetworkState;
+    readonly failure?: ContinuousReplicationNetworkFailure;
+}
+
 interface ReplicationSchedulingState {
+    continuousStart?: CouchDBStartAttempt;
     externalPolling: boolean;
     continuousOwnsRecurring: boolean;
     initialOneShotSatisfied: boolean;
     lifecycleAllowsScheduling: boolean;
     lifecycleGeneration: number;
-    resumeOperation: Promise<void> | undefined;
-    runningResumeGeneration: number | undefined;
-    queuedResumeGeneration: number | undefined;
+    resumeWorkRunning: boolean;
+    resumeQueued: boolean;
+    unloading: boolean;
 }
 
-/** Private state and collaborators owned by the replication scheduling serviceFeature. */
 interface ReplicationSchedulingContext {
     readonly dependencies: ReplicationSchedulingDependencies;
-    readonly state: ReplicationSchedulingState;
+    readonly state: Readonly<ReplicationSchedulingState>;
+    updateState(update: Partial<ReplicationSchedulingState>): void;
 }
 
 function isCapabilityUnavailable(result: ReplicationOutcome): boolean {
@@ -71,24 +87,29 @@ function isCapabilityUnavailable(result: ReplicationOutcome): boolean {
 export function createReplicationSchedulingContext(
     dependencies: ReplicationSchedulingDependencies
 ): ReplicationSchedulingContext {
+    let state: Readonly<ReplicationSchedulingState> = {
+        externalPolling: false,
+        continuousOwnsRecurring: false,
+        initialOneShotSatisfied: false,
+        // Suspension and foreground visibility are distinct in the host lifecycle.
+        lifecycleAllowsScheduling: false,
+        lifecycleGeneration: 0,
+        resumeWorkRunning: false,
+        resumeQueued: false,
+        unloading: false,
+    };
     return {
         dependencies,
-        state: {
-            externalPolling: false,
-            continuousOwnsRecurring: false,
-            initialOneShotSatisfied: false,
-            // AppLifecycleService does not expose physical visibility as
-            // isSuspended(). Keep the observed state in this private context.
-            lifecycleAllowsScheduling: false,
-            lifecycleGeneration: 0,
-            resumeOperation: undefined,
-            runningResumeGeneration: undefined,
-            queuedResumeGeneration: undefined,
+        get state() {
+            return state;
+        },
+        updateState(update) {
+            state = { ...state, ...update };
         },
     };
 }
 
-function canRunPeriodic(context: ReplicationSchedulingContext, settings: ReplicationSchedulingSettings): boolean {
+function canRunPeriodic(context: ReplicationSchedulingContext, settings: ObsidianLiveSyncSettings): boolean {
     const { dependencies, state } = context;
     return (
         state.lifecycleAllowsScheduling &&
@@ -114,7 +135,7 @@ function reconcilePeriodic(context: ReplicationSchedulingContext): void {
 function setContinuousOwnership(context: ReplicationSchedulingContext, ownsRecurring: boolean): void {
     const { state } = context;
     if (state.continuousOwnsRecurring === ownsRecurring) return;
-    state.continuousOwnsRecurring = ownsRecurring;
+    context.updateState({ continuousOwnsRecurring: ownsRecurring });
     reconcilePeriodic(context);
 }
 
@@ -133,7 +154,80 @@ function canRunResume(context: ReplicationSchedulingContext, generation: number)
     );
 }
 
-async function runAfterResume(context: ReplicationSchedulingContext, generation: number): Promise<void> {
+function retryStartAfterNetworkReturn(context: ReplicationSchedulingContext): void {
+    const { state, dependencies } = context;
+    const attempt = state.continuousStart;
+    const network = dependencies.networkState?.value;
+    // A retry starts from the observation that triggered it, which cannot trigger another retry.
+    if (
+        !attempt?.failure ||
+        !network?.online ||
+        network === attempt.networkAtStart ||
+        network.notifiedAt === undefined ||
+        network.notifiedAt < attempt.failure.failedAt
+    ) {
+        return;
+    }
+    if (
+        state.resumeWorkRunning ||
+        !canRunResume(context, state.lifecycleGeneration) ||
+        !dependencies.isHostActive?.()
+    ) {
+        return;
+    }
+    const settings = dependencies.currentSettings();
+    if (
+        settings.isConfigured &&
+        settings.liveSync &&
+        settings.remoteType === REMOTE_COUCHDB &&
+        getCouchDBReplicatorConfigurationIdentity(settings) === attempt.configurationIdentity
+    ) {
+        scheduleAfterResume(context, "online");
+    } else {
+        context.updateState({ continuousStart: undefined });
+    }
+}
+
+function startContinuous(
+    context: ReplicationSchedulingContext,
+    trigger: "resume" | "online",
+    settings: ObsidianLiveSyncSettings
+) {
+    const { dependencies } = context;
+    const request: ContinuousReplicationRequest = { trigger, interaction: NO_INTERACTION };
+    const networkAtStart = dependencies.networkState?.value;
+    if (settings.remoteType !== REMOTE_COUCHDB || !dependencies.isHostActive || !networkAtStart) {
+        return dependencies.startContinuous(request);
+    }
+    const attempt: CouchDBStartAttempt = {
+        configurationIdentity: getCouchDBReplicatorConfigurationIdentity(settings),
+        networkAtStart,
+    };
+    context.updateState({ continuousStart: attempt });
+    return dependencies.startContinuous({
+        ...request,
+        onStartSettled(result) {
+            if (context.state.continuousStart !== attempt) {
+                return;
+            }
+            if (result.status === "failed" && result.networkFailure) {
+                const { reason, hostOnlineAtFailure, failedAt } = result.networkFailure;
+                context.updateState({
+                    continuousStart: { ...attempt, failure: Object.freeze({ reason, hostOnlineAtFailure, failedAt }) },
+                });
+                retryStartAfterNetworkReturn(context);
+            } else {
+                context.updateState({ continuousStart: undefined });
+            }
+        },
+    });
+}
+
+async function runAfterResume(
+    context: ReplicationSchedulingContext,
+    generation: number,
+    trigger: "resume" | "online"
+): Promise<void> {
     if (!canRunResume(context, generation)) return;
 
     const { dependencies, state } = context;
@@ -146,28 +240,25 @@ async function runAfterResume(context: ReplicationSchedulingContext, generation:
     const skipOneShot = state.initialOneShotSatisfied;
     // This marker belongs to one resume attempt. Consume it before any network
     // await so an exceptional Continuous start cannot suppress a later retry.
-    state.initialOneShotSatisfied = false;
+    context.updateState({ initialOneShotSatisfied: false });
     if (settings.liveSync) {
         setContinuousOwnership(context, true);
         let result: ReplicationOutcome;
         try {
-            result = await dependencies.startContinuous({
-                trigger: "resume",
-                interaction: NO_INTERACTION,
-            });
+            result = await startContinuous(context, trigger, settings);
         } catch (error) {
-            if (isCurrentLifecycleGeneration(context, generation)) {
+            if (!context.state.resumeQueued) {
                 setContinuousOwnership(context, false);
             }
             throw error;
         }
-        if (!isReplicationCompleted(result) && isCurrentLifecycleGeneration(context, generation)) {
+        if (!isReplicationCompleted(result) && !context.state.resumeQueued) {
             setContinuousOwnership(context, false);
         }
         // A suspend/resume may have started a new lifecycle generation while
         // Continuous was settling. Do not let the obsolete result schedule a
         // finite fallback for the new generation.
-        if (isCapabilityUnavailable(result) && canRunResume(context, generation)) {
+        if (trigger === "resume" && isCapabilityUnavailable(result) && canRunResume(context, generation)) {
             const currentSettings = dependencies.currentSettings();
             if (
                 currentSettings.isConfigured &&
@@ -193,29 +284,24 @@ async function runAfterResume(context: ReplicationSchedulingContext, generation:
     }
 }
 
-function scheduleAfterResume(context: ReplicationSchedulingContext): void {
+function scheduleAfterResume(context: ReplicationSchedulingContext, trigger: "resume" | "online" = "resume"): void {
     const { dependencies, state } = context;
-    const requestedGeneration = state.lifecycleGeneration;
-    if (state.resumeOperation) {
-        // Duplicate notifications within one generation share the current
-        // operation. A later lifecycle generation must run after it.
-        if (state.runningResumeGeneration !== requestedGeneration) {
-            state.queuedResumeGeneration = requestedGeneration;
-        }
+    if (state.resumeWorkRunning) {
         return;
     }
-    state.runningResumeGeneration = requestedGeneration;
-    state.resumeOperation = runAfterResume(context, requestedGeneration)
+    const requestedGeneration = state.lifecycleGeneration;
+    context.updateState({ resumeWorkRunning: true, resumeQueued: false });
+    void runAfterResume(context, requestedGeneration, trigger)
         .catch((error: unknown) => {
             dependencies.log(error);
         })
         .finally(() => {
-            state.resumeOperation = undefined;
-            state.runningResumeGeneration = undefined;
-            const queuedGeneration = state.queuedResumeGeneration;
-            state.queuedResumeGeneration = undefined;
-            if (queuedGeneration === state.lifecycleGeneration && state.lifecycleAllowsScheduling) {
+            const latest = context.state;
+            context.updateState({ resumeWorkRunning: false });
+            if (latest.resumeQueued) {
                 scheduleAfterResume(context);
+            } else {
+                retryStartAfterNetworkReturn(context);
             }
         });
 }
@@ -223,10 +309,16 @@ function scheduleAfterResume(context: ReplicationSchedulingContext): void {
 /** Schedule eligible work after the application has resumed. */
 export function resumeReplicationScheduling(context: ReplicationSchedulingContext): void {
     const { state } = context;
-    if (!state.lifecycleAllowsScheduling) {
-        state.lifecycleGeneration += 1;
+    if (state.unloading) {
+        return;
     }
-    state.lifecycleAllowsScheduling = true;
+    if (!state.lifecycleAllowsScheduling) {
+        context.updateState({
+            lifecycleGeneration: state.lifecycleGeneration + 1,
+            lifecycleAllowsScheduling: true,
+            resumeQueued: state.resumeWorkRunning,
+        });
+    }
     // runAfterResume executes synchronously until its first await. A Continuous
     // request therefore reserves ownership before Periodic is reconciled.
     scheduleAfterResume(context);
@@ -235,13 +327,13 @@ export function resumeReplicationScheduling(context: ReplicationSchedulingContex
 
 /** Stop generic Periodic scheduling before the application suspends. */
 export function suspendReplicationScheduling(context: ReplicationSchedulingContext): void {
-    context.state.lifecycleAllowsScheduling = false;
-    context.state.queuedResumeGeneration = undefined;
+    context.updateState({ lifecycleAllowsScheduling: false, resumeQueued: false });
     context.dependencies.timer.disable();
 }
 
 /** Stop generic Periodic scheduling while settings and provider bindings change. */
 export function prepareReplicationSchedulingForSettings(context: ReplicationSchedulingContext): void {
+    context.updateState({ continuousStart: undefined });
     context.dependencies.timer.disable();
 }
 
@@ -252,8 +344,15 @@ export function realiseReplicationScheduling(context: ReplicationSchedulingConte
 
 /** Prevent later timer callbacks from scheduling new work during unload. */
 export function unloadReplicationScheduling(context: ReplicationSchedulingContext): void {
-    context.state.lifecycleAllowsScheduling = false;
-    context.state.queuedResumeGeneration = undefined;
+    if (context.state.unloading) {
+        return;
+    }
+    context.updateState({
+        continuousStart: undefined,
+        lifecycleAllowsScheduling: false,
+        resumeQueued: false,
+        unloading: true,
+    });
     context.dependencies.timer.disable();
 }
 
@@ -272,41 +371,48 @@ export async function runPeriodicReplication(context: ReplicationSchedulingConte
 /** Declare that an external poller has become, or ceased to be, the recurring-work owner. */
 export function setExternalPollingMode(context: ReplicationSchedulingContext, enabled: boolean): void {
     if (context.state.externalPolling === enabled) return;
-    context.state.externalPolling = enabled;
+    context.updateState({
+        externalPolling: enabled,
+        continuousStart: enabled ? undefined : context.state.continuousStart,
+    });
     reconcilePeriodic(context);
 }
 
 /** Consume the next resume-triggered OneShot because the daemon has already converged once. */
 export function markInitialOneShotSatisfied(context: ReplicationSchedulingContext): void {
-    context.state.initialOneShotSatisfied = true;
+    context.updateState({ initialOneShotSatisfied: true });
 }
 
+// Network recovery needs host network observations and the current foreground state.
+// Headless hosts use their own scheduling triggers and omit these capabilities.
 type ReplicationSchedulingHost = NecessaryServices<
-    "API" | "appLifecycle" | "control" | "replication" | "setting",
+    "API" | "appLifecycle" | "control" | "replication" | "replicator" | "setting",
     never
->;
+> & { services: { context: { isHostActive?(): boolean; readonly networkState?: ReactiveValue<HostNetworkState> } } };
 
 type ReplicationSchedulingTimerFactory = (process: () => Promise<void>) => ReplicationSchedulingTimer;
 
 /**
  * Compose host lifecycle bindings around one private scheduling context.
  *
- * The returned view is intentionally limited to daemon scheduling controls.
  * @param host Narrow service container used to bind scheduling to the host lifecycle.
  * @param createTimer Timer adapter factory, replaceable by focused tests.
- * @returns Commands which let the CLI daemon declare its scheduling ownership.
+ * @returns Daemon scheduling controls and read-only network recovery state.
  */
 export function useReplicationScheduling(
     host: ReplicationSchedulingHost,
     createTimer: ReplicationSchedulingTimerFactory = (process) => new PeriodicProcessor(host, process)
-): ReplicationSchedulingControl {
+): ReplicationSchedulingViews {
     const services = host.services;
+    const networkState = services.context.networkState;
     const log = createInstanceLogFunction("SF:ReplicationScheduling", services.API);
     let context!: ReplicationSchedulingContext;
     const timer = createTimer(async () => await runPeriodicReplication(context));
     context = createReplicationSchedulingContext({
         isReady: () => services.appLifecycle.isReady(),
         isSuspended: () => services.appLifecycle.isSuspended(),
+        isHostActive: services.context.isHostActive?.bind(services.context),
+        networkState,
         currentSettings: () => services.setting.currentSettings(),
         replicateUnattended: (request) => services.replication.replicateUnattended(request),
         startContinuous: (request) => services.replication.startContinuous(request),
@@ -314,7 +420,25 @@ export function useReplicationScheduling(
         log: (error) => log(error, LOG_LEVEL_VERBOSE),
     });
 
+    const onNetworkChanged = () => retryStartAfterNetworkReturn(context);
+    networkState?.onChanged(onNetworkChanged);
+    const forgetStart = () => {
+        context.updateState({ continuousStart: undefined });
+    };
+    const releaseAbort = services.context.events.onEvent(EVENT_REPLICATION_ABORT_REQUESTED, () => {
+        context.updateState({ continuousStart: undefined, resumeQueued: false });
+    });
+    const releaseUnload = services.context.events.onEvent(EVENT_PLUGIN_UNLOADED, () => {
+        unloadReplicationScheduling(context);
+    });
+    services.replicator.onBeforeReplicatorPublication.addHandler(() => {
+        forgetStart();
+        return Promise.resolve(true);
+    });
     services.appLifecycle.onUnload.addHandler(() => {
+        releaseAbort();
+        releaseUnload();
+        networkState?.offChanged(onNetworkChanged);
         unloadReplicationScheduling(context);
         return Promise.resolve(true);
     });
@@ -336,7 +460,10 @@ export function useReplicationScheduling(
     });
 
     return Object.freeze({
-        setExternalPollingMode: (enabled: boolean) => setExternalPollingMode(context, enabled),
-        markInitialOneShotSatisfied: () => markInitialOneShotSatisfied(context),
+        readPendingContinuousStart: () => context.state.continuousStart?.failure,
+        replicationScheduling: Object.freeze({
+            setExternalPollingMode: (enabled: boolean) => setExternalPollingMode(context, enabled),
+            markInitialOneShotSatisfied: () => markInitialOneShotSatisfied(context),
+        }),
     });
 }

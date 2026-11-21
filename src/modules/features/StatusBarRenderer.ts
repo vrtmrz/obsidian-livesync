@@ -3,7 +3,7 @@ const INACTIVE_CLASS = "livesync-stat-inactive";
 export type StatusBarPart = {
     key: string;
     text: string;
-    value?: number;
+    value?: number | string;
     suffix?: string;
     title?: string;
 };
@@ -76,7 +76,7 @@ export function createStatusBarRenderer(parent: HTMLElement): StatusBarRenderer 
 
         if (part.value === undefined) {
             setText(item.valueText, "");
-            setText(item.suffix, "");
+            setText(item.suffix, part.suffix ?? "");
             setHidden(item.value, true);
             setWidth(item.value, "");
             item.widestValueLength = 0;

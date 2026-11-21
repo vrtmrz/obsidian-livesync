@@ -87,8 +87,9 @@ function createBufferedLog(entries: ReactiveSource<LogEntry[]>) {
     };
 }
 
+// Not called during normal operation; retained as a fallback for logs emitted after the plug-in unloads.
 function logToConsole(message: unknown, level?: number, key?: string) {
-    console.log({ message, level, key });
+    console.debug({ message, level, key });
 }
 
 // Legacy Logger calls use this shared buffer; service logs use their owner's buffer.
@@ -135,6 +136,11 @@ function redactLog(log: string) {
 
 const showDebugLog = false;
 export const MARK_DONE = "\u{2009}\u{2009}";
+
+type ActiveFileStatus =
+    | { kind: "none"; message: "" }
+    | { kind: "excluded" | "warning"; message: string };
+
 export class ModuleLog extends AbstractObsidianModule {
     /** The host releases log display subscriptions after the complete asynchronous unload. */
     logResource!: OwnedResource<LogFunction>;
@@ -163,7 +169,8 @@ export class ModuleLog extends AbstractObsidianModule {
         statusBarParts: readonly StatusBarPart[];
     }>;
     statusLog = reactiveSource("");
-    activeFileStatus = reactiveSource("");
+    activeFileStatus = reactiveSource<ActiveFileStatus>({ kind: "none", message: "" });
+    private readonly hideFileWarningNoticeSetting = reactiveSource(false);
     notifies: { [key: string]: { count: number } } = {};
     p2pLogCollector = new P2PLogCollector(this.services.context.events);
 
@@ -213,10 +220,14 @@ export class ModuleLog extends AbstractObsidianModule {
         const p2pProgress = registerDisplay(createP2PProgressDisplay(this.p2pLogCollector.p2pReplicationStats));
         const p2pIsPrimary = reactiveSource(this.settings.remoteType === REMOTE_P2P);
         const syncModeLabel = reactiveSource(projectSyncModeLabel(this.settings));
+        const hideFileWarningNotice = this.hideFileWarningNoticeSetting;
+        hideFileWarningNotice.value = this.settings.hideFileWarningNotice;
+        hideFileWarningNotice.onChanged(() => this.updateMessageArea());
         this.services.API.registerCleanup(
             this.services.context.events.onEvent(EVENT_SETTING_SAVED, (settings) => {
                 p2pIsPrimary.value = settings.remoteType === REMOTE_P2P;
                 syncModeLabel.value = projectSyncModeLabel(settings);
+                hideFileWarningNotice.value = settings.hideFileWarningNotice;
             })
         );
         this.services.API.registerCleanup(() => this.p2pLogCollector.dispose());
@@ -269,7 +280,6 @@ export class ModuleLog extends AbstractObsidianModule {
                 parts:
                     p2p.message === "" ? firstLineParts : [...firstLineParts, { key: "p2p", text: "\n" }, ...p2p.parts],
                 statusBarParts: firstLineParts,
-                hasP2P: p2p.message !== "",
             };
         });
 
@@ -277,16 +287,20 @@ export class ModuleLog extends AbstractObsidianModule {
             const scheduleMessage = this.services.appLifecycle.isReloadingScheduled()
                 ? `WARNING! RESTARTING OBSIDIAN IS SCHEDULED!\n`
                 : "";
-            const { message, parts, statusBarParts, hasP2P } = statusLineLabel();
+            const { message, parts, statusBarParts } = statusLineLabel();
             const fileStatus = this.activeFileStatus.value;
+            const hideFileWarningNotice = this.hideFileWarningNoticeSetting.value;
             const status = scheduleMessage + this.statusLog.value;
-            const fileStatusIcon = `${fileStatus && this.settings.hideFileWarningNotice ? " ⛔ SKIP" : ""}`;
+            let fileStatusIcon = "";
+            if (fileStatus.kind !== "none" && hideFileWarningNotice) {
+                fileStatusIcon = fileStatus.kind === "excluded" ? "📄⛔" : "📄⚠️";
+            }
             const skipPart = fileStatusIcon === "" ? [] : [{ key: "file-skip", text: fileStatusIcon }];
             return {
-                message: `${message}${fileStatusIcon}`,
+                message: `${message}${fileStatusIcon === "" ? "" : ` ${fileStatusIcon}`}`,
                 status,
                 parts: [...parts, ...skipPart],
-                statusBarParts: hasP2P ? statusBarParts : [...statusBarParts, ...skipPart],
+                statusBarParts: [...statusBarParts, ...skipPart],
             };
         });
         this.statusBarLabels = statusBarLabels;
@@ -316,11 +330,11 @@ export class ModuleLog extends AbstractObsidianModule {
         }
     }
 
-    async getActiveFileStatus() {
+    async getActiveFileStatus(): Promise<ActiveFileStatus> {
         const reason = [] as string[];
         const reasonWarn = [] as string[];
         const thisFile = this.app.workspace.getActiveFile();
-        if (!thisFile) return "";
+        if (!thisFile) return { kind: "none", message: "" };
         const validPath = isValidPath(thisFile.path);
         if (!validPath) {
             reason.push("This file has an invalid path under the current settings");
@@ -362,7 +376,10 @@ export class ModuleLog extends AbstractObsidianModule {
         }
         const result = reason.length > 0 ? "Not synchronised: " + reason.join(", ") : "";
         const warnResult = reasonWarn.length > 0 ? "Warning: " + reasonWarn.join(", ") : "";
-        return [result, warnResult].filter((e) => e).join("\n");
+        const message = [result, warnResult].filter((e) => e).join("\n");
+        if (reason.length > 0) return { kind: "excluded", message };
+        if (reasonWarn.length > 0) return { kind: "warning", message };
+        return { kind: "none", message: "" };
     }
     async setFileStatus() {
         const fileStatus = await this.getActiveFileStatus();
@@ -383,7 +400,7 @@ export class ModuleLog extends AbstractObsidianModule {
 
         const messageLines = [];
         const fileStatus = this.activeFileStatus.value;
-        if (fileStatus && !this.settings.hideFileWarningNotice) messageLines.push(fileStatus);
+        if (fileStatus.kind !== "none" && !this.hideFileWarningNoticeSetting.value) messageLines.push(fileStatus.message);
         const messages = (await this.services.appLifecycle.getUnresolvedMessages()).flat().filter((e) => e);
         const stringMessages = messages.filter((m): m is string => typeof m === "string"); // for 'startsWith'
         const networkMessages = stringMessages.filter((m) => m.startsWith(MARK_LOG_NETWORK_ERROR));

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { P2PReplicationProgress } from "@vrtmrz/livesync-commonlib/compat/replication/trystero/TrysteroReplicator";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/settings";
 
 vi.mock("@/deps.ts", () => ({
@@ -26,7 +27,7 @@ vi.mock("@vrtmrz/livesync-commonlib/p2p", () => ({ EVENT_P2P_DIAGNOSTIC: "p2p-di
 
 const cleanups: (() => void)[] = [];
 
-async function createHarness() {
+async function createHarness(publishCompleted = true) {
     const { ModuleLog } = await import("./ModuleLog.ts");
     const { reactiveSource } = await import("octagonal-wheels/dataobject/reactive");
     const { createServiceContext } = await import("@vrtmrz/livesync-commonlib/context");
@@ -44,6 +45,7 @@ async function createHarness() {
         await import("@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableSettingService");
     const { MemoryValueStore } = await import("@vrtmrz/value-store");
     const callbacks: FrameRequestCallback[] = [];
+    const activeFile = { path: "folder/file?.md", name: "file?.md", stat: { size: 1 } };
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => callbacks.push(callback));
 
     const context = createServiceContext();
@@ -60,7 +62,7 @@ async function createHarness() {
         databaseEventService: new InjectableDatabaseEventService(context),
     });
     const stats = replicator.replicationStatics;
-    stats.value = { ...stats.value, syncStatus: "COMPLETED" };
+    if (publishCompleted) stats.value = { ...stats.value, syncStatus: "COMPLETED" };
 
     const services = {
         API: {
@@ -70,6 +72,11 @@ async function createHarness() {
         },
         context,
         appLifecycle,
+        vault: {
+            shouldCheckCaseInsensitively: () => false,
+            isTargetFile: async () => true,
+            isFileSizeTooLarge: () => false,
+        },
         replication: {
             replicationResultCount: reactiveSource(0),
             databaseQueueCount: reactiveSource(0),
@@ -79,8 +86,14 @@ async function createHarness() {
         conflict: { conflictProcessQueueCount: reactiveSource(0) },
         fileProcessing: { processing: reactiveSource(0), totalQueued: reactiveSource(0), batched: reactiveSource(0) },
     };
-    const core: { services: typeof services; settings: ObsidianLiveSyncSettings } = {
+    const storageAccess = { getFiles: async () => [] };
+    const core: {
+        services: typeof services;
+        settings: ObsidianLiveSyncSettings;
+        storageAccess: typeof storageAccess;
+    } = {
         services,
+        storageAccess,
         settings: {
             ...DEFAULT_SETTINGS,
             remoteType: REMOTE_COUCHDB,
@@ -97,14 +110,20 @@ async function createHarness() {
     };
     const statusBarRenderer = { render: vi.fn(), dispose: vi.fn() };
     const statusLineRenderer = { render: vi.fn(), dispose: vi.fn() };
+    const p2pReplicationStats = reactiveSource<P2PReplicationProgress[]>([]);
     const module = Object.assign(Object.create(ModuleLog.prototype), {
+        plugin: { app: { workspace: { getActiveFile: () => activeFile } } },
         core,
         statusLog: reactiveSource(""),
-        activeFileStatus: reactiveSource(""),
-        p2pLogCollector: { p2pReplicationStats: reactiveSource([]), dispose: vi.fn() },
+        activeFileStatus: reactiveSource<
+            { kind: "none"; message: "" } | { kind: "excluded" | "warning"; message: string }
+        >({ kind: "none", message: "" }),
+        hideFileWarningNoticeSetting: reactiveSource(false),
+        p2pLogCollector: { p2pReplicationStats, dispose: vi.fn() },
         statusBarRenderer,
         statusLineRenderer,
         statusDiv: { setCssStyles: vi.fn() },
+        messageArea: { innerText: "" },
         logMessage: { innerText: "" },
     }) as InstanceType<typeof ModuleLog>;
     module.observeForLogs();
@@ -122,6 +141,7 @@ async function createHarness() {
         core,
         services,
         stats,
+        p2pReplicationStats,
         statusBarRenderer,
         statusLineRenderer,
         flushDisplay,
@@ -187,7 +207,7 @@ describe("ModuleLog status displays", () => {
             expect(renderer.render).toHaveBeenLastCalledWith(
                 expect.arrayContaining([
                     expect.objectContaining({ key: "sync-mode", text: "⏰ ✨" }),
-                    expect.objectContaining({ key: "sync", text: "Sync: ⏹" }),
+                    expect.objectContaining({ key: "sync", text: "✅" }),
                 ])
             );
         }
@@ -201,7 +221,8 @@ describe("ModuleLog status displays", () => {
         await host.flushDisplay();
 
         expect(host.module.statusBarLabels.value.statusBarParts.some((part) => part.key === "sync-mode")).toBe(false);
-        expect(host.module.statusBarLabels.value.message).toContain("Sync: 💤 P2P");
+        expect(host.module.statusBarLabels.value.message).toContain("💤");
+        expect(host.module.statusBarLabels.value.message).not.toContain("Sync:");
 
         Object.assign(host.core.settings, { remoteType: REMOTE_MINIO, liveSync: false, periodicReplication: true });
         host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
@@ -211,23 +232,125 @@ describe("ModuleLog status displays", () => {
         );
     });
 
-    it("updates both displays when Commonlib publishes new replication statistics", async () => {
-        const { stats, statusBarRenderer, statusLineRenderer, flushDisplay } = await createHarness();
-        for (const renderer of [statusBarRenderer, statusLineRenderer]) {
+    it("keeps the compact file marker and reason together in the status item", async () => {
+        const host = await createHarness();
+        const messageArea = host.module.messageArea;
+        host.core.settings.hideFileWarningNotice = true;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        host.services.vault.isTargetFile = async () => false;
+        const excludedWithWarning = await host.module.getActiveFileStatus();
+        expect(excludedWithWarning).toMatchObject({
+            kind: "excluded",
+            message: expect.stringContaining("Not synchronised:"),
+        });
+        expect(excludedWithWarning.message).toContain("Warning:");
+        host.module.activeFileStatus.value = excludedWithWarning;
+        await host.flushDisplay();
+
+        for (const renderer of [host.statusBarRenderer, host.statusLineRenderer]) {
             expect(renderer.render).toHaveBeenLastCalledWith(
-                expect.arrayContaining([{ key: "sync", text: "Sync: ⏹" }])
+                expect.arrayContaining([expect.objectContaining({ key: "file-skip", text: "📄⛔" })])
             );
+        }
+        await host.module.updateMessageArea();
+        expect(messageArea?.innerText).toBe("");
+
+        host.statusBarRenderer.render.mockClear();
+        host.statusLineRenderer.render.mockClear();
+        host.services.vault.isTargetFile = async () => true;
+        const warning = await host.module.getActiveFileStatus();
+        expect(warning).toMatchObject({ kind: "warning", message: expect.stringContaining("Warning:") });
+        host.module.activeFileStatus.value = warning;
+        await host.flushDisplay();
+
+        for (const renderer of [host.statusBarRenderer, host.statusLineRenderer]) {
+            expect(renderer.render).toHaveBeenLastCalledWith(
+                expect.arrayContaining([expect.objectContaining({ key: "file-skip", text: "📄⚠️" })])
+            );
+        }
+
+        host.core.settings.hideFileWarningNotice = false;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        host.module.activeFileStatus.value = excludedWithWarning;
+        await host.module.updateMessageArea();
+        expect(messageArea?.innerText).toContain("Not synchronised:");
+        expect(messageArea?.innerText).toContain("Warning:");
+    });
+
+    it("updates the file marker and detail area when its setting changes without changing the active file", async () => {
+        const { REMOTE_P2P } = await import("@vrtmrz/livesync-commonlib/compat/common/types");
+        const host = await createHarness();
+        host.core.settings.remoteType = REMOTE_P2P;
+        host.core.settings.hideFileWarningNotice = false;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        await host.flushDisplay();
+
+        const warning = await host.module.getActiveFileStatus();
+        expect(warning.kind).toBe("warning");
+        host.module.activeFileStatus.value = warning;
+        await host.flushDisplay();
+        await Promise.resolve();
+        expect(host.module.messageArea?.innerText).toContain("Warning:");
+        expect(host.module.statusBarLabels.value.statusBarParts.some((part) => part.key === "file-skip")).toBe(false);
+
+        host.core.settings.hideFileWarningNotice = true;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        await host.flushDisplay();
+        await Promise.resolve();
+
+        expect(host.module.statusBarLabels.value.statusBarParts).toContainEqual(
+            expect.objectContaining({ key: "file-skip", text: "📄⚠️" })
+        );
+        expect(host.module.messageArea?.innerText).not.toContain("Warning:");
+
+        host.core.settings.hideFileWarningNotice = false;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        await host.flushDisplay();
+        await Promise.resolve();
+
+        expect(host.module.statusBarLabels.value.statusBarParts.some((part) => part.key === "file-skip")).toBe(false);
+        expect(host.module.messageArea?.innerText).toContain("Warning:");
+    });
+
+    it("keeps the compact warning in the status bar when an auxiliary P2P peer is active", async () => {
+        const host = await createHarness();
+        host.core.settings.hideFileWarningNotice = true;
+        host.services.context.events.emitEvent(host.EVENT_SETTING_SAVED, host.core.settings);
+        host.module.activeFileStatus.value = { kind: "warning", message: "File compatibility warning" };
+        const progress = { current: 1, max: 2, isActive: true };
+        host.p2pReplicationStats.value = [
+            { peerId: "peer", peerName: "Auxiliary peer", sending: progress, fetching: progress },
+        ];
+        await host.flushDisplay();
+
+        const { parts, statusBarParts } = host.module.statusBarLabels.value;
+        expect(parts).toContainEqual(expect.objectContaining({ key: "p2p-peer" }));
+        expect(statusBarParts).toContainEqual(expect.objectContaining({ key: "file-skip", text: "📄⚠️" }));
+        expect(host.statusBarRenderer.render).toHaveBeenLastCalledWith(statusBarParts);
+    });
+
+    it("updates both displays when Commonlib publishes new replication statistics", async () => {
+        const { stats, statusBarRenderer, statusLineRenderer, flushDisplay } = await createHarness(false);
+        const renderers = [statusBarRenderer, statusLineRenderer];
+        expect(stats.value.statsUpdatedAt).toBeNull();
+        for (const renderer of renderers) {
+            expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: "⚓" }]));
             renderer.render.mockClear();
         }
 
-        stats.value = { ...stats.value, syncStatus: "CONNECTED" };
-        expect(stats.value.syncStatus).toBe("CONNECTED");
-        await flushDisplay();
+        for (const [syncStatus, icon] of [
+            ["COMPLETED", "✅"],
+            ["CONNECTED", "⚡"],
+        ] as const) {
+            stats.value = { ...stats.value, syncStatus };
+            expect(stats.value.statsUpdatedAt).toEqual(expect.any(Number));
+            expect(stats.value.syncStatus).toBe(syncStatus);
+            await flushDisplay();
 
-        for (const renderer of [statusBarRenderer, statusLineRenderer]) {
-            expect(renderer.render).toHaveBeenLastCalledWith(
-                expect.arrayContaining([{ key: "sync", text: "Sync: ⚡" }])
-            );
+            for (const renderer of renderers) {
+                expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: icon }]));
+                renderer.render.mockClear();
+            }
         }
     });
 });

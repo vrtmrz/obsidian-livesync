@@ -54,11 +54,16 @@ describe("projectReplicationStatusLabel", () => {
                 maxPushSeq: 30,
                 lastSyncPullSeq: 17,
                 lastSyncPushSeq: 22,
+                couchDB: {
+                    phase: "one-shot",
+                    push: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: 22 },
+                    pull: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: 17 },
+                },
             }),
             { remoteOperationCount: 0, trackedRequestCount: 1 }
         );
 
-        expect(projection.message).toBe("🌐1 Sync: ⚡ ↑ 4 (8) ↓ 2 (3)");
+        expect(projection.message).toBe("🌐1 ⚡ ↑ 4 (8) ↓ 2 (3)");
         expect(projection.parts.map((part) => part.key)).toEqual([
             "network",
             "sync",
@@ -73,11 +78,11 @@ describe("projectReplicationStatusLabel", () => {
         expect(projection.parts[5]).toMatchObject({ key: "pull-remaining", text: " (", value: 3, suffix: ")" });
     });
 
-    it("keeps the existing status icons when CouchDB is idle or not present", () => {
+    it("uses distinct initial, closed, and completed icons while retaining other status icons", () => {
         const statuses = [
             ["CLOSED", "⏹"],
-            ["COMPLETED", "⏹"],
-            ["NOT_CONNECTED", "⏹"],
+            ["COMPLETED", "✅"],
+            ["NOT_CONNECTED", "⚓"],
             ["STARTED", "🌀"],
             ["PAUSED", "💤"],
             ["CONNECTED", "⚡"],
@@ -106,7 +111,135 @@ describe("projectReplicationStatusLabel", () => {
 
         const noFastForward = projectReplicationStatusLabel(stats(), noNetworkActivity);
         expect(noFastForward.parts.some((part) => part.key.startsWith("ff-"))).toBe(false);
-        expect(noFastForward.message).toBe("Sync: ⚡ ↑ 0 ↓ 0");
+        expect(noFastForward.message).toBe("⚡ ↑ 0 ↓ 0");
+    });
+
+    it("counts remaining sequence positions down to zero and omits unreported positions", () => {
+        const reached = projectReplicationStatusLabel(
+            stats({
+                sent: 2,
+                arrived: 1,
+                maxPushSeq: 30,
+                maxPullSeq: 20,
+                lastSyncPushSeq: 35,
+                lastSyncPullSeq: 20,
+                couchDB: {
+                    phase: "one-shot",
+                    push: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: 35 },
+                    pull: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: 20 },
+                },
+            }),
+            noNetworkActivity
+        );
+        expect(reached.message).toBe("⚡ ↑ 2 (0) ↓ 1 (0)");
+
+        const reportedZero = projectReplicationStatusLabel(
+            stats({
+                maxPushSeq: 40,
+                couchDB: {
+                    phase: "one-shot",
+                    push: { checkedChanges: 0, completedBatches: 0, checking: false, lastSeq: 0 },
+                },
+            }),
+            noNetworkActivity
+        );
+        expect(reportedZero.message).toBe("⚡ ↑ 0 (40) ↓ 0");
+
+        const reachedByCheckpoint = projectReplicationStatusLabel(
+            stats({
+                maxPullSeq: 40,
+                lastSyncPullSeq: 0,
+                arrived: 0,
+                couchDB: {
+                    phase: "one-shot",
+                    pull: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: "40-opaque" },
+                },
+            }),
+            noNetworkActivity
+        );
+        expect(reachedByCheckpoint.message).toBe("⚡ ↑ 0 ↓ 0 (0)");
+
+        const opaqueCheckpoint = projectReplicationStatusLabel(
+            stats({
+                maxPullSeq: 40,
+                lastSyncPullSeq: 31,
+                couchDB: {
+                    phase: "one-shot",
+                    pull: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: "opaque" },
+                },
+            }),
+            noNetworkActivity
+        );
+        expect(opaqueCheckpoint.message).toBe("⚡ ↑ 0 ↓ 0");
+
+        const opaqueCheckpointWithTransferredDocuments = projectReplicationStatusLabel(
+            stats({
+                maxPullSeq: 40,
+                lastSyncPullSeq: 31,
+                arrived: 1,
+                couchDB: {
+                    phase: "one-shot",
+                    pull: { checkedChanges: 0, completedBatches: 1, checking: false, lastSeq: "opaque" },
+                },
+            }),
+            noNetworkActivity
+        );
+        expect(opaqueCheckpointWithTransferredDocuments.message).toBe("⚡ ↑ 0 ↓ 1");
+
+        const staleTransferPosition = projectReplicationStatusLabel(
+            stats({ maxPullSeq: 40, lastSyncPullSeq: 31, arrived: 0 }),
+            noNetworkActivity
+        );
+        expect(staleTransferPosition.message).toBe("⚡ ↑ 0 ↓ 0");
+
+        const unreported = projectReplicationStatusLabel(stats({ maxPushSeq: 40, lastSyncPushSeq: 0 }), noNetworkActivity);
+        expect(unreported.message).toBe("⚡ ↑ 0 ↓ 0");
+    });
+
+    it("waits for new directional checkpoints when the same CouchDB Replicator starts again", () => {
+        const checkpoint = (lastSeq: number) => ({
+            checkedChanges: 0,
+            completedBatches: 1,
+            checking: false,
+            lastSeq,
+        });
+        const firstTransfer = stats({
+            sent: 4,
+            arrived: 2,
+            maxPushSeq: 30,
+            maxPullSeq: 20,
+            lastSyncPushSeq: 30,
+            lastSyncPullSeq: 20,
+            syncStatus: "COMPLETED",
+            couchDB: { phase: "idle", push: checkpoint(30), pull: checkpoint(20) },
+        });
+        const project = (snapshot: ReplicationStatics) =>
+            projectReplicationStatusLabel(snapshot, noNetworkActivity).message;
+        expect(project(firstTransfer)).toBe("✅ ↑ 4 (0) ↓ 2 (0)");
+
+        // Commonlib publishes new maxima with the previous idle progress before installing the next observer.
+        const secondStart = stats({ ...firstTransfer, syncStatus: "STARTED", maxPushSeq: 40, maxPullSeq: 50 });
+        const secondTransfer = stats({
+            ...secondStart,
+            syncStatus: "CONNECTED",
+            couchDB: couchDBProgress("one-shot"),
+        });
+        expect(project(secondStart)).toBe("🌀 ↑ 4 ↓ 2");
+        expect(project(secondTransfer)).toBe("⚡ ↑ 4 ↓ 2");
+        expect(project({ ...secondTransfer, couchDB: { phase: "one-shot", pull: checkpoint(45) } })).toBe(
+            "⚡ ↑ 4 ↓ 2 (5)"
+        );
+        expect(
+            project({ ...secondTransfer, couchDB: { phase: "one-shot", push: checkpoint(40), pull: checkpoint(50) } })
+        ).toBe("⚡ ↑ 4 (0) ↓ 2 (0)");
+    });
+
+    it("preserves the transfer countdown from Object Storage statistics", () => {
+        const projection = projectReplicationStatusLabel(
+            stats({ syncStatus: "JOURNAL_SEND", sent: 3, maxPushSeq: 20, lastSyncPushSeq: 17 }),
+            noNetworkActivity
+        );
+        expect(projection.message).toBe("📦↑ ↑ 3 (3) ↓ 0");
     });
 
     it("shows fast-forward checking with zero arrivals, transferred data, and the final idle count", () => {
@@ -130,7 +263,7 @@ describe("projectReplicationStatusLabel", () => {
             { pull: 1200 }
         );
         expect(transferred.icon).toBe("⚡");
-        expect(transferred.message).toBe("Sync: ⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
+        expect(transferred.message).toBe("⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
         expect(transferred.parts.map((part) => part.key)).toEqual(["sync", "ff-pull", "sent", "arrived"]);
         expect(transferred.parts[1]).toMatchObject({
             key: "ff-pull",
@@ -151,7 +284,7 @@ describe("projectReplicationStatusLabel", () => {
             { push: 71975 }
         );
         expect(pushChecking.icon).toBe("⏩");
-        expect(pushChecking.message).toBe("Sync: ⏩ (⏩↑ 71975) ↑ 0 ↓ 0");
+        expect(pushChecking.message).toBe("⏩ (⏩↑ 71975) ↑ 0 ↓ 0");
         expect(pushChecking.parts[1]).toMatchObject({ key: "ff-push", value: 71975 });
 
         const bothChecking = projectReplicationStatusLabel(
@@ -159,7 +292,7 @@ describe("projectReplicationStatusLabel", () => {
             noNetworkActivity,
             { push: 71975, pull: 10 }
         );
-        expect(bothChecking.message).toBe("Sync: ⏩ (⏩↑ 71975) (⏩↓ 10) ↑ 0 ↓ 0");
+        expect(bothChecking.message).toBe("⏩ (⏩↑ 71975) (⏩↓ 10) ↑ 0 ↓ 0");
 
         const idle = projectReplicationStatusLabel(
             stats({
@@ -171,7 +304,7 @@ describe("projectReplicationStatusLabel", () => {
             { pull: 1200 }
         );
         expect(idle.icon).toBe("⚡");
-        expect(idle.message).toBe("Sync: ⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
+        expect(idle.message).toBe("⚡ (⏩↓ 1200) ↑ 0 ↓ 7");
     });
 
     it("keeps the error icon ahead of an active CouchDB checking indicator", () => {
