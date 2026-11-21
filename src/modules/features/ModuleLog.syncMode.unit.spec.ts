@@ -334,7 +334,7 @@ describe("ModuleLog status displays", () => {
         const renderers = [statusBarRenderer, statusLineRenderer];
         expect(stats.value.statsUpdatedAt).toBeNull();
         for (const renderer of renderers) {
-            expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: "◌" }]));
+            expect(renderer.render).toHaveBeenLastCalledWith(expect.arrayContaining([{ key: "sync", text: "⚓" }]));
             renderer.render.mockClear();
         }
 

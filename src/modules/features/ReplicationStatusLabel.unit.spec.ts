@@ -82,7 +82,7 @@ describe("projectReplicationStatusLabel", () => {
         const statuses = [
             ["CLOSED", "⏹"],
             ["COMPLETED", "✅"],
-            ["NOT_CONNECTED", "◌"],
+            ["NOT_CONNECTED", "⚓"],
             ["STARTED", "🌀"],
             ["PAUSED", "💤"],
             ["CONNECTED", "⚡"],

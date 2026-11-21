@@ -169,7 +169,7 @@ export function projectReplicationStatusLabel(
             icon = "✅";
             break;
         case "NOT_CONNECTED":
-            icon = "◌";
+            icon = "⚓";
             break;
         case "STARTED":
             icon = "🌀";

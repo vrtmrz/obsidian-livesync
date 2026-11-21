@@ -8,7 +8,7 @@ Use [General Settings](../settings.md#2-general-settings) to choose whether sync
     -   📲 A finite remote operation is in progress
     -   🌐N Approximate remote requests currently in progress
 -   Status
-    -   ◌ A new replicator has not yet established a connection
+    -   ⚓ A new replicator has not yet established a connection
     -   ⏹ The replication session is closed
     -   ✅ The current finite replication has completed. Vault file reflection can continue separately.
     -   🌀 Starting synchronisation
