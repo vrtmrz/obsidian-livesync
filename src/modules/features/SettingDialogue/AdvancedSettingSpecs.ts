@@ -1,3 +1,4 @@
+import { $msg } from "@/common/translation";
 import { ChunkAlgorithmNames } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { SettingSpecGroup } from "./SettingSpec.ts";
 
@@ -11,11 +12,11 @@ export function createAdvancedSettingSpecGroups({
 }: AdvancedSettingSpecContext): readonly SettingSpecGroup[] {
     return [
         {
-            heading: "Memory cache",
+            heading: $msg("Memory cache"),
             items: [{ key: "hashCacheMaxCount", control: { type: "number", min: 10 } }],
         },
         {
-            heading: "Local Database Tweak",
+            heading: $msg("Local Database Tweak"),
             items: [
                 {
                     key: "chunkSplitterVersion",
@@ -26,7 +27,7 @@ export function createAdvancedSettingSpecGroups({
             ],
         },
         {
-            heading: "Transfer Tweak",
+            heading: $msg("Transfer Tweak"),
             items: [
                 { key: "readChunksOnline", control: { type: "toggle" }, visible: isCouchDB },
                 { key: "useOnlyLocalChunk", control: { type: "toggle" }, visible: isCouchDB },

@@ -190,11 +190,14 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
         setting
             .addText((text) => {
                 const updateDateText = () => {
-                    if (this.editingSettings.maxMTimeForReflectEvents == 0) {
-                        dateEl.textContent = `No limit configured`;
+                    const timestamp = this.editingSettings.maxMTimeForReflectEvents;
+                    if (timestamp === 0) {
+                        dateEl.textContent = $msg("No limit configured");
                     } else {
-                        const date = new Date(this.editingSettings.maxMTimeForReflectEvents);
-                        dateEl.textContent = `Limit: ${date.toLocaleString()} (${this.editingSettings.maxMTimeForReflectEvents})`;
+                        const date = new Date(timestamp);
+                        dateEl.textContent = $msg("Limit: {datetime} ({timestamp})")
+                            .replace("{datetime}", () => date.toLocaleString())
+                            .replace("{timestamp}", () => `${timestamp}`);
                     }
                     this.requestUpdate();
                 };

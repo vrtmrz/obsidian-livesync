@@ -1163,7 +1163,7 @@ export class ObsidianLiveSyncSettingTab extends PluginSettingTab {
     };
     async confirmRebuild() {
         if (!(await this.isPassphraseValid())) {
-            Logger(`Passphrase is not valid, please fix it.`, LOG_LEVEL_NOTICE);
+            Logger($msg("obsidianLiveSyncSettingTab.logPassphraseInvalid"), LOG_LEVEL_NOTICE);
             return;
         }
         const keepEditing = $msg("Ui.SetupWizard.ApplySettingsInitialisation.KeepEditing");
