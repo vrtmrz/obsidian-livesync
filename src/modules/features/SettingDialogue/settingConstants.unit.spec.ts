@@ -10,6 +10,7 @@ describe("setting manifest labels", () => {
         setLang("zh-tw");
 
         expect(getConfName("liveSync")).toBe("同步模式");
+        expect(getConfName("chunkSplitterVersion")).toBe("Chunk 切分方式");
         expect(getConfig("couchDB_URI")).toMatchObject({ name: "伺服器 URI" });
         expect(getConfig("encrypt")).toMatchObject({
             name: "端對端加密",
@@ -32,8 +33,8 @@ describe("setting manifest labels", () => {
         expect(getConfName("syncGuardEnabled")).toBe("SyncGuard を有効化");
     });
 
-    it("passes through labels which Commonlib owns but the catalogue does not carry", () => {
-        setLang("zh-tw");
+    it("uses the Commonlib label when the selected language has no translation", () => {
+        setLang("es");
 
         expect(getConfName("chunkSplitterVersion")).toBe("Chunk Splitter");
     });

@@ -10,7 +10,8 @@ type EnableI18nHost = NecessaryServices<"setting" | "API" | "appLifecycle", neve
 function tryGetLanguage(onError: (error: unknown) => void) {
     if (requireApiVersion("1.8.7")) {
         try {
-            return getLanguage();
+            const language = getLanguage();
+            return /^zh-(?:tw|hk|mo|hant)$/i.test(language) ? "zh-tw" : language;
         } catch (e) {
             onError(e);
         }

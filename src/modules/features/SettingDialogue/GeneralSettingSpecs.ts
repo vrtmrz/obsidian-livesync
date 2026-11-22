@@ -42,9 +42,9 @@ export function createGeneralSettingSpecGroups({
                     control: {
                         type: "dropdown",
                         options: () => ({
-                            [NetworkWarningStyles.BANNER]: "Show full banner",
-                            [NetworkWarningStyles.ICON]: "Show icon only",
-                            [NetworkWarningStyles.HIDDEN]: "Hide completely",
+                            [NetworkWarningStyles.BANNER]: $msg("Show full banner"),
+                            [NetworkWarningStyles.ICON]: $msg("Show icon only"),
+                            [NetworkWarningStyles.HIDDEN]: $msg("Hide completely"),
                         }),
                     },
                 },
