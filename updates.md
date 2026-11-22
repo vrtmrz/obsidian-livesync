@@ -12,28 +12,49 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+## 1.0.52
+
+22nd November, 2026
+
+There were a few hiccups with this release. On several occasions, I considered putting Hidden File Sync on hold again, but as the issues have become clearer, I think we have managed to get it into a presentable state for now.
+
 ### Fixed
 
-- In CouchDB LiveSync mode, an offline start can recover when the device returns online with the Vault in the foreground. A continuous start that failed because of a confirmed connection problem is tried once on that return. Its initial pull lets waiting files resume through the usual recovery process. (#1224)
+- Automatic recovery of waiting files after an offline CouchDB start ([PR #1374](https://github.com/vrtmrz/obsidian-livesync/pull/1374), [#1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224))
+    - After a confirmed connection failure at start-up, CouchDB LiveSync retries once when the device comes back online with the Vault in the foreground.
+    - A successful initial pull lets files marked **Waiting** retrieve their content and reach the Vault.
 
-- When both **Customisation Sync** and **Hidden File Sync** are enabled, **Customisation Sync** owns **Selective** items (including items with the default mode) and **Flagged Selective** items. Hidden File Sync no longer uploads these files, overwrites them, or resolves their conflicts. (#825)
-    - Ownership follows the current mode even when the saved file list is empty or outdated.
-    - **Ignore** excludes the item from both features, **Automatic** delegates the item to **Hidden File Sync** while still obeying its target and ignore patterns (displaying a Notice when chosen if any files are excluded by those patterns), and disabling **Customisation Sync** returns hidden files to **Hidden File Sync**'s own selectors.
+- Separate appearance settings on devices using Hidden File Sync ([PR #1375](https://github.com/vrtmrz/obsidian-livesync/pull/1375), [#825](https://github.com/vrtmrz/obsidian-livesync/issues/825))
+    - A **Selective** `appearance.json` lets us use dark mode on one device and light mode on another while other hidden files synchronise.
+    - When both features are enabled, Customisation Sync handles **Selective** (the default) and **Flagged Selective** items, even if their saved file lists are empty or out of date.
+    - **Ignore** excludes the item from both features. **Automatic** follows Hidden File Sync's target and ignore patterns, with a Notice if those patterns exclude any of the item's files.
+    - With Customisation Sync disabled, Hidden File Sync selects files using its own patterns.
 
 ### Improved
 
-- The sync display shows when a Replicator has yet to connect (`⚓`), a session has closed (`⏹`), or a finite transfer has completed (`✅`). CouchDB and P2P show sequence progress as a countdown to `(0)`. (#1224)
+- Resuming the intended sync mode after the first Fetch ([PR #1369](https://github.com/vrtmrz/obsidian-livesync/pull/1369), [#1367](https://github.com/vrtmrz/obsidian-livesync/issues/1367))
+    - When we add a device with a Setup URI, **Before restarting** tells us which automatic synchronisation options Fetch leaves disabled.
+    - After reviewing the Vault and any conflicts, restore the intended mode or triggers under **Sync Settings** → **Synchronization Method** for CouchDB or Object Storage.
+    - For P2P, verify a manual synchronisation before restoring automatic options.
 
-- When we add a device, we can review which automatic synchronisation settings Fetch disables and how to re-enable them after reviewing the Vault. The confirmation appears before we choose to restart. (#1367)
+- Recovery from a CouchDB Fetch blocked by unsupported encryption ([PR #1370](https://github.com/vrtmrz/obsidian-livesync/pull/1370), [#1365](https://github.com/vrtmrz/obsidian-livesync/issues/1365))
+    - In Obsidian, select **View recovery steps** when Standard or Fast Fetch stops. The CLI gives the reason and steps in its regular error output.
+    - Please confirm that another device has a complete Vault, back up the Vaults and the remote database, and rebuild the remote from that device.
+    - Retry Fetch on the receiving device after Rebuild.
 
-- When CouchDB Fetch stops on a file body or chunk marked as encrypted in an unsupported format, the CLI and Obsidian explain how to rebuild the remote from another device and retry Fetch. (#1365)
+- Clearer synchronisation status while waiting for files to appear ([PR #1374](https://github.com/vrtmrz/obsidian-livesync/pull/1374), [#1224](https://github.com/vrtmrz/obsidian-livesync/issues/1224))
+    - The status bar and editor overlay distinguish a connection yet to open (`⚓`), a closed session (`⏹`), and a completed finite transfer (`✅`).
+    - CouchDB and P2P count down to `(0)` as each direction catches up to the source's sequence at the start of the transfer.
+    - Files may still be written to the Vault after the transfer completes.
+    - On narrow panes, the editor overlay wraps between items.
 
-- Splitting large files with V3 Rabin-Karp chunking uses less input-buffer memory by reading Blobs in blocks of up to 1 MiB as Chunks are produced, rather than loading the entire Blob into memory at once.
-    - Small files which fit within one block are read directly without creating a block iterator, and prepared Chunk batches pass straight to the writer without an extra array copy.
+- Stability improvements for large-file synchronisation on devices with limited memory ([Commonlib 0.7.0 release notes](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.7.0))
+    - V3 Rabin-Karp reduces memory pressure when preparing large files for synchronisation on mobile and other memory-constrained devices.
+    - The splitter reads the file in blocks of up to 1 MiB as it produces Chunks.
 
 ### Miscellaneous
 
-- Updated dependencies (including `@vrtmrz/livesync-commonlib` 0.7.0, which adopts `@vrtmrz/rpc` 0.1.0 for hosted P2P rooms, and `octagonal-wheels` 0.1.57).
+- Dependency updates for LiveSync Commonlib (`0.7.0`) and Octagonal Wheels (`0.1.57`)
 
 ## 1.0.51
 
@@ -153,35 +174,3 @@ Thank you for your contributions!
 - Ordinary start-up scans can apply retained database deletions to Vault files whose content is confirmed unchanged. (#1338)
     - Files with local changes or insufficient provenance remain available for review.
     - Interrupted provenance and scan-record cleanup is retried from existing local state during a later scan.
-
-## 1.0.47
-
-9th November, 2026
-
-### Fixed
-
-#### Synchronisation and recovery
-
-- Temporary read failures no longer leave synchronisation blocked until Obsidian restarts. (#1331)
-    - A related file change or **Apply pending changes now** retries the failed operation.
-    - This applies to ordinary Vault files and uses the current Vault state.
-
-- Fixed CouchDB Fetch failures in Vaults that already contain the fetched files. (#1329, #1332)
-    - With **Fetch chunks on demand** enabled, missing Chunks are retrieved when needed.
-    - The same fix applies when Fast Setup falls back to Standard Fetch.
-    - **Use Only Local Chunks** remains respected. Unavailable content keeps Fetch incomplete for retry.
-
-### CLI
-
-#### Fixed
-
-- Fixed repeated CouchDB Fetch failures in an existing Vault. (#1329)
-    - Content checks retrieve missing Chunks with **Fetch chunks on demand** enabled.
-    - **Use Only Local Chunks** remains respected. Incomplete Fetch operations retain their recovery state.
-
-- Unreadable hidden directories no longer prevent the CLI daemon from starting. (#1325)
-    - Vault scans skip these directories, which remain excluded from synchronisation.
-
-- The daemon no longer misses files written into newly created folders. (#1328)
-    - This includes bursts of writes and files renamed from temporary names.
-    - The CLI requires Node.js 22.22 or later. The Docker image includes its own runtime.

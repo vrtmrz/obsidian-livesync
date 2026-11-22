@@ -22,9 +22,12 @@ In 1.0.51, an online restart or **Replicate now** recovered the waiting files on
 the reporter's iPhone. An offline restart followed by restoring the network left
 the foreground Vault idle. [iPhone test report](https://github.com/vrtmrz/obsidian-livesync/issues/1224#issuecomment-6977503970)
 
-The unreleased follow-up retries one CouchDB LiveSync start on the next online
-event when a confirmed network failure prevented that start. Its successful
-initial pull supplies the existing `remote` recovery signal. In Linux Obsidian
+Self-hosted LiveSync `1.0.52`, using
+[Commonlib 0.7.0](https://github.com/vrtmrz/livesync-commonlib/releases/tag/0.7.0),
+includes the follow-up for offline start-up. It retries one CouchDB LiveSync
+start on the next online event when a confirmed network failure prevented that
+start and the Vault is in the foreground. Its successful initial pull supplies
+the existing `remote` recovery signal. In Linux Obsidian
 1.12.7, the public 1.0.51 build left the file unapplied for the 30-second
 observation after the network returned. The candidate restored the exact file
 content and received a later edit through continuous synchronisation. Testing
