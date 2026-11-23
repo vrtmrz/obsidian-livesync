@@ -3,7 +3,12 @@ import PouchDB from "pouchdb-core";
 import MemoryAdapter from "pouchdb-adapter-memory";
 import HttpAdapter from "pouchdb-adapter-http";
 import replication from "pouchdb-replication";
-import type { EntryDoc, FilePathWithPrefix, UXFileInfo } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import type {
+    EntryDoc,
+    FilePathWithPrefix,
+    UXFileInfo,
+    UXFileInfoStub,
+} from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { DEFAULT_SETTINGS } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { compareMTime, createTextBlob, readContent } from "@vrtmrz/livesync-commonlib/compat/common/utils";
 import { createLiveSyncEventHub } from "@vrtmrz/livesync-commonlib/context";
@@ -26,25 +31,48 @@ PouchDB.plugin(MemoryAdapter).plugin(HttpAdapter).plugin(replication);
 const path = "multi-device.txt" as FilePathWithPrefix;
 const old = "Original content\n";
 const oldTime = 1_000_000;
+const caseRenameFromPath = "Tasks/example note.md" as FilePathWithPrefix;
+const caseRenameToPath = "Tasks/Example note.md" as FilePathWithPrefix;
+const caseRenameOriginal = '---\ntitle: "[[example note]]"\n---\n';
+const caseRenameUpdated = '---\ntitle: "[[Example note]]"\n---\n';
 class TestHandler extends ServiceFileHandler {}
 
-function makeFile(body: string, mtime = oldTime): UXFileInfo {
+function makeFile(body: string, mtime = oldTime, filePath: UXFileInfo["path"] = path): UXFileInfo {
     return {
-        name: path,
-        path,
+        name: filePath,
+        path: filePath,
         stat: { type: "file", ctime: oldTime, mtime, size: new Blob([body]).size },
         body: createTextBlob(body),
     };
 }
 
-async function makeDevice(name: string) {
+async function makeDevice(
+    name: string,
+    {
+        handleFilenameCaseSensitive = true,
+        initialFile = makeFile(old),
+    }: {
+        handleFilenameCaseSensitive?: boolean;
+        initialFile?: UXFileInfo | null;
+    } = {}
+) {
     const db = new PouchDB<EntryDoc>(name, { adapter: "memory" });
     const reflection = new Map<FilePathWithPrefix, FileReflectionProvenanceRecord>();
-    let storage = makeFile(old);
-    const settings = { ...DEFAULT_SETTINGS, useOnlyLocalChunk: true, writeDocumentsIfConflicted: false };
+    const storage = new Map<string, UXFileInfo>();
+    const fileKey = (value: string) => (handleFilenameCaseSensitive ? value : value.toLowerCase());
+    const setStorage = (file: UXFileInfo) => storage.set(fileKey(file.path), file);
+    if (initialFile) {
+        setStorage(initialFile);
+    }
+    const settings = {
+        ...DEFAULT_SETTINGS,
+        handleFilenameCaseSensitive,
+        useOnlyLocalChunk: true,
+        writeDocumentsIfConflicted: false,
+    };
     const setting = { currentSettings: () => settings };
     const pathService = {
-        path2id: (value: string) => Promise.resolve(value),
+        path2id: (value: string) => Promise.resolve(fileKey(value)),
         id2path: (id: string, entry?: { path?: string }) => entry?.path ?? id,
         getPath: (entry: { path: FilePathWithPrefix }) => entry.path,
         compareFileFreshness: (file: UXFileInfo, entry: { mtime: number }) =>
@@ -70,16 +98,31 @@ async function makeDevice(name: string) {
         },
     } as unknown as LiveSyncLocalDBEnv);
     await expect(localDatabase.initializeDatabase()).resolves.toBe(true);
+    const getStub = (value: string): Promise<UXFileInfoStub | null> => {
+        const file = storage.get(fileKey(value));
+        return Promise.resolve(file ? { name: file.name, path: file.path, stat: file.stat } : null);
+    };
     const storageAccess = {
-        getStub: () => Promise.resolve(storage),
-        getFileStub: () => Promise.resolve(storage),
-        readStubContent: () => Promise.resolve(storage),
+        getStub,
+        getFileStub: getStub,
+        readStubContent: (file: UXFileInfoStub) => Promise.resolve(storage.get(fileKey(file.path)) ?? null),
         ensureDir: () => Promise.resolve(true),
-        writeFileAuto: vi.fn((_path: string, body: string, times: { mtime: number }) => {
-            storage = makeFile(body, times.mtime);
+        writeFileAuto: vi.fn((filePath: FilePathWithPrefix, body: string, times: { mtime: number }) => {
+            const existing = storage.get(fileKey(filePath));
+            setStorage(makeFile(body, times.mtime, existing?.path ?? filePath));
             return Promise.resolve(true);
         }),
-        stat: () => Promise.resolve(storage.stat),
+        renameFile: async (file: UXFileInfoStub, newPath: FilePathWithPrefix) => {
+            const current = storage.get(fileKey(file.path));
+            if (!current) {
+                return false;
+            }
+            storage.delete(fileKey(file.path));
+            setStorage({ ...current, name: newPath, path: newPath });
+            return await getStub(newPath);
+        },
+        deleteVaultItem: (value: string) => Promise.resolve(storage.delete(fileKey(value))),
+        stat: (value: string) => Promise.resolve(storage.get(fileKey(value))?.stat ?? null),
         touched: () => Promise.resolve(),
         triggerFileEvent: vi.fn(),
     };
@@ -120,10 +163,14 @@ async function makeDevice(name: string) {
         storageAccess,
         settings,
         services,
-        getStorage: () => storage,
-        setStorage: (file: UXFileInfo) => {
-            storage = file;
+        getStorage: (filePath = path) => {
+            const file = storage.get(fileKey(filePath));
+            if (!file) {
+                throw new Error(`Missing storage file: ${filePath}`);
+            }
+            return file;
         },
+        setStorage,
     };
 }
 
@@ -136,15 +183,15 @@ function requiredEnvironment(name: "hostname" | "username" | "password"): string
 }
 
 /** Read every non-deleted leaf, including branches which are not the winner. */
-async function leaves(db: PouchDB.Database<EntryDoc>) {
-    const docs = await db.get(path, { open_revs: "all", revs: true });
+async function leaves(db: PouchDB.Database<EntryDoc>, id: string = path) {
+    const docs = await db.get(id, { open_revs: "all", revs: true });
     return docs
         .flatMap((result) => ("ok" in result && !result.ok._deleted ? [result.ok] : []))
         .sort((left, right) => left._rev.localeCompare(right._rev));
 }
 
-async function revisionContent(device: Device, rev: string) {
-    const entry = await device.access.fetchEntry(path, rev, true);
+async function revisionContent(device: Device, rev: string, filePath = path) {
+    const entry = await device.access.fetchEntry(filePath, rev, true);
     if (!entry) throw new Error(`Missing content for ${rev}`);
     return readContent(entry);
 }
@@ -184,21 +231,30 @@ describe("file provenance across multiple devices and real CouchDB", () => {
         for (const result of results) if (result.status === "rejected") throw result.reason;
     });
 
-    /** Replication deliberately precedes file reflection, modelling a delayed storage event. */
-    async function conflictedDevices(count: number) {
-        const name = `livesync-provenance-${crypto.randomUUID()}`;
+    async function makeRemote(name: string) {
         const remote = new PouchDB<EntryDoc>(`${requiredEnvironment("hostname").replace(/\/+$/u, "")}/${name}`, {
             adapter: "http",
             auth: { username: requiredEnvironment("username"), password: requiredEnvironment("password") },
         });
         databases.push(remote);
         await remote.info();
+        return remote;
+    }
+
+    async function registerDevice(...args: Parameters<typeof makeDevice>) {
+        const device = await makeDevice(...args);
+        owners.push(device.localDatabase);
+        databases.push(device.db);
+        return device;
+    }
+
+    /** Replication deliberately precedes file reflection, modelling a delayed storage event. */
+    async function conflictedDevices(count: number) {
+        const name = `livesync-provenance-${crypto.randomUUID()}`;
+        const remote = await makeRemote(name);
         const devices: Device[] = [];
         for (let i = 0; i < count; i++) {
-            const device = await makeDevice(`${name}-${i}`);
-            devices.push(device);
-            owners.push(device.localDatabase);
-            databases.push(device.db);
+            devices.push(await registerDevice(`${name}-${i}`));
         }
         const root = await devices[0].access.storeWithBaseRevision(makeFile(old), undefined, true);
         if (!root) throw new Error("Could not create the shared original revision");
@@ -224,6 +280,77 @@ describe("file provenance across multiple devices and real CouchDB", () => {
         expect(await leaves(remote)).toHaveLength(count);
         return { devices, remote, root, revisions };
     }
+
+    async function caseRenameDevices() {
+        const name = `livesync-case-rename-${crypto.randomUUID()}`;
+        const remote = await makeRemote(name);
+        const source = await registerDevice(`${name}-source`, {
+            handleFilenameCaseSensitive: false,
+            initialFile: makeFile(caseRenameOriginal, oldTime, caseRenameFromPath),
+        });
+        const receiver = await registerDevice(`${name}-receiver`, {
+            handleFilenameCaseSensitive: false,
+            initialFile: null,
+        });
+        const id = await source.services.path.path2id(caseRenameFromPath);
+        await expect(source.handler.storeFileToDB(caseRenameFromPath)).resolves.toBe(true);
+        const base = (await source.db.get(id))._rev;
+        await source.db.replicate.to(remote);
+        await receiver.db.replicate.from(remote);
+        await expect(receiver.handler.dbToStorage(caseRenameFromPath, null)).resolves.toBe(true);
+        expect(receiver.reflection.get(caseRenameFromPath)?.revision).toBe(base);
+        expect(receiver.getStorage(caseRenameFromPath).path).toBe(caseRenameFromPath);
+        expect(await receiver.getStorage(caseRenameFromPath).body.text()).toBe(caseRenameOriginal);
+        return { source, receiver, remote, id, base };
+    }
+
+    async function receiveCaseRename({ source, receiver, remote, id, base }: Awaited<ReturnType<typeof caseRenameDevices>>) {
+        const updatedFile = makeFile(caseRenameUpdated, oldTime + 10_000, caseRenameToPath);
+        source.setStorage(updatedFile);
+        await expect(source.handler.renameFileInDB(updatedFile, caseRenameFromPath)).resolves.toBe(true);
+        await source.db.replicate.to(remote);
+        const incoming = await remote.get(id, { revs: true });
+        expect(incoming).toMatchObject({ path: caseRenameToPath });
+        expect(incoming._revisions?.ids[1]).toBe(base.split("-")[1]);
+        await receiver.db.replicate.from(remote);
+        await expect(receiver.handler.dbToStorage(caseRenameToPath, null)).resolves.toBe(true);
+        return incoming._rev;
+    }
+
+    it("reflects a case-only rename with updated content without creating a conflict", async () => {
+        const fixture = await caseRenameDevices();
+        const { receiver, remote, id } = fixture;
+        const incoming = await receiveCaseRename(fixture);
+        expect((await leaves(receiver.db, id)).map((doc) => doc._rev)).toEqual([incoming]);
+        const reflected = receiver.getStorage(caseRenameToPath);
+        expect(reflected.path).toBe(caseRenameToPath);
+        expect(await reflected.body.text()).toBe(caseRenameUpdated);
+        expect(receiver.reflection.get(caseRenameToPath)?.revision).toBe(incoming);
+        expect(receiver.reflection.has(caseRenameFromPath)).toBe(false);
+        await receiver.db.replicate.to(remote);
+        expect((await leaves(remote, id)).map((doc) => doc._rev)).toEqual([incoming]);
+    }, 60_000);
+
+    it("preserves a receiver's edit as a child of its displayed revision across a case-only rename", async () => {
+        const fixture = await caseRenameDevices();
+        const { receiver, id, base } = fixture;
+        const edited = `${caseRenameOriginal}\nAn offline edit on the receiver.\n`;
+        receiver.setStorage(makeFile(edited, oldTime, caseRenameFromPath));
+        const incoming = await receiveCaseRename(fixture);
+
+        const branches = await leaves(receiver.db, id);
+        expect(branches).toHaveLength(2);
+        expect(branches.map((doc) => doc._rev)).toContain(incoming);
+        const preserved = branches.find((doc) => doc._rev !== incoming)!;
+        expect(preserved).toHaveProperty("_revisions.ids.1", base.split("-")[1]);
+        expect(preserved).toMatchObject({ path: caseRenameToPath });
+        expect(await revisionContent(receiver, preserved._rev, caseRenameToPath)).toBe(edited);
+        const reflected = receiver.getStorage(caseRenameToPath);
+        expect(reflected.path).toBe(caseRenameToPath);
+        expect(await reflected.body.text()).toBe(edited);
+        expect(receiver.reflection.get(caseRenameToPath)?.revision).toBe(preserved._rev);
+        expect(receiver.reflection.has(caseRenameFromPath)).toBe(false);
+    }, 60_000);
 
     async function resolveAndReplicate(f: Awaited<ReturnType<typeof conflictedDevices>>) {
         const winner = (await f.devices[0].db.get(path))._rev;
