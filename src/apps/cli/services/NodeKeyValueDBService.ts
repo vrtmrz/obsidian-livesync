@@ -94,13 +94,34 @@ function asKeyString(key: unknown): string {
     return serialised;
 }
 
+// The file holds every key, so writing it costs time proportional to the whole store. In a Vault of 22,000 notes it
+// reaches 34 MB, and writing it on every change made processing replicated files write about twice a second. Changes
+// therefore reach the file at most once per FLUSH_DELAY_MS, on close, and on exit. Each write remains atomic, so a
+// crash loses only the most recent moments of state.
+const FLUSH_DELAY_MS = 2000;
+// A handle opened on a file must see what other handles have written to it, so it writes their pending changes first.
+// The service releases a handle when it replaces or destroys it.
+const openHandles = new Set<NodeFileKeyValueDatabase>();
+process.on("exit", () => {
+    for (const handle of openHandles) handle.flushNow();
+});
+
 class NodeFileKeyValueDatabase implements KeyValueDatabase {
     private filePath: string;
     private data = new Map<string, unknown>();
+    private dirty = false;
+    private flushTimer: ReturnType<typeof setTimeout> | undefined;
 
     constructor(filePath: string) {
         this.filePath = filePath;
+        for (const other of openHandles) if (other.filePath === filePath) other.flushNow();
         this.load();
+        openHandles.add(this);
+    }
+
+    release() {
+        this.flushNow();
+        openHandles.delete(this);
     }
 
     private load() {
@@ -112,11 +133,36 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
     }
 
     private flush() {
-        nodeFs.mkdirSync(nodePath.dirname(this.filePath), { recursive: true });
-        const serializable = Object.fromEntries(
-            [...this.data.entries()].map(([key, value]) => [key, serializeForNodeKV(value)])
-        );
-        writeFileAtomically(this.filePath, JSON.stringify(serializable, null, 2));
+        this.dirty = true;
+        if (this.flushTimer) return;
+        this.flushTimer = setTimeout(() => {
+            this.flushTimer = undefined;
+            try {
+                this.flushNow();
+            } catch (error) {
+                console.error(`[NodeKeyValueDB] Failed to write ${this.filePath}, retrying:`, error);
+                this.flush();
+            }
+        }, FLUSH_DELAY_MS);
+    }
+
+    flushNow() {
+        if (this.flushTimer) {
+            clearTimeout(this.flushTimer);
+            this.flushTimer = undefined;
+        }
+        if (!this.dirty) return;
+        this.dirty = false;
+        try {
+            nodeFs.mkdirSync(nodePath.dirname(this.filePath), { recursive: true });
+            const serializable = Object.fromEntries(
+                [...this.data.entries()].map(([key, value]) => [key, serializeForNodeKV(value)])
+            );
+            writeFileAtomically(this.filePath, JSON.stringify(serializable, null, 2));
+        } catch (error) {
+            this.dirty = true;
+            throw error;
+        }
     }
 
     async get<T>(key: IDBValidKey): Promise<T> {
@@ -163,9 +209,15 @@ class NodeFileKeyValueDatabase implements KeyValueDatabase {
         return filtered;
     }
 
-    async close(): Promise<void> {}
+    async close(): Promise<void> {
+        this.flushNow();
+    }
 
     async destroy(): Promise<void> {
+        if (this.flushTimer) clearTimeout(this.flushTimer);
+        this.flushTimer = undefined;
+        this.dirty = false;
+        openHandles.delete(this);
         this.data.clear();
         nodeFs.rmSync(this.filePath, { force: true });
     }
@@ -181,7 +233,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
     extends ServiceBase<T>
     implements IKeyValueDBService
 {
-    private _kvDB: KeyValueDatabase | undefined;
+    private _kvDB: NodeFileKeyValueDatabase | undefined;
     private _simpleStore: SimpleStore<unknown> | undefined;
     private filePath: string | (() => string);
     private openedFilePath: string | undefined;
@@ -217,6 +269,7 @@ export class NodeKeyValueDBService<T extends ServiceContext = ServiceContext>
             const filePath = typeof this.filePath === "string" ? this.filePath : this.filePath();
             if (this._kvDB && this.openedFilePath === filePath) return true;
             await this._kvDB?.close();
+            this._kvDB?.release();
             this._kvDB = undefined;
             this.openedFilePath = undefined;
             this._kvDB = new NodeFileKeyValueDatabase(filePath);
