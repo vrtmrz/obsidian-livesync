@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import {
     createDatabaseConnectionRecoveryContext,
     requestDatabaseConnectionRecovery,
@@ -7,9 +8,11 @@ import {
 
 function setup(registerRecovery = true) {
     const callbacks: Record<string, (...args: any[]) => Promise<boolean>> = {};
+    const priorities: Record<string, number | undefined> = {};
     const event = (name: string) => ({
-        addHandler: (callback: (typeof callbacks)[string]) => {
+        addHandler: (callback: (typeof callbacks)[string], priority?: number) => {
             callbacks[name] = callback;
+            priorities[name] = priority;
         },
     });
     const selected = { isReady: true, stopReads: vi.fn() };
@@ -32,6 +35,7 @@ function setup(registerRecovery = true) {
         },
         appLifecycle: {
             isReady: vi.fn(() => true),
+            isUnloading: vi.fn(() => false),
             isSuspended: vi.fn(() => false),
             onSuspending: vi.fn(async () => true),
             onResuming: vi.fn(async () => true),
@@ -47,7 +51,7 @@ function setup(registerRecovery = true) {
     if (registerRecovery) {
         useDatabaseConnectionRecovery({ services } as never, dispatch, visible);
     }
-    return { callbacks, selected, services, database, dispatch, visible };
+    return { callbacks, priorities, selected, services, database, dispatch, visible };
 }
 
 const closing = () => new DOMException("The database connection is closing.", "InvalidStateError");
@@ -237,9 +241,9 @@ describe("local database connection recovery", () => {
         await expect(callbacks.foreground()).resolves.toBe(false);
     });
 
-    it("allows shutdown flushing and rejects a recovery still waiting for file work", async () => {
-        const { callbacks, selected, database, dispatch, services } = setup();
-        database.canReadCurrentDatabaseInfo.mockRejectedValue(closing());
+    it("stops paused recovery at unload priority -100 without resuming dispatch", async () => {
+        const { callbacks, priorities, selected, database, dispatch, services } = setup();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
         let finish!: () => void;
         dispatch.pauseDispatch.mockReturnValueOnce(
             new Promise<void>((resolve) => {
@@ -248,11 +252,111 @@ describe("local database connection recovery", () => {
         );
         const recovery = callbacks.error(selected, closing());
         await vi.waitFor(() => expect(dispatch.pauseDispatch).toHaveBeenCalledOnce());
-        await callbacks.unload();
+        expect(priorities.unload).toBe(-100);
+        await expect(callbacks.unload()).resolves.toBe(true);
+        expect(dispatch.resumeDispatch).not.toHaveBeenCalled();
         finish();
+
         await expect(recovery).resolves.toBe(false);
-        expect(dispatch.resumeDispatch).toHaveBeenCalledOnce();
+        await expect(callbacks.foreground()).resolves.toBe(false);
+        await expect(callbacks.error(selected, closing())).resolves.toBe(true);
+        expect(database.canReadCurrentDatabaseInfo).toHaveBeenCalledOnce();
+        expect(dispatch.resumeDispatch).not.toHaveBeenCalled();
         expect(database.reopenDatabase).not.toHaveBeenCalled();
+        expect(services.fileProcessing.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
         expect(services.appLifecycle.onResuming).not.toHaveBeenCalled();
+        expect(services.appLifecycle.onResumed).not.toHaveBeenCalled();
+    });
+
+    it("stops recovery when the host begins unloading during database reopen", async () => {
+        const { callbacks, selected, database, dispatch, services } = setup();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
+        database.reopenDatabase.mockImplementationOnce(async () => {
+            services.appLifecycle.isUnloading.mockReturnValue(true);
+            return true;
+        });
+
+        await expect(callbacks.error(selected, closing())).resolves.toBe(false);
+        await expect(callbacks.error(selected, closing())).resolves.toBe(true);
+        expect(database.reopenDatabase).toHaveBeenCalledOnce();
+        expect(dispatch.resumeDispatch).not.toHaveBeenCalled();
+        expect(services.fileProcessing.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
+        expect(services.appLifecycle.onResuming).not.toHaveBeenCalled();
+        expect(services.appLifecycle.onResumed).not.toHaveBeenCalled();
+    });
+
+    it.each([true, false])("stops after a database probe settles during unload (readable: %s)", async (readable) => {
+        const { callbacks, selected, database, dispatch, services } = setup();
+        database.canReadCurrentDatabaseInfo.mockImplementationOnce(async () => {
+            services.appLifecycle.isUnloading.mockReturnValue(true);
+            if (!readable) {
+                throw closing();
+            }
+            return true;
+        });
+
+        await expect(callbacks.error(selected, closing())).resolves.toBe(false);
+        expect(dispatch.pauseDispatch).not.toHaveBeenCalled();
+        expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
+    });
+
+    it("fences recovery immediately when unloading during a replacement connection probe", async () => {
+        const { callbacks, selected, database, dispatch, services } = setup();
+        const replacement = { isReady: true, stopReads: vi.fn() };
+        const probing = promiseWithResolvers<void>();
+        const read = promiseWithResolvers<boolean>();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing()).mockImplementationOnce(() => {
+            expect(database.localDatabaseDirect).toBe(replacement);
+            probing.resolve();
+            return read.promise;
+        });
+        database.reopenDatabase.mockImplementationOnce(() => {
+            database.localDatabaseDirect = replacement;
+            return Promise.resolve(false);
+        });
+
+        const recovery = callbacks.error(selected, closing());
+        try {
+            await probing.promise;
+            await expect(callbacks.unload()).resolves.toBe(true);
+            await expect(callbacks.foreground()).resolves.toBe(false);
+        } finally {
+            read.resolve(true);
+            await expect(recovery).resolves.toBe(false);
+        }
+        expect(database.reopenDatabase).toHaveBeenCalledOnce();
+        expect(dispatch.pauseDispatch).toHaveBeenCalledOnce();
+        expect(dispatch.resumeDispatch).not.toHaveBeenCalled();
+        expect(services.fileProcessing.commitPendingFileEvents).not.toHaveBeenCalled();
+        expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
+    });
+
+    it("leaves dispatch stopped when a pending file commit fails during unload", async () => {
+        const { callbacks, selected, database, dispatch, services } = setup();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
+        services.fileProcessing.commitPendingFileEvents.mockImplementationOnce(async () => {
+            services.appLifecycle.isUnloading.mockReturnValue(true);
+            return false;
+        });
+
+        await expect(callbacks.error(selected, closing())).resolves.toBe(false);
+        expect(dispatch.pauseDispatch).toHaveBeenCalledOnce();
+        expect(services.databaseEvents.onAfterDatabaseRecovery).not.toHaveBeenCalled();
+        expect(services.appLifecycle.onResuming).not.toHaveBeenCalled();
+    });
+
+    it("skips the resumed hook when unload starts during the resuming hook", async () => {
+        const { callbacks, selected, database, services } = setup();
+        database.canReadCurrentDatabaseInfo.mockRejectedValueOnce(closing());
+        services.appLifecycle.onResuming.mockImplementationOnce(async () => {
+            services.appLifecycle.isUnloading.mockReturnValue(true);
+            return true;
+        });
+
+        await expect(callbacks.error(selected, closing())).resolves.toBe(false);
+        expect(services.appLifecycle.onResuming).toHaveBeenCalledOnce();
+        expect(services.appLifecycle.onResumed).not.toHaveBeenCalled();
     });
 });

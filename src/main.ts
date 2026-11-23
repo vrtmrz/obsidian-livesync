@@ -18,6 +18,7 @@ import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidian
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
 import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
+import type { ObsidianKeyValueDBService } from "./modules/services/ObsidianServices.ts";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import { ObsidianRebuilder } from "@/serviceModules/ObsidianRebuilder.ts";
 import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
@@ -61,8 +62,16 @@ import { useJoinedDevicesFeature } from "./serviceFeatures/useJoinedDevices";
 import { useDatabaseDiagnosticsFeature } from "./serviceFeatures/useDatabaseDiagnostics";
 import { useDatabaseConnectionRecovery } from "./serviceFeatures/databaseConnectionRecovery";
 export type LiveSyncCore = LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>;
+
+// Legacy host event listeners share the event hub within this bundle.
+const vaultRetirements = new WeakMap<App["vault"], Promise<void>>();
+
 export default class ObsidianLiveSyncPlugin extends Plugin {
-    core: LiveSyncCore;
+    core!: LiveSyncCore;
+    private keyValueDB!: ObsidianKeyValueDBService;
+    private unloadedBeforeInitialisation = false;
+    private storageEventManager?: StorageEventManagerObsidian;
+    private unloading?: Promise<void>;
     #readPendingContinuousStart?: ReplicationSchedulingViews["readPendingContinuousStart"];
 
     /** Network failure awaiting a CouchDB LiveSync start in this Vault, if any. */
@@ -90,13 +99,19 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             vaultAccess.dispose();
             return Promise.resolve(true);
         });
-        const storageEventManager = new StorageEventManagerObsidian(this, core, {
-            fileProcessing: services.fileProcessing,
-            setting: services.setting,
-            vaultService: services.vault,
-            storageAccessManager: storageAccessManager,
-            APIService: services.API,
-        });
+        const storageEventManager = new StorageEventManagerObsidian(
+            this,
+            core,
+            {
+                fileProcessing: services.fileProcessing,
+                setting: services.setting,
+                vaultService: services.vault,
+                storageAccessManager: storageAccessManager,
+                APIService: services.API,
+            },
+            this.keyValueDB
+        );
+        this.storageEventManager = storageEventManager;
         useDatabaseConnectionRecovery(core, storageEventManager, () => services.context.isHostActive());
         const storageAccess = new ServiceFileAccessObsidian({
             API: services.API,
@@ -166,11 +181,14 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
-        // Maybe no more need to setNoticeClass, but for safety, set it in the constructor of the main plugin class.
-        // TODO: remove this.
+        if (!vaultRetirements.has(app.vault)) this.initialise();
+    }
+
+    private initialise() {
         setNoticeClass(Notice);
 
         const serviceHub = new ObsidianServiceHub(this);
+        this.keyValueDB = serviceHub.obsidianKeyValueDB;
 
         this.core = new LiveSyncBaseCore(
             serviceHub,
@@ -247,22 +265,54 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
     }
 
     private async _startUp() {
-        if (!(await this.core.services.control.onLoad())) return;
-        const onReady = this.core.services.control.onReady.bind(this.core.services.control);
-        this.app.workspace.onLayoutReady(onReady);
+        for (;;) {
+            const prior = vaultRetirements.get(this.app.vault);
+            if (!prior) break;
+            await prior;
+        }
+        if (this.unloading || this.unloadedBeforeInitialisation) return;
+        if (!this.core) this.initialise();
+        if (!(await this.core.services.control.onLoad()) || this.storageEventManager?.isStopping()) return;
+        this.app.workspace.onLayoutReady(() => {
+            if (!this.storageEventManager?.isStopping()) return this.core.services.control.onReady();
+        });
     }
     override onload() {
         void this._startUp();
     }
     override onunload(): void {
-        void withOwnedResource(this.core.getModule(ModuleLog).logResource, () =>
-            this.core.services.control.onUnload().catch((error) => {
+        if (this.unloading) return;
+        if (!this.core) {
+            this.unloadedBeforeInitialisation = true;
+            return;
+        }
+        this.core.services.appLifecycle?.markIsUnloading?.();
+        const manager = this.storageEventManager;
+        manager?.beginStopWatching?.();
+        const teardown = async () => {
+            try {
+                if (manager) await manager.stopWatching();
+            } finally {
+                await this.core.services.control.onUnload();
+            }
+        };
+        const unloading = withOwnedResource(this.core.getModule(ModuleLog).logResource, async () => {
+            try {
+                await this.keyValueDB.retire(teardown);
+            } catch (error) {
                 this.core.services.API.addLog(
                     "Failed to unload Self-hosted LiveSync: " + String(error),
                     LOG_LEVEL_URGENT,
                     "shutdown"
                 );
-            })
-        );
+            }
+        });
+        this.unloading = unloading;
+        const vault = this.app.vault;
+        const released = () => {
+            if (vaultRetirements.get(vault) === retirement) vaultRetirements.delete(vault);
+        };
+        const retirement = unloading.then(released, released);
+        vaultRetirements.set(vault, retirement);
     }
 }

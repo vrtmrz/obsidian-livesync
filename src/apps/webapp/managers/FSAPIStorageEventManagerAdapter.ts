@@ -1,3 +1,4 @@
+import { readStorageEvents } from "@/common/storageEventValidation";
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
@@ -48,8 +49,7 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.dbName, 1);
 
-            request.onerror = () =>
-                reject(request.error ?? new Error("Failed to open the WebApp snapshot database"));
+            request.onerror = () => reject(request.error ?? new Error("Failed to open the WebApp snapshot database"));
             request.onsuccess = () => resolve(request.result);
 
             request.onupgradeneeded = (event) => {
@@ -61,44 +61,70 @@ class FSAPIPersistenceAdapter implements IStorageEventPersistenceAdapter {
         });
     }
 
+    private async runSnapshotRequest<Result>(
+        mode: IDBTransactionMode,
+        createRequest: (store: IDBObjectStore) => IDBRequest<Result>,
+        failureMessage: string
+    ): Promise<Result> {
+        const db = await this.openDB();
+        try {
+            const transaction = db.transaction(this.storeName, mode);
+            let request: IDBRequest<Result>;
+            try {
+                request = createRequest(transaction.objectStore(this.storeName));
+            } catch (error) {
+                try {
+                    transaction.abort();
+                } catch {
+                    // An inactive transaction can already have ended.
+                }
+                throw error;
+            }
+
+            return await new Promise<Result>((resolve, reject) => {
+                let result: Result;
+                transaction.oncomplete = () => resolve(result);
+                transaction.onerror = transaction.onabort = () =>
+                    reject(transaction.error ?? new Error(failureMessage));
+                request.onsuccess = () => {
+                    result = request.result;
+                };
+                request.onerror = () => reject(request.error ?? new Error(failureMessage));
+            });
+        } finally {
+            db.close();
+        }
+    }
+
     async saveSnapshot(snapshot: (FileEventItem | FileEventItemSentinel)[]): Promise<void> {
         try {
-            const db = await this.openDB();
-            const transaction = db.transaction([this.storeName], "readwrite");
-            const store = transaction.objectStore(this.storeName);
-
-            await new Promise<void>((resolve, reject) => {
-                const request = store.put(snapshot, this.snapshotKey);
-                request.onsuccess = () => resolve();
-                request.onerror = () =>
-                    reject(request.error ?? new Error("Failed to save the WebApp storage-event snapshot"));
-            });
-
-            db.close();
+            await this.runSnapshotRequest(
+                "readwrite",
+                (store) => store.put(snapshot, this.snapshotKey),
+                "Failed to save the WebApp storage-event snapshot"
+            );
         } catch (error) {
             this.addLog(`Failed to save snapshot: ${String(error)}`, LOG_LEVEL_NOTICE, "fsapi-snapshot");
+            throw error;
         }
     }
 
     async loadSnapshot(): Promise<(FileEventItem | FileEventItemSentinel)[] | null> {
-        try {
-            const db = await this.openDB();
-            const transaction = db.transaction([this.storeName], "readonly");
-            const store = transaction.objectStore(this.storeName);
-
-            const result = await new Promise<(FileEventItem | FileEventItemSentinel)[] | null>((resolve, reject) => {
-                const request = store.get(this.snapshotKey);
-                request.onsuccess = () =>
-                    resolve((request.result as (FileEventItem | FileEventItemSentinel)[] | undefined) ?? null);
-                request.onerror = () =>
-                    reject(request.error ?? new Error("Failed to load the WebApp storage-event snapshot"));
-            });
-
-            db.close();
-            return result;
-        } catch {
-            return null;
+        const results = await this.runSnapshotRequest<unknown[]>(
+            "readonly",
+            (store) => store.getAll(this.snapshotKey, 1),
+            "Failed to load the WebApp storage-event snapshot"
+        );
+        if (results.length === 0) return null;
+        const [result] = results;
+        if (!Array.isArray(result)) {
+            throw new Error("The WebApp storage-event snapshot must be an array.");
         }
+        const events = readStorageEvents(result);
+        if (!events) {
+            throw new Error("Invalid event in the WebApp storage-event snapshot.");
+        }
+        return events;
     }
 }
 

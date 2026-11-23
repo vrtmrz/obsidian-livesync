@@ -1,3 +1,4 @@
+import { readCommittedStorageEventSnapshotSource } from "../runner/committedStorageEventSnapshot.ts";
 import { matchesPlainDatabaseText } from "../runner/localFileRetryAssertions.ts";
 import { evalObsidianJson } from "../runner/cli.ts";
 import { discoverObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
@@ -29,6 +30,7 @@ const content = {
 const evaluationHelpers = `
     const core=app.plugins.plugins['obsidian-livesync'].core;
     const manager=core.serviceModules.storageAccess.vaultManager;
+    const readSnapshot=${readCommittedStorageEventSnapshotSource};
     const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
     const require=(condition,message)=>{if(!condition)throw new Error(message);};
     const waitFor=async(predicate,message)=>{
@@ -36,7 +38,7 @@ const evaluationHelpers = `
         while(Date.now()<until){if(await predicate())return;await sleep(25);}
         throw new Error(message);
     };
-    const pendingEvents=async()=>await manager.adapter.persistence.loadSnapshot()??[];
+    const pendingEvents=async()=>(await readSnapshot((await core.kvDB.DB).name)).events??[];
     const eventPaths=event=>{
         const args=event.args??{};
         return [args.file?.path,args.oldFile?.path,args.oldPath,args.renameTarget,args.targetPath,args.path]

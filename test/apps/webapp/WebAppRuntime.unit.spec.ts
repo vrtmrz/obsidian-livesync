@@ -1,11 +1,14 @@
 import { MemoryValueStore } from "@vrtmrz/value-store";
 import { LOG_LEVEL_INFO, type ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LiveSyncBrowserServiceHubOptions } from "@/apps/browser/createLiveSyncBrowserServiceHub";
 
 const runtimeMocks = vi.hoisted(() => {
     const addLog = vi.fn();
     const cleanup = vi.fn();
+    const beginStopWatching = vi.fn();
+    const markIsUnloading = vi.fn();
     const currentSettings = vi.fn();
     const getFiles = vi.fn();
     const onLoad = vi.fn();
@@ -29,7 +32,7 @@ const runtimeMocks = vi.hoisted(() => {
 
     const serviceHub = {
         API: { addLog, webCompatFetch: vi.fn() },
-        appLifecycle: { isReady, markIsReady },
+        appLifecycle: { isReady, markIsReady, markIsUnloading },
         control: { onLoad, onReady, onUnload },
         databaseEvents: { onDatabaseInitialised },
         fileProcessing: { commitPendingFileEvents },
@@ -39,7 +42,7 @@ const runtimeMocks = vi.hoisted(() => {
     const platformModules = {
         fileHandler: {},
         storageAccess: {},
-        storageEventManager: { cleanup },
+        storageEventManager: { beginStopWatching, cleanup },
         vaultAccess: {
             fsapiAdapter: {
                 clearCache,
@@ -52,6 +55,7 @@ const runtimeMocks = vi.hoisted(() => {
     return {
         addLog,
         applicationReady,
+        beginStopWatching,
         options: undefined as LiveSyncBrowserServiceHubOptions<never> | undefined,
         clearCache,
         cleanup,
@@ -61,6 +65,7 @@ const runtimeMocks = vi.hoisted(() => {
         getFiles,
         isReady,
         markIsReady,
+        markIsUnloading,
         onDatabaseInitialised,
         onLoad,
         onReady,
@@ -148,7 +153,7 @@ describe("WebAppRuntime lifecycle", () => {
         runtimeMocks.getFiles.mockResolvedValue([{ path: "one.md" }]);
         runtimeMocks.onDatabaseInitialised.mockResolvedValue(true);
         runtimeMocks.onLoad.mockResolvedValue(true);
-        runtimeMocks.onReady.mockResolvedValue(undefined);
+        runtimeMocks.onReady.mockResolvedValue(false);
         runtimeMocks.onUnload.mockResolvedValue(undefined);
         runtimeMocks.cleanup.mockResolvedValue(undefined);
         runtimeMocks.clearCache.mockReturnValue(undefined);
@@ -327,6 +332,31 @@ describe("WebAppRuntime lifecycle", () => {
         expect(runtimeMocks.onUnload).toHaveBeenCalledOnce();
     });
 
+    it("installs the terminal fence before starting asynchronous watcher cleanup", async () => {
+        const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
+        await runtime.start();
+
+        const cleanup = promiseWithResolvers<void>();
+        runtimeMocks.cleanup.mockReturnValueOnce(cleanup.promise);
+        const shutdown = runtime.shutdown();
+        try {
+            expect(runtimeMocks.markIsUnloading).toHaveBeenCalledOnce();
+            expect(runtimeMocks.beginStopWatching).toHaveBeenCalledOnce();
+            expect(runtimeMocks.cleanup).toHaveBeenCalledOnce();
+            expect(runtimeMocks.markIsUnloading.mock.invocationCallOrder[0]).toBeLessThan(
+                runtimeMocks.beginStopWatching.mock.invocationCallOrder[0]
+            );
+            expect(runtimeMocks.beginStopWatching.mock.invocationCallOrder[0]).toBeLessThan(
+                runtimeMocks.cleanup.mock.invocationCallOrder[0]
+            );
+            expect(runtimeMocks.onUnload).not.toHaveBeenCalled();
+        } finally {
+            cleanup.resolve();
+            await shutdown;
+        }
+        expect(runtimeMocks.onUnload).toHaveBeenCalledOnce();
+    });
+
     it("finalises application readiness after importing local files for optional P2P", async () => {
         const runtime = new WebAppRuntime(createRootHandle(), { deviceValues: new MemoryValueStore() });
         await runtime.start();
@@ -441,6 +471,22 @@ describe("WebAppRuntime lifecycle", () => {
         expect(runtimeMocks.onDatabaseInitialised).toHaveBeenCalledOnce();
         expect(runtimeMocks.commitPendingFileEvents).toHaveBeenCalledOnce();
         expect(runtimeMocks.markIsReady).toHaveBeenCalledOnce();
+    });
+
+    it("rejects failed readiness for a configured Vault before scanning or reporting success", async () => {
+        runtimeMocks.currentSettings.mockReturnValue({ ...unconfiguredSettings, isConfigured: true });
+        const reportStatus = vi.fn();
+        const runtime = new WebAppRuntime(createRootHandle(), { reportStatus, deviceValues: new MemoryValueStore() });
+
+        try {
+            await expect(runtime.start()).rejects.toThrow("Failed to initialise LiveSync");
+            expect(runtimeMocks.scanDirectory).not.toHaveBeenCalled();
+            expect(runtimeMocks.markIsReady).not.toHaveBeenCalled();
+            expect(reportStatus).not.toHaveBeenCalledWith("success", expect.anything());
+            expect(runtimeMocks.onUnload).toHaveBeenCalledOnce();
+        } finally {
+            await runtime.shutdown();
+        }
     });
 
     it("rejects a failed core start after cleaning up the partial runtime", async () => {

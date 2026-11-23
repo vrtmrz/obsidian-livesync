@@ -10,16 +10,26 @@ import {
     isCaseInsensitiveSelection,
     pathWithinConfigDirectory,
 } from "@/features/HiddenFileCommon/optionalFileSyncSelection";
+import type { ObsidianKeyValueDBService } from "@/modules/services/ObsidianServices";
 import { ObsidianStorageEventManagerAdapter } from "./ObsidianStorageEventManagerAdapter";
 
 export class StorageEventManagerObsidian extends StorageEventManagerBase<ObsidianStorageEventManagerAdapter> {
     core: LiveSyncCore;
 
-    // Necessary evil.
-    // cmdHiddenFileSync: HiddenFileSync;
+    private retirement?: Promise<void>;
 
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, dependencies: StorageEventManagerBaseDependencies) {
-        const adapter = new ObsidianStorageEventManagerAdapter(plugin, core, dependencies.fileProcessing);
+    constructor(
+        plugin: ObsidianLiveSyncPlugin,
+        core: LiveSyncCore,
+        dependencies: StorageEventManagerBaseDependencies,
+        keyValueDB: Pick<ObsidianKeyValueDBService, "incrementalStore" | "onStoreReplacement">
+    ) {
+        const adapter = new ObsidianStorageEventManagerAdapter(
+            plugin,
+            () => keyValueDB.incrementalStore,
+            dependencies.fileProcessing,
+            () => this.resetPersistenceState()
+        );
         super(adapter, {
             ...dependencies,
             // Pass `internalFileEvent: true` so ordinary `syncOnlyRegEx` allow-lists and the dot-file gate
@@ -29,6 +39,24 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
                 ((path) => dependencies.vaultService.isTargetFile(path, { internalFileEvent: true })),
         });
         this.core = core;
+        keyValueDB.onStoreReplacement(async () => {
+            this.resetPersistenceState();
+            await adapter.persistence.join();
+        });
+    }
+
+    override resetPersistenceState(): void {
+        this.adapter.persistence.invalidate();
+        super.resetPersistenceState();
+    }
+
+    override beginStopWatching(): void {
+        this.adapter.persistence.abortRestore();
+        super.beginStopWatching();
+    }
+
+    override stopWatching(): Promise<void> {
+        return (this.retirement ??= super.stopWatching().finally(() => this.adapter.persistence.retire()));
     }
 
     protected override async handleFileEvent(event: FileEventItem): Promise<void> {

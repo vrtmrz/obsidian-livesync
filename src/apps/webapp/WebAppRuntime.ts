@@ -311,12 +311,14 @@ export class WebAppRuntime {
                 throw new Error("Failed to initialise LiveSync");
             }
 
-            await this.core.services.control.onReady();
-
-            this.addLog("LiveSync is running", LOG_LEVEL_INFO, "ready");
+            const ready = await this.core.services.control.onReady();
+            const settings = this.core.services.setting.currentSettings();
+            if (!ready && settings.isConfigured) {
+                throw new Error("Failed to initialise LiveSync");
+            }
+            if (ready) this.addLog("LiveSync is running", LOG_LEVEL_INFO, "ready");
 
             // Check if configured
-            const settings = this.core.services.setting.currentSettings();
             if (!settings.isConfigured) {
                 this.addLog("LiveSync is not configured yet", LOG_LEVEL_NOTICE, "configuration");
                 this.showWarning("Please configure CouchDB connection in settings");
@@ -348,14 +350,14 @@ export class WebAppRuntime {
         }
         this.core = null;
         this.paneHost = null;
-        this.addLog("Shutting down...", LOG_LEVEL_INFO, "shutdown");
 
         const storageEventManager = this.platformServiceModules?.storageEventManager;
         this.platformServiceModules = null;
         try {
-            if (storageEventManager) {
-                await storageEventManager.cleanup();
-            }
+            core.services.appLifecycle?.markIsUnloading?.();
+            storageEventManager?.beginStopWatching?.();
+            this.addLog("Shutting down...", LOG_LEVEL_INFO, "shutdown");
+            await storageEventManager?.cleanup();
         } finally {
             await core.services.control.onUnload();
             this.p2p = null;

@@ -54,7 +54,14 @@ export function createDatabaseConnectionRecoveryContext(
     };
 }
 
+function isStopping(context: DatabaseConnectionRecoveryContext): boolean {
+    return context.stopping || context.services.appLifecycle.isUnloading?.() === true;
+}
+
 function reportFailure(context: DatabaseConnectionRecoveryContext, error?: unknown): false {
+    if (isStopping(context)) {
+        return false;
+    }
     context.recoveryFailed = true;
     const log = context.log;
     log(
@@ -73,28 +80,36 @@ async function resumePendingWork(
     resumeReplication: boolean
 ): Promise<boolean> {
     const isHostActive = context.isHostActive;
-    if (context.stopping) {
+    if (isStopping(context)) {
         return false;
     }
     context.lostDatabase = undefined;
     context.paused = false;
     context.dispatch.resumeDispatch();
-    if (!(await context.services.fileProcessing.commitPendingFileEvents())) {
+    const committed = await context.services.fileProcessing.commitPendingFileEvents();
+    if (isStopping(context)) {
+        return false;
+    }
+    if (!committed) {
         context.paused = true;
         await context.dispatch.pauseDispatch();
         return reportFailure(context);
     }
-    if (context.stopping) {
+    const recovered = await context.services.databaseEvents.onAfterDatabaseRecovery();
+    if (isStopping(context)) {
         return false;
     }
-    if (!(await context.services.databaseEvents.onAfterDatabaseRecovery())) {
+    if (!recovered) {
         return reportFailure(context);
     }
     if (resumeReplication && isHostActive() && !context.services.appLifecycle.isSuspended()) {
         await context.services.appLifecycle.onResuming();
+        if (isStopping(context)) {
+            return false;
+        }
         await context.services.appLifecycle.onResumed();
     }
-    return !context.stopping;
+    return !isStopping(context);
 }
 
 /** Read the current connection, then pause, drain, and replace only a failed current owner. */
@@ -106,7 +121,7 @@ async function ensureDatabaseConnection(
     const isHostActive = context.isHostActive;
     const log = context.log;
     if (
-        context.stopping ||
+        isStopping(context) ||
         context.recoveryFailed ||
         !services.appLifecycle.isReady() ||
         !services.setting.currentSettings().isConfigured
@@ -124,14 +139,14 @@ async function ensureDatabaseConnection(
     try {
         readable = await services.database.canReadCurrentDatabaseInfo();
     } catch (error) {
-        if (services.database.localDatabaseDirect !== selected) {
+        if (isStopping(context) || services.database.localDatabaseDirect !== selected) {
             return false;
         }
         log(error, LOG_LEVEL_VERBOSE);
         context.lostDatabase = selected;
         return await replaceLostDatabase(context, selected, resumeReplication);
     }
-    if (!readable) {
+    if (isStopping(context) || !readable) {
         return false;
     }
     if (context.paused) {
@@ -142,7 +157,7 @@ async function ensureDatabaseConnection(
     if (isHostActive() && !(await services.databaseEvents.onAfterDatabaseRecovery())) {
         return reportFailure(context);
     }
-    return true;
+    return !isStopping(context);
 }
 
 /** Pause and drain only a failed owned connection before its existing serialised replacement. */
@@ -151,6 +166,9 @@ async function replaceLostDatabase(
     selected: LiveSyncLocalDB,
     resumeReplication: boolean
 ): Promise<boolean> {
+    if (isStopping(context)) {
+        return false;
+    }
     const { services } = context;
     // Invalidate readiness without clearing application readiness: foreground events still need to run.
     selected.isReady = false;
@@ -158,9 +176,9 @@ async function replaceLostDatabase(
     context.paused = true;
     const dispatchedWork = context.dispatch.pauseDispatch();
     const suspended = await services.appLifecycle.onSuspending();
-    const retired = await services.replicator.onCloseActiveReplication();
+    const retired = !isStopping(context) && (await services.replicator.onCloseActiveReplication());
     await dispatchedWork;
-    if (context.stopping) {
+    if (isStopping(context)) {
         return false;
     }
     if (!suspended || !retired) {
@@ -178,16 +196,19 @@ async function replaceLostDatabase(
         databaseEvents: services.databaseEvents,
         replicator: services.replicator,
     });
-    if (context.stopping) {
+    if (isStopping(context)) {
         return false;
     }
     if (!reopened) {
         // An explicit lifecycle transition may have won the owner lock. Never close its replacement.
-        if (
-            services.database.localDatabaseDirect !== selected &&
-            (await services.database.canReadCurrentDatabaseInfo())
-        ) {
-            return await resumePendingWork(context, resumeReplication);
+        if (services.database.localDatabaseDirect !== selected) {
+            const readable = await services.database.canReadCurrentDatabaseInfo();
+            if (isStopping(context)) {
+                return false;
+            }
+            if (readable) {
+                return await resumePendingWork(context, resumeReplication);
+            }
         }
         return reportFailure(context);
     }
@@ -215,6 +236,9 @@ export function requestDatabaseConnectionRecovery(
 }
 
 function handleBeforeDatabaseResume(context: DatabaseConnectionRecoveryContext): Promise<boolean> {
+    if (isStopping(context)) {
+        return Promise.resolve(false);
+    }
     // The host invokes this once per hidden-to-visible transition, not for every focus event.
     if (!context.running) {
         context.attemptedSinceResume = false;
@@ -229,18 +253,16 @@ async function handleLocalDatabaseError(
     context: DatabaseConnectionRecoveryContext,
     selected: LiveSyncLocalDB
 ): Promise<boolean> {
-    if (context.stopping || selected !== context.services.database.localDatabaseDirect) {
+    if (isStopping(context) || selected !== context.services.database.localDatabaseDirect) {
         return true;
     }
-    return await requestDatabaseConnectionRecovery(context, true);
+    const recovered = await requestDatabaseConnectionRecovery(context, true);
+    return !isStopping(context) && recovered;
 }
 
 function handleBeforeUnload(context: DatabaseConnectionRecoveryContext): Promise<boolean> {
     context.stopping = true;
-    // Existing shutdown flush must be allowed to settle and retain failed operations.
-    if (context.paused) {
-        context.dispatch.resumeDispatch();
-    }
+    context.paused = false;
     return Promise.resolve(true);
 }
 

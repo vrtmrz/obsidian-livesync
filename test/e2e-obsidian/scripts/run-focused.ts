@@ -58,6 +58,7 @@ const focusedScenarios = new Set([
     "optional-file-save-completion",
     "log-lifecycle",
     "livesync-batch",
+    "issue1380-persistence-lifecycle",
     "received-change-readiness",
     "sync-guard",
     "internal-metadata-doctor",

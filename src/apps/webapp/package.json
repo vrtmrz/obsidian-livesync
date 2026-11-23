@@ -12,7 +12,7 @@
         "preview": "vite preview",
         "test:unit": "npm --prefix ../../.. run test:unit -- test/apps/webapp",
         "pretest:browser": "npm run build",
-        "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webapp/browser-smoke.test.ts"
+        "test:browser": "deno test -A --no-check --frozen --config ../../../test/browser-apps/deno.json --lock ../../../test/browser-apps/deno.lock ../../../test/browser-apps/webapp/browser-smoke.test.ts ../../../test/browser-apps/webapp/snapshot-durability.test.ts"
     },
     "dependencies": {
         "octagonal-wheels": "0.1.57"

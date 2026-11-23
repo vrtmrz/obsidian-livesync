@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-test("fetch database continuity is exercised by standard CLI CI", async () => {
+test("fetch continuity and snapshot durability are exercised by standard CLI CI", async () => {
     const ciTasks = JSON.parse(await readFile(new URL("./ci-tasks.json", import.meta.url), "utf8")) as string[];
     const tasks = JSON.parse(await readFile(new URL("./tasks.json", import.meta.url), "utf8")) as Record<
         string,
@@ -14,5 +14,11 @@ test("fetch database continuity is exercised by standard CLI CI", async () => {
     assert(tasks["test:helpers"]?.test?.includes("test-ci-task-contract.ts"));
     assert(ciTasks.includes("test:fetch-database-continuity"), "the continuity task must be in the standard CI suite");
     assert.deepEqual(tasks["test:fetch-database-continuity"]?.test, ["test-fetch-database-continuity.ts"]);
-    assert.match(workflow, /test\/e2e-cli\/ci-tasks\.json/, "the automatic CI matrix must read the authoritative task list");
+    assert(ciTasks.includes("test:snapshot-durability"), "the durability task must be in the standard CI suite");
+    assert.deepEqual(tasks["test:snapshot-durability"]?.test, ["test-snapshot-durability.ts"]);
+    assert.match(
+        workflow,
+        /test\/e2e-cli\/ci-tasks\.json/,
+        "the automatic CI matrix must read the authoritative task list"
+    );
 });

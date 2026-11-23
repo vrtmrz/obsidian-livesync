@@ -17,6 +17,9 @@
     "test:daemon": {
         "test": ["test-daemon.ts"]
     },
+    "test:snapshot-durability": {
+        "test": ["test-snapshot-durability.ts"]
+    },
     "test:daemon-startup": {
         "test": ["test-daemon-startup.ts"]
     },

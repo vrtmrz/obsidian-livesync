@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import type { Page } from "playwright";
+import { readCommittedStorageEventSnapshotSource } from "../runner/committedStorageEventSnapshot.ts";
 import {
     assertCouchDbReachable,
     createCouchDbDatabase,
@@ -80,6 +81,8 @@ async function evaluate<T>(page: Page, code: string): Promise<T> {
     return await page.evaluate(`(async()=>{
         const core=app.plugins.plugins['obsidian-livesync'].core;
         const manager=core.serviceModules.storageAccess.vaultManager;
+        const readSnapshot=${readCommittedStorageEventSnapshotSource};
+        const committedSnapshot=async()=>await readSnapshot((await core.kvDB.DB).name);
         ${code}
     })()`);
 }
@@ -378,7 +381,7 @@ async function main(): Promise<void> {
                             page,
                             `return {
                         events:globalThis.__issue1207Batch.events,changes:globalThis.__issue1207Batch.changes,
-                        pending:(await manager.adapter.persistence.loadSnapshot()).map(item=>({
+                        pending:((await committedSnapshot()).events??[]).map(item=>({
                             type:item.type,path:item.args?.file?.path,oldPath:item.args?.oldPath}))};`
                         ),
                     });
@@ -884,7 +887,7 @@ async function main(): Promise<void> {
                     const inFlight = await snapshot(pair.a, path);
                     const saved = await evaluate<Array<{ path: string }>>(
                         pair.a,
-                        `return (await manager.adapter.persistence.loadSnapshot()).map(item=>({path:item.args?.file?.path}));`
+                        `return ((await committedSnapshot()).events??[]).map(item=>({path:item.args?.file?.path}));`
                     );
                     check(
                         inFlight.rev === initial[0].rev && !inFlight.waiting.some((item) => item.path === path),
@@ -913,7 +916,7 @@ async function main(): Promise<void> {
                     const strictState = await snapshot(pair.a, path);
                     const saved = await evaluate<Array<{ path: string }>>(
                         pair.a,
-                        `return (await manager.adapter.persistence.loadSnapshot()).map(item=>({path:item.args?.file?.path}));`
+                        `return ((await committedSnapshot()).events??[]).map(item=>({path:item.args?.file?.path}));`
                     );
                     if (!stopBeforeProvenance)
                         check(
@@ -939,7 +942,7 @@ async function main(): Promise<void> {
                         pending,
                         persisted: await evaluate(
                             pair.a,
-                            `const events=await manager.adapter.persistence.loadSnapshot();
+                            `const {events}=await committedSnapshot();
                         const settings=core.services.setting.currentSettings();
                         return {initialized:await core.kvDB.get('initialized'),restorationRequested:manager.snapShotRestored!==null,
                             settings:{isConfigured:settings.isConfigured,liveSync:settings.liveSync,batchSave:settings.batchSave,batchSaveInLiveSync:settings.batchSaveInLiveSync,
@@ -974,7 +977,7 @@ async function main(): Promise<void> {
                     state: await snapshot(pair.a, path),
                     persisted: await evaluate(
                         pair.a,
-                        `const events=await manager.adapter.persistence.loadSnapshot();
+                        `const {events}=await committedSnapshot();
                         const settings=core.services.setting.currentSettings();
                         return {initialized:await core.kvDB.get('initialized'),restorationRequested:manager.snapShotRestored!==null,
                             settings:{isConfigured:settings.isConfigured,liveSync:settings.liveSync,batchSave:settings.batchSave,batchSaveInLiveSync:settings.batchSaveInLiveSync,
@@ -1092,7 +1095,7 @@ async function main(): Promise<void> {
                 const durable = await snapshot(pair.a, path);
                 const pending = await evaluate<Array<{ path: string }>>(
                     pair.a,
-                    "return (await manager.adapter.persistence.loadSnapshot()).map(item=>({path:item.args?.file?.path}));"
+                    "return ((await committedSnapshot()).events??[]).map(item=>({path:item.args?.file?.path}));"
                 );
                 check(durable.rev !== initial[0].rev, "The database write did not complete before interruption");
                 check(
@@ -1133,13 +1136,13 @@ async function main(): Promise<void> {
                     `
                     await manager.waitForIdle();
                     const persistence=manager.adapter.persistence;
-                    const original=persistence.saveSnapshot.bind(persistence);
-                    persistence.saveSnapshot=async events=>{
-                        if(events.some(item=>item.type==='CHANGED'&&item.args?.file?.path===${JSON.stringify(path)})) {
+                    const original=persistence.applySnapshotDelta.bind(persistence);
+                    persistence.applySnapshotDelta=async delta=>{
+                        if(delta.upsert.some(({event:item})=>item.type==='CHANGED'&&item.args?.file?.path===${JSON.stringify(path)})) {
                             globalThis.__issue1207Batch.beforeSnapshotPaused=true;
                             await new Promise(resolve=>setTimeout(resolve,30000));
                         }
-                        return await original(events);
+                        return await original(delta);
                     };
                     await app.vault.modify(app.vault.getFileByPath(${JSON.stringify(path)}),
                         "Recovered without an event snapshot\\n",{mtime:${initial[0].databaseMtime}});
@@ -1153,7 +1156,7 @@ async function main(): Promise<void> {
                 const state = await snapshot(pair.a, path);
                 const persisted = await evaluate<Array<{ path: string }>>(
                     pair.a,
-                    "return (await manager.adapter.persistence.loadSnapshot()??[]).map(item=>({path:item.args?.file?.path}));"
+                    "return ((await committedSnapshot()).events??[]).map(item=>({path:item.args?.file?.path}));"
                 );
                 check(state.rev === initial[0].rev, "The unsaved edit reached the database before interruption");
                 check(state.fileMtime === state.databaseMtime, "Raw mtimes differ before interruption");

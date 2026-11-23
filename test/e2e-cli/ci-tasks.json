@@ -6,6 +6,7 @@
     "test:mirror",
     "test:daemon",
     "test:daemon-startup",
+    "test:snapshot-durability",
     "test:daemon-watch-paths",
     "test:legacy-case-lookup",
     "test:push-pull",

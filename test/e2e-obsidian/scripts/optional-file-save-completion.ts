@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { evalObsidianJson } from "../runner/cli.ts";
+import { readCommittedStorageEventSnapshotSource } from "../runner/committedStorageEventSnapshot.ts";
 import { requireObsidianCli, requireObsidianBinary } from "../runner/environment.ts";
 import {
     createE2eCouchDbPluginData,
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
             `(async()=>{
             const core=app.plugins.plugins['obsidian-livesync'].core;
             const manager=core.serviceModules.storageAccess.vaultManager;
+            const readSnapshot=${readCommittedStorageEventSnapshotSource};
             const config=core.getAddOn('ConfigSync');
             const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
             const require=(condition,message)=>{if(!condition)throw new Error(message);};
@@ -85,7 +87,7 @@ async function main(): Promise<void> {
                     await sleep(20);
                 }
             };
-            const pending=async path=>(await manager.adapter.persistence.loadSnapshot()??[])
+            const pending=async path=>((await readSnapshot((await core.kvDB.DB).name)).events??[])
                 .some(event=>event.args?.file?.path===path);
             const entry=async path=>await core.localDatabase.getDBEntry(path,undefined,false,true);
             const contents=doc=>Array.isArray(doc.data)?doc.data.join(''):doc.data;

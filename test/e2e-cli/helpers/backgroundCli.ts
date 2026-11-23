@@ -1,5 +1,5 @@
 import { writeSync } from "node:fs";
-import { spawnProcess, type RunningProcess } from "./process.ts";
+import { spawnProcess, type ProcessStatus, type RunningProcess } from "./process.ts";
 import { CLI_DIR, TEE_ENABLED, formatTeeCommand, createLineTeeWriter } from "./cli.ts";
 import { join } from "node:path";
 
@@ -92,15 +92,19 @@ export class BackgroundCliProcess {
         throw new Error(`Timed out waiting for '${needle}'\n${this.combined}`);
     }
 
+    async waitForExit(): Promise<ProcessStatus> {
+        const status = await this.child.status;
+        await Promise.all([this.#stdoutDone, this.#stderrDone]);
+        return status;
+    }
+
     async stop(): Promise<number> {
         try {
             this.child.kill("SIGTERM");
         } catch {
             // ignore already-exited processes
         }
-        const status = await this.child.status;
-        await Promise.all([this.#stdoutDone, this.#stderrDone]);
-        return status.code;
+        return (await this.waitForExit()).code;
     }
 }
 

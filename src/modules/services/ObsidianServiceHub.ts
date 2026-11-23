@@ -25,7 +25,6 @@ import { ObsidianVaultService } from "./ObsidianVaultService";
 import { ObsidianUIService } from "./ObsidianUIService";
 import { createScreenWakeLockManager } from "octagonal-wheels/browser/wakeLock";
 import { PouchDB } from "@vrtmrz/livesync-commonlib/compat/pouchdb/pouchdb-browser";
-import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
 import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
 import { KeyedNoticeManager } from "@vrtmrz/obsidian-plugin-kit/notice";
 import { setLang } from "@/common/translation";
@@ -33,6 +32,8 @@ import { setLang } from "@/common/translation";
 // InjectableServiceHub
 
 export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceContext> {
+    readonly obsidianKeyValueDB: ObsidianKeyValueDBService;
+
     constructor(plugin: ObsidianLiveSyncPlugin) {
         const notices = new KeyedNoticeManager();
         const noticeGroups = new ObsidianNoticeGroupManager();
@@ -82,7 +83,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
             API: API,
         });
         const keyValueDB = new ObsidianKeyValueDBService(context, {
-            openKeyValueDatabase: OpenKeyValueDatabase,
             appLifecycle: appLifecycle,
             databaseEvents: databaseEvents,
             vault: vault,
@@ -142,5 +142,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         } satisfies Required<ServiceInstances<ObsidianServiceContext>>;
 
         super(context, serviceInstancesToInit);
+        this.obsidianKeyValueDB = keyValueDB;
     }
 }

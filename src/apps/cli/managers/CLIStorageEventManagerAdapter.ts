@@ -1,3 +1,4 @@
+import { readStorageEvents } from "@/common/storageEventValidation";
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
@@ -43,16 +44,30 @@ class CLIPersistenceAdapter implements IStorageEventPersistenceAdapter {
             writeFileAtomically(this.snapshotPath(), JSON.stringify(snapshot, null, 2));
         } catch (error) {
             this.reportDiagnostic("Failed to save snapshot:", error);
+            throw error;
         }
     }
 
     async loadSnapshot(): Promise<(FileEventItem | FileEventItemSentinel)[] | null> {
+        const snapshotPath = this.snapshotPath();
+        let content: string;
         try {
-            const content = await fs.readFile(this.snapshotPath(), "utf-8");
-            return JSON.parse(content) as (FileEventItem | FileEventItemSentinel)[];
-        } catch {
-            return null;
+            content = await fs.readFile(snapshotPath, "utf-8");
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+                return null;
+            }
+            throw error;
         }
+        const snapshot: unknown = JSON.parse(content);
+        if (!Array.isArray(snapshot)) {
+            throw new Error("The CLI storage-event snapshot must be an array.");
+        }
+        const events = readStorageEvents(snapshot);
+        if (!events) {
+            throw new Error("Invalid event in the CLI storage-event snapshot.");
+        }
+        return events;
     }
 }
 

@@ -150,7 +150,7 @@ function createShutdownScript(options: {
         });
 
         const originalAddLog=module.__addLog;
-        const originalConsoleLog=console.log;
+        const originalConsoleDebug=console.debug;
         const consoleMarkers=[
             fixtures.duringMarker,
             fixtures.failureMarker,
@@ -158,7 +158,7 @@ function createShutdownScript(options: {
             fixtures.reloadMarker,
             fixtures.oldReloadMarker
         ].filter(Boolean);
-        console.log=function(...args) {
+        console.debug=function(...args) {
             try {
                 const entry=args[0];
                 if(entry && typeof entry==="object" && "message" in entry) {
@@ -179,7 +179,7 @@ function createShutdownScript(options: {
                     });
                 }
             } catch {}
-            return originalConsoleLog.apply(this,args);
+            return originalConsoleDebug.apply(this,args);
         };
         module.__addLog=function(message,level,key) {
             state.uiAddLogCalls++;
@@ -232,7 +232,7 @@ function createShutdownScript(options: {
             module.__addLog=originalAddLog;
             resource.dispose=originalDispose;
             database.close=originalClose;
-            console.log=originalConsoleLog;
+            console.debug=originalConsoleDebug;
         };
 
         const run=async()=>{
@@ -289,7 +289,7 @@ function createShutdownScript(options: {
                     entry.message===afterMessage) &&
                     state.consoleLogs.some(entry=>entry.marker===fixtures.afterMarker &&
                         entry.message===afterUnknownMessage),
-                "The old API did not forward its post-disposal messages to console.log"
+                "The old API did not forward its post-disposal messages to console.debug"
             );
             const afterErrorLogs=state.consoleLogs.filter(entry=>entry.marker===fixtures.afterMarker &&
                 entry.message===afterMessage);
@@ -428,7 +428,7 @@ async function runCase(options: {
                     await waitFor(
                         ()=>state.consoleLogs.some(entry=>entry.marker===oldApiMarker &&
                             entry.message===oldApiMessage),
-                        "The old API did not forward its post-reload Error to console.log"
+                        "The old API did not forward its post-reload Error to console.debug"
                     );
                     const oldApiLogs=state.consoleLogs.filter(entry=>entry.marker===oldApiMarker);
                     require(oldApiLogs.length===1,"The old API post-reload Error was not logged exactly once");

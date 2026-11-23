@@ -7,11 +7,15 @@ import { InjectableReplicatorService } from "@vrtmrz/livesync-commonlib/compat/s
 import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTestService";
 import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
-import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
+import {
+    KeyValueDBService,
+    type KeyValueDBDependencies,
+} from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import type { ReplicatorServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
 import type { ObsidianLiveSyncSettings } from "@vrtmrz/livesync-commonlib/compat/common/types";
+import { IDBKeyValueDatabase, KeyValueDatabaseOwner, type IncrementalKeyValueStore } from "@/common/KeyValueDBv2";
 
 type ActivityOptions = {
     label?: string;
@@ -81,6 +85,42 @@ export class ObsidianTweakValueService extends InjectableTweakValueService<Obsid
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService<ObsidianServiceContext> {}
 
-export class ObsidianKeyValueDBService extends KeyValueDBService<ObsidianServiceContext> {}
+export class ObsidianKeyValueDBService extends KeyValueDBService<ObsidianServiceContext> {
+    private beforeStoreReplacement?: () => Promise<void>;
+    private readonly owner = new KeyValueDatabaseOwner(async () => {
+        await this.beforeStoreReplacement?.();
+    });
+    private readonly vaultForDatabaseKey: KeyValueDBDependencies<ObsidianServiceContext>["vault"];
+
+    constructor(
+        context: ObsidianServiceContext,
+        dependencies: Omit<KeyValueDBDependencies<ObsidianServiceContext>, "openKeyValueDatabase">
+    ) {
+        super(context, { ...dependencies, openKeyValueDatabase: (key) => this.owner.open(key) });
+        this.vaultForDatabaseKey = dependencies.vault;
+    }
+
+    get incrementalStore(): IncrementalKeyValueStore {
+        const store = this.kvDB;
+        if (!(store instanceof IDBKeyValueDatabase)) {
+            throw new Error("Obsidian key-value store does not support incremental persistence");
+        }
+        return store;
+    }
+
+    onStoreReplacement(beforeStoreReplacement: () => Promise<void>): void {
+        this.beforeStoreReplacement = beforeStoreReplacement;
+    }
+
+    retire(teardown: () => Promise<void>): Promise<void> {
+        let fallbackDbKey: string | undefined;
+        try {
+            fallbackDbKey = this.vaultForDatabaseKey.getVaultName() + "-livesync-kv";
+        } catch {
+            // Settings may still be loading when the plug-in is disabled.
+        }
+        return this.owner.retire(teardown, fallbackDbKey);
+    }
+}
 
 export class ObsidianControlService extends ControlService<ObsidianServiceContext> {}

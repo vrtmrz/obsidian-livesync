@@ -1,8 +1,9 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import type { IStorageEventWatchHandlers } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { CLIFileNameSource } from "@/apps/cli/storage/CLIFileNameSource";
 import type { NodeFile } from "@/apps/cli/adapters/NodeTypes";
-import { fs, os, path } from "@vrtmrz/livesync-commonlib/node";
+import { fs, fsPromises, os, path } from "@vrtmrz/livesync-commonlib/node";
+import type { CliDiagnosticReporter } from "../cliOutput";
 import { runtimeScopeDirectory } from "../runtimeState";
 
 // ── chokidar mock ──────────────────────────────────────────────────────────────
@@ -20,6 +21,11 @@ const mockWatcher = {
 vi.mock("chokidar", () => ({
     watch: vi.fn(() => mockWatcher),
 }));
+
+vi.mock("@vrtmrz/livesync-commonlib/node", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@vrtmrz/livesync-commonlib/node")>();
+    return { ...actual, fs: { ...actual.fs }, fsPromises: { ...actual.fsPromises } };
+});
 
 import * as chokidar from "chokidar";
 import { CLIStorageEventManagerAdapter } from "./CLIStorageEventManagerAdapter";
@@ -66,6 +72,93 @@ describe("CLIStorageEventManagerAdapter", () => {
         } finally {
             fs.rmSync(directory, { recursive: true, force: true });
         }
+    });
+
+    describe("snapshot durability", () => {
+        let directory: string;
+        let snapshotPath: string;
+        const reportDiagnostic = vi.fn<CliDiagnosticReporter>();
+        let persistence: CLIStorageEventManagerAdapter["persistence"];
+        const file = {
+            path: "retained.md",
+            name: "retained.md",
+            stat: { type: "file", ctime: 1, mtime: 1, size: 1 },
+        };
+
+        beforeEach(() => {
+            directory = fs.mkdtempSync(path.join(os.tmpdir(), "livesync-snapshot-"));
+            snapshotPath = path.join(directory, ".livesync-snapshot.json");
+            persistence = new CLIStorageEventManagerAdapter(directory, undefined, false, reportDiagnostic).persistence;
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+            fs.rmSync(directory, { recursive: true, force: true });
+        });
+
+        it("rejects a failed atomic replacement and preserves the previous snapshot", async () => {
+            const previous = [{ type: "SENTINEL_FLUSH" }];
+            fs.writeFileSync(snapshotPath, JSON.stringify(previous));
+            const error = Object.assign(new Error("Rename denied"), { code: "EACCES" });
+            vi.spyOn(fs, "renameSync").mockImplementationOnce(() => {
+                throw error;
+            });
+
+            await expect(persistence.saveSnapshot([])).rejects.toBe(error);
+            expect(reportDiagnostic).toHaveBeenCalledWith("Failed to save snapshot:", error);
+            await expect(persistence.loadSnapshot()).resolves.toEqual(previous);
+            expect(fs.readdirSync(directory)).toEqual([path.basename(snapshotPath)]);
+        });
+
+        it("returns null when the file is missing", async () => {
+            await expect(persistence.loadSnapshot()).resolves.toBeNull();
+        });
+
+        it("loads an older entry without a queue key and leaves the file unchanged", async () => {
+            const event = { type: "CHANGED", args: { file } };
+            const contents = JSON.stringify([event]);
+            fs.writeFileSync(snapshotPath, contents);
+
+            await expect(persistence.loadSnapshot()).resolves.toEqual([{ ...event, key: file.path }]);
+            expect(fs.readFileSync(snapshotPath, "utf8")).toBe(contents);
+        });
+
+        it("rejects malformed JSON", async () => {
+            fs.writeFileSync(snapshotPath, "[");
+            await expect(persistence.loadSnapshot()).rejects.toBeInstanceOf(SyntaxError);
+        });
+
+        it.each(["{}", "null", '"snapshot"'])("rejects the non-array JSON value %s", async (content) => {
+            fs.writeFileSync(snapshotPath, content);
+            await expect(persistence.loadSnapshot()).rejects.toThrow(/array/i);
+        });
+
+        it.each([{}, { type: "CHANGED", args: {} }, { type: "CHANGED", args: { file: { path: file.path } } }])(
+            "rejects malformed event %j and preserves the snapshot file",
+            async (event) => {
+                const content = JSON.stringify([event]);
+                fs.writeFileSync(snapshotPath, content);
+                await expect(persistence.loadSnapshot()).rejects.toThrow(
+                    "Invalid event in the CLI storage-event snapshot"
+                );
+                expect(fs.readFileSync(snapshotPath, "utf8")).toBe(content);
+            }
+        );
+
+        it("rejects a non-boolean cancellation flag and preserves the snapshot file", async () => {
+            const contents = JSON.stringify([{ type: "CHANGED", key: file.path, args: { file }, cancelled: "false" }]);
+            fs.writeFileSync(snapshotPath, contents);
+
+            await expect(persistence.loadSnapshot()).rejects.toThrow("Invalid event in the CLI storage-event snapshot");
+            expect(fs.readFileSync(snapshotPath, "utf8")).toBe(contents);
+        });
+
+        it.each(["EACCES", "EIO"])("rejects a read failure with code %s", async (code) => {
+            const error = Object.assign(new Error("Cannot read snapshot"), { code });
+            vi.spyOn(fsPromises, "readFile").mockRejectedValueOnce(error);
+
+            await expect(persistence.loadSnapshot()).rejects.toBe(error);
+        });
     });
 
     it("filters only checked Vault-relative candidates and keeps its root watchable", async () => {

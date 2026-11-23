@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appendFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as chokidar from "chokidar";
@@ -23,6 +24,7 @@ import type { NodeFile, NodeFolder } from "./adapters/NodeTypes";
 import { runCommand } from "./commands/runCommand";
 import { createDefaultCliSettings } from "./cliSettingsDefaults";
 import { main, type CliCommandRunner } from "./main";
+import { ReconstructionState } from "./runtimeState";
 import { cloneSettings } from "./settingsPersistence";
 import type { CLICommand } from "./commands/types";
 
@@ -87,10 +89,9 @@ describe("CLI database preparation", () => {
         await rm(directory, { recursive: true, force: true });
     });
 
-    async function start(
+    function run(
         command: CLICommand,
         runner: CliCommandRunner,
-        exitCode = 1,
         force = false,
         writeSettings = false,
         extraArgs: readonly string[] = []
@@ -109,8 +110,19 @@ describe("CLI database preparation", () => {
             ...extraArgs,
             command,
         ];
+        return main(standardIo, runner);
+    }
+
+    async function start(
+        command: CLICommand,
+        runner: CliCommandRunner,
+        exitCode = 1,
+        force = false,
+        writeSettings = false,
+        extraArgs: readonly string[] = []
+    ) {
         // Daemon probes return false so the real core unloads without keeping a daemon alive.
-        await expect(main(standardIo, runner)).rejects.toThrow(`__EXIT__:${exitCode}`);
+        await expect(run(command, runner, force, writeSettings, extraArgs)).rejects.toThrow(`__EXIT__:${exitCode}`);
     }
 
     it.each(["fetch", "rebuild"] as const)("does not replay the old reflection snapshot before %s", async (command) => {
@@ -843,6 +855,218 @@ describe("CLI database preparation", () => {
 
         expect(runner).toHaveBeenCalledOnce();
         expect(storedPaths).toEqual([]);
+    });
+
+    function deferUnload() {
+        const originalUnload = ControlService.prototype.onUnload;
+        const started = promiseWithResolvers<void>();
+        const release = promiseWithResolvers<void>();
+        const unload = vi.spyOn(ControlService.prototype, "onUnload").mockImplementation(async function (
+            this: ControlService
+        ) {
+            started.resolve();
+            await release.promise;
+            await originalUnload.call(this);
+        });
+        return { unload, started: started.promise, release: release.resolve };
+    }
+
+    it("handles overlapping SIGINT and SIGTERM with one deferred unload and exit", async () => {
+        const { unload, started, release } = deferUnload();
+        const commandStarted = promiseWithResolvers<void>();
+        const keepHosting = promiseWithResolvers<boolean>();
+        const exited = promiseWithResolvers<void>();
+        vi.mocked(process.exit).mockImplementation(() => {
+            exited.resolve();
+            return undefined as never;
+        });
+        const running = run("p2p-host", async () => {
+            commandStarted.resolve();
+            return keepHosting.promise;
+        });
+        try {
+            await commandStarted.promise;
+            process.emit("SIGINT", "SIGINT");
+            await started;
+            process.emit("SIGTERM", "SIGTERM");
+            expect(unload).toHaveBeenCalledOnce();
+            expect(process.exit).not.toHaveBeenCalled();
+        } finally {
+            release();
+            await exited.promise;
+            keepHosting.resolve(true);
+            await running;
+        }
+
+        expect(unload).toHaveBeenCalledOnce();
+        expect(process.exit).toHaveBeenCalledExactlyOnceWith(0);
+        for (const [signal, originalHandlers] of signalHandlers) {
+            expect(process.listeners(signal)).toEqual([...originalHandlers]);
+        }
+    });
+
+    it.each(["SIGINT", "SIGTERM"] as const)("handles a late command rejection during %s shutdown", async (signal) => {
+        const exit = vi.mocked(process.exit).mockImplementation(() => undefined as never);
+        const { unload, started, release } = deferUnload();
+        const commandStarted = promiseWithResolvers<void>();
+        const command = promiseWithResolvers<boolean>();
+        const running = run("p2p-host", () => {
+            commandStarted.resolve();
+            return command.promise;
+        });
+        try {
+            await commandStarted.promise;
+            process.emit(signal, signal);
+            await started;
+            command.reject(new Error("Command interrupted by unload"));
+            await new Promise<void>((resolve) => setImmediate(resolve));
+            expect(exit).not.toHaveBeenCalled();
+        } finally {
+            command.resolve(true);
+            release();
+            await running;
+        }
+        expect(unload).toHaveBeenCalledOnce();
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
+    });
+
+    it.each(["SIGINT", "SIGTERM"] as const)("unloads on %s while onLoad remains held", async (signal) => {
+        vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+        const releaseLoad = promiseWithResolvers<boolean>();
+        const load = vi.spyOn(ControlService.prototype, "onLoad").mockReturnValue(releaseLoad.promise);
+        const ready = vi.spyOn(ControlService.prototype, "onReady");
+        const unload = vi.spyOn(ControlService.prototype, "onUnload");
+        const runner = vi.fn<CliCommandRunner>();
+        const running = run("daemon", runner);
+        try {
+            await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+            process.emit(signal, signal);
+
+            await vi.waitFor(() => expect(process.exit).toHaveBeenCalledExactlyOnceWith(0));
+            expect(unload).toHaveBeenCalledOnce();
+        } finally {
+            releaseLoad.resolve(true);
+            await running;
+        }
+        expect(ready).not.toHaveBeenCalled();
+        expect(runner).not.toHaveBeenCalled();
+        expect(unload).toHaveBeenCalledOnce();
+    });
+
+    it.each(["SIGINT", "SIGTERM"] as const)("unloads on %s while startup is waiting for replay", async (signal) => {
+        await start("ls", async (_options, { core }) => {
+            await core.services.keyValueDB.kvDB.set("initialized", true);
+            return false;
+        });
+        const exit = vi
+            .spyOn(process, "exit")
+            .mockClear()
+            .mockImplementation(() => undefined as never);
+        const replay = promiseWithResolvers<void>();
+        const restore = vi
+            .spyOn(StorageEventManagerCLI.prototype, "_restoreFromSnapshot")
+            .mockReturnValue(replay.promise);
+        const ready = vi.spyOn(ControlService.prototype, "onReady");
+        const unload = vi.spyOn(ControlService.prototype, "onUnload");
+        const runner = vi.fn<CliCommandRunner>();
+
+        const running = run("daemon", runner);
+        try {
+            await vi.waitFor(() => expect(restore).toHaveBeenCalledOnce());
+            expect(ready).toHaveBeenCalledOnce();
+            process.emit(signal, signal);
+
+            await vi.waitFor(() => expect(exit).toHaveBeenCalledExactlyOnceWith(0));
+            expect(unload).toHaveBeenCalledOnce();
+            expect(runner).not.toHaveBeenCalled();
+        } finally {
+            replay.resolve();
+            await running;
+            await ready.mock.results[0]?.value;
+        }
+        expect(unload).toHaveBeenCalledOnce();
+        expect(runner).not.toHaveBeenCalled();
+        expect(exit).toHaveBeenCalledExactlyOnceWith(0);
+    });
+
+    it("shares a rejecting unload between command completion and shutdown", async () => {
+        const release = promiseWithResolvers<boolean>();
+        const unload = vi.spyOn(ControlService.prototype, "onUnload");
+        const rejected = vi.fn();
+        const runner = vi.fn<CliCommandRunner>(async (_options, { core }) => {
+            core.services.appLifecycle.onBeforeUnload.addHandler(() => release.promise);
+            return true;
+        });
+        const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+        process.on("unhandledRejection", rejected);
+
+        const running = run("ls", runner);
+        try {
+            await vi.waitFor(() => expect(unload).toHaveBeenCalledOnce());
+            process.emit("SIGTERM", "SIGTERM");
+            process.emit("SIGINT", "SIGINT");
+            expect(exit).not.toHaveBeenCalled();
+            release.resolve(false);
+
+            await running;
+            await new Promise<void>((resolve) => setImmediate(resolve));
+            expect(runner).toHaveBeenCalledOnce();
+            await expect(unload.mock.results[0].value).rejects.toThrow("Unload preparation failed");
+            expect(unload).toHaveBeenCalledOnce();
+            expect(exit).toHaveBeenCalledExactlyOnceWith(1);
+            expect(standardIo.writeStderr.mock.calls.flat().join("")).toContain("Unload preparation failed");
+            expect(rejected).not.toHaveBeenCalled();
+        } finally {
+            release.resolve(false);
+            await running;
+            process.off("unhandledRejection", rejected);
+        }
+    });
+
+    it("waits for normal unload and reconstruction commit when a signal arrives", async () => {
+        const { unload, started, release } = deferUnload();
+        const commit = vi.spyOn(ReconstructionState.prototype, "commit");
+        vi.mocked(process.exit).mockImplementation(() => undefined as never);
+        const running = run(
+            "rebuild",
+            async (_options, { core }) => {
+                await core.services.setting.applyPartial({ additionalSuffixOfDatabaseName: "reconstructed" });
+                return true;
+            },
+            true
+        );
+        try {
+            await started;
+            process.emit("SIGINT", "SIGINT");
+            process.emit("SIGTERM", "SIGTERM");
+            expect(unload).toHaveBeenCalledOnce();
+            expect(process.exit).not.toHaveBeenCalled();
+            expect(commit).not.toHaveBeenCalled();
+        } finally {
+            release();
+            await running;
+        }
+
+        expect(unload).toHaveBeenCalledOnce();
+        expect(commit).toHaveBeenCalledOnce();
+        expect(process.exit).toHaveBeenCalledExactlyOnceWith(0);
+        expect(commit.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(process.exit).mock.invocationCallOrder[0]);
+        expect(JSON.parse(await readFile(settingsPath, "utf-8"))).toMatchObject({
+            additionalSuffixOfDatabaseName: "reconstructed",
+        });
+    });
+
+    it("unloads before exiting when onLoad returns false", async () => {
+        vi.spyOn(ControlService.prototype, "onLoad").mockResolvedValue(false);
+        const unload = vi.spyOn(ControlService.prototype, "onUnload").mockResolvedValue();
+        const runner = vi.fn<CliCommandRunner>();
+
+        await start("ls", runner);
+
+        expect(runner).not.toHaveBeenCalled();
+        expect(unload).toHaveBeenCalledOnce();
+        expect(process.exit).toHaveBeenCalledExactlyOnceWith(1);
+        expect(unload.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(process.exit).mock.invocationCallOrder[0]);
     });
 
     it.each(["daemon", "p2p-host"] as const)(

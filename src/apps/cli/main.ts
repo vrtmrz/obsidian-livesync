@@ -17,6 +17,7 @@ import {
     LOG_LEVEL_URGENT,
     LOG_LEVEL_NOTICE,
 } from "octagonal-wheels/common/logger";
+import { promiseWithResolvers } from "octagonal-wheels/promises";
 import { runCommand } from "./commands/runCommand";
 import { isCLICommand } from "./commands/types";
 import type { CLICommand, CLICommandContext, CLIOptions } from "./commands/types";
@@ -624,10 +625,12 @@ export async function main(
         },
         vaultSyncMode?.startupDatabaseOptions
     );
-    if (!replicationScheduling) {
+    const commandReplicationScheduling = replicationScheduling;
+    if (!commandReplicationScheduling) {
         throw new Error("Replication scheduling was not provided during core feature composition.");
     }
 
+    let shutdownSignal: "SIGINT" | "SIGTERM" | undefined;
     let initialFetchPathIdentity: 0 | 1 | undefined;
     if (options.command === "fetch") {
         core.services.appLifecycle.onSettingLoaded.addHandler(async () => {
@@ -635,31 +638,31 @@ export async function main(
             const version = await resolveInitialFetchPathIdentity(settings, () =>
                 core.services.replicator.createRemoteResource(REMOTE_RESOURCE_KINDS.CONNECTION, settings)
             );
+            if (shutdownSignal) return false;
             if (version !== undefined) {
                 initialFetchPathIdentity = version;
                 await core.services.setting.applyPartial({ pathNormalizationVersion: version });
+                if (shutdownSignal) return false;
                 await core.services.setting.saveSettingData();
             }
             return true;
         });
     }
 
-    // Setup signal handlers for graceful shutdown
-    const shutdown = async (signal: string) => {
+    let unloadPromise: Promise<void> | undefined;
+    const unload = () => (unloadPromise ??= Promise.resolve().then(() => core.services.control.onUnload()));
+
+    const shutdownRequested = promiseWithResolvers<void>();
+    let canInterrupt = true;
+    const requestShutdown = (signal: "SIGINT" | "SIGTERM") => {
+        if (shutdownSignal) return;
+        shutdownSignal = signal;
         writeStdoutLine(standardIo);
         writeStdoutLine(standardIo, `[Shutdown] Received ${signal}, shutting down gracefully...`);
-        try {
-            await core.services.control.onUnload();
-            writeStdoutLine(standardIo, `[Shutdown] Complete`);
-            process.exit(0);
-        } catch (error) {
-            writeStderrLine(standardIo, `[Shutdown] Error:`, error);
-            process.exit(1);
-        }
+        shutdownRequested.resolve();
     };
-
-    process.on("SIGINT", () => void shutdown("SIGINT"));
-    process.on("SIGTERM", () => void shutdown("SIGTERM"));
+    const onSigint = () => requestShutdown("SIGINT");
+    const onSigterm = () => requestShutdown("SIGTERM");
 
     const writeSettingsAtomically = async (content: string | undefined): Promise<void> => {
         if (content === undefined || content === originalSettingsText) return;
@@ -669,22 +672,19 @@ export async function main(
         }
     };
 
-    // Start the core
-    let unloaded = false;
-    const unload = async () => {
-        if (unloaded) return;
-        unloaded = true;
-        await core.services.control.onUnload();
-    };
-    try {
+    const run = async () => {
         infoLog(`[Starting] Initializing LiveSync...`);
 
         const loadResult = await core.services.control.onLoad();
+        if (shutdownSignal) return;
         if (!loadResult) {
             writeStderrLine(standardIo, `[Error] Failed to initialize LiveSync`);
-            process.exit(1);
+            process.exitCode = 1;
+            return;
         }
-        if ((await core.services.keyValueDB.kvDB.get("cli-legacy-state-reviewed")) !== true) {
+        const legacyStateReviewed = await core.services.keyValueDB.kvDB.get("cli-legacy-state-reviewed");
+        if (shutdownSignal) return;
+        if (legacyStateReviewed !== true) {
             const legacyIssues = inspectLegacyState(databasePath, vaultPath);
             if (legacyIssues.length > 0) {
                 const reasons = {
@@ -736,13 +736,10 @@ export async function main(
             P2P_AutoWatchPeers: settingsBeforeSuspend.P2P_AutoWatchPeers,
         };
         await core.services.setting.suspendAllSync();
+        if (shutdownSignal) return;
         const settingsAfterSuspend = cloneSettings(core.services.setting.currentSettings());
-        let readyResult = false;
-        try {
-            readyResult = await core.services.control.onReady();
-        } finally {
-            if (!readyResult) await unload();
-        }
+        const readyResult = await core.services.control.onReady();
+        if (shutdownSignal) return;
         if (!readyResult) {
             throw new Error("Failed to initialise LiveSync.");
         }
@@ -792,7 +789,7 @@ export async function main(
                 databasePath,
                 vaultPath,
                 core,
-                replicationScheduling,
+                replicationScheduling: commandReplicationScheduling,
                 p2pReplicator,
                 settingsPath,
                 originalSyncSettings,
@@ -802,6 +799,9 @@ export async function main(
             commandIsRunning = false;
         }
 
+        if (shutdownSignal) return;
+        // Keep settings preparation and commit together with normal unload.
+        canInterrupt = false;
         let settingsTextToCommit: string | undefined;
         if (result && options.command === "setup") {
             settingsTextToCommit = commandPreparedSettingsTexts[0];
@@ -863,8 +863,7 @@ export async function main(
 
         if (options.command === "daemon" && result) {
             await writeSettingsAtomically(settingsTextToCommit);
-            // Keep the process running
-            await new Promise(() => {});
+            await shutdownRequested.promise;
         } else {
             await unload();
             if (result && isReconstructionCommand(options.command)) {
@@ -874,11 +873,29 @@ export async function main(
                 await writeSettingsAtomically(settingsTextToCommit);
             }
         }
+    };
+
+    process.on("SIGINT", onSigint);
+    process.on("SIGTERM", onSigterm);
+    let exitCode: number | string;
+    try {
+        const command = run();
+        const interrupt = shutdownRequested.promise.then(() => (canInterrupt ? undefined : command));
+        await Promise.race([command, interrupt]);
+        if (shutdownSignal) {
+            void command.catch(() => {});
+        }
+        await unload();
+        if (shutdownSignal) writeStdoutLine(standardIo, "[Shutdown] Complete");
+        exitCode = process.exitCode ?? 0;
     } catch (error) {
         await unload().catch(() => {});
-        writeStderrLine(standardIo, `[Error] Failed to start:`, error);
-        process.exit(1);
+        writeStderrLine(standardIo, shutdownSignal ? "[Shutdown] Error:" : "[Error] Failed to start:", error);
+        exitCode = 1;
+    } finally {
+        process.off("SIGINT", onSigint);
+        process.off("SIGTERM", onSigterm);
     }
     // To prevent unexpected hanging in webRTC connections.
-    process.exit(process.exitCode ?? 0);
+    process.exit(exitCode);
 }

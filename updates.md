@@ -12,6 +12,13 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Improved
+
+- Faster recovery and more responsive plug-in disable and re-enable when many local file changes are pending ([#1380](https://github.com/vrtmrz/obsidian-livesync/issues/1380))
+    - Self-hosted LiveSync records pending file changes incrementally and resumes them after restart or re-enable.
+    - With **Batch database update** enabled, typing adjusts when the batch runs. The plug-in reads the saved Vault file when it processes the change.
+    - An older plug-in release cannot read the incremental queue. When we upgrade again, pending incremental changes are restored before any changes left pending by the older release.
+
 ## 1.0.52
 
 22nd November, 2026
