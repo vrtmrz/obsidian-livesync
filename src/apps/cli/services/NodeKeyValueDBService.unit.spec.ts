@@ -101,7 +101,22 @@ describe("NodeKeyValueDBService persistence", () => {
         await second.handlers.load();
         await first.service.kvDB.set("queued-files", ["unique-edit.md"]);
         await second.handlers.close();
+        await first.handlers.close();
         expect(JSON.parse(fs.readFileSync(filePath, "utf-8"))["queued-files"]).toEqual(["unique-edit.md"]);
+    });
+
+    it("batches writes, and a new handle on the same file sees them", async () => {
+        const filePath = path.join(directory, "batched.json");
+        const first = compose(filePath);
+        await first.handlers.load();
+        for (let i = 0; i < 100; i++) await first.service.kvDB.set(`key-${i}`, i);
+        expect(fs.existsSync(filePath)).toBe(false);
+        const second = compose(filePath);
+        await second.handlers.load();
+        expect(await second.service.kvDB.get("key-99")).toBe(99);
+        await first.service.kvDB.set("later", "value");
+        await first.handlers.close();
+        expect(JSON.parse(fs.readFileSync(filePath, "utf-8")).later).toBe("value");
     });
 
     it.each(["{", "null", "[]"])("refuses corrupt state %s without replacing it", async (contents) => {
