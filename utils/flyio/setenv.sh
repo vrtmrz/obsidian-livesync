@@ -32,3 +32,6 @@ fi
 [ -z "${database:-}" ] && export database="obsidiannotes"
 [ -z "${passphrase:-}" ] && export passphrase="$(random_secret)"
 [ -z "${region:-}" ] && export region="nrt"
+
+# Sourced by deploy-server.sh under set -e: do not leak the last test's status.
+true

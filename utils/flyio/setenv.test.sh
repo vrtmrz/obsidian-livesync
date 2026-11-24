@@ -24,3 +24,19 @@ cp "$(dirname "$0")/setenv.sh" "$(dirname "$0")/fly.template.toml" "$fixture_dir
         exit 1
     }
 )
+
+(
+    cd "$fixture_dir"
+    appname="livesync-test"
+    username="admin"
+    password="preset-password"
+    database="obsidiannotes"
+    passphrase="preset-passphrase"
+    region="gru"
+    source ./setenv.sh keep
+
+    [[ "$region" == "gru" ]] || {
+        echo "a preset region was not kept" >&2
+        exit 1
+    }
+)
