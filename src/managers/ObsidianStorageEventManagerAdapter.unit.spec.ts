@@ -742,4 +742,25 @@ describe("Obsidian snapshot durability while the Commonlib writer has detached a
         await manager.stopWatching();
         expect(processed).not.toHaveBeenCalled();
     });
+
+    it("migrates and loads a legacy internal-file event without stat even when type is CHANGED", async () => {
+        const { store } = await openService();
+        const internalChanged: FileEventItem = {
+            type: "CHANGED",
+            key: "internal-changed",
+            args: {
+                file: {
+                    path: ".obsidian/plugins/sample/data.json" as FilePath,
+                    name: "data.json",
+                    isFolder: false,
+                    isInternal: true,
+                    stat: undefined,
+                },
+            },
+        };
+        await store.set(legacyKey, [internalChanged]);
+        const adapter = new ObsidianPersistenceAdapter(() => store);
+        const records = await adapter.loadSnapshotEntries();
+        expect(records).toEqual([{ id: "000000000001", event: internalChanged }]);
+    });
 });

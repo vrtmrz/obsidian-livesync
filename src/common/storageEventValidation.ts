@@ -32,7 +32,7 @@ function isPersistedFile(file: unknown, type: string): boolean {
     if (!isOptionalBoolean(file.isInternal) || !isOptionalBoolean(file.deleted)) {
         return false;
     }
-    return isFileStat(file.stat) || (type === "INTERNAL" && file.stat === undefined);
+    return isFileStat(file.stat) || ((type === "INTERNAL" || file.isInternal === true) && file.stat === undefined);
 }
 
 function isStoredStorageEvent(value: unknown): value is StoredStorageEvent {
