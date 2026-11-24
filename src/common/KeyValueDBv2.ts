@@ -1,6 +1,6 @@
 import { LOG_LEVEL_VERBOSE, Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
 import type { KeyValueDatabase } from "@vrtmrz/livesync-commonlib/compat/interfaces/KeyValueDatabase";
-import { deleteDB, openDB, type IDBPDatabase } from "idb";
+import { deleteDB, openDB, type IDBPDatabase, type IDBPObjectStore } from "idb";
 import { withLock } from "octagonal-wheels/concurrency/lock";
 
 const databaseCache = new Map<string, IDBKeyValueDatabase>();
@@ -128,6 +128,29 @@ export class IDBKeyValueDatabase implements KeyValueDatabase {
         const db = await this.DB;
         return await db.delete(this.storeKey, key);
     }
+    /** Run a group of IndexedDB requests and wait for the transaction to settle. */
+    async withStore<T, Mode extends "readonly" | "readwrite">(
+        mode: Mode,
+        work: (store: IDBPObjectStore<unknown, [string], string, Mode>) => Promise<T>
+    ): Promise<T> {
+        const db = await this.DB;
+        const tx = db.transaction(this.storeKey, mode);
+        const settled = tx.done.catch((): void => undefined);
+        try {
+            const result = await work(tx.objectStore(this.storeKey));
+            await tx.done;
+            return result;
+        } catch (error) {
+            try {
+                tx.abort();
+            } catch {
+                // The transaction may already have settled.
+            }
+            await settled;
+            throw error;
+        }
+    }
+
     async clear(): Promise<void> {
         const db = await this.DB;
         return await db.clear(this.storeKey);

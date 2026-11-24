@@ -12,6 +12,10 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Improved
+
+- Fewer repeated writes while many local file changes are waiting to synchronise in Obsidian ([#1380](https://github.com/vrtmrz/obsidian-livesync/issues/1380)).
+
 ## 1.0.52
 
 22nd November, 2026

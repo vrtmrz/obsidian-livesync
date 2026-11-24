@@ -1,4 +1,6 @@
+import { IDBKeyValueDatabase } from "@/common/KeyValueDBv2";
 import { TFile, TFolder } from "@/deps";
+import { ObsidianPendingStorageEventStore } from "./ObsidianPendingStorageEventStore";
 import type { FilePath, UXFileInfoStub, UXInternalFileInfoStub } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { FileEventItem } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import type { IStorageEventManagerAdapter } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
@@ -123,6 +125,7 @@ class ObsidianWatchAdapter implements IStorageEventWatchAdapter {
 export class ObsidianStorageEventManagerAdapter implements IStorageEventManagerAdapter<TFile, TFolder> {
     readonly typeGuard: ObsidianTypeGuardAdapter;
     readonly persistence: ObsidianPersistenceAdapter;
+    readonly pendingEventStore: ObsidianPendingStorageEventStore;
     readonly watch: ObsidianWatchAdapter;
     readonly status: ObsidianStatusAdapter;
     readonly converter: ObsidianConverterAdapter;
@@ -130,6 +133,13 @@ export class ObsidianStorageEventManagerAdapter implements IStorageEventManagerA
     constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, fileProcessing: FileProcessingService) {
         this.typeGuard = new ObsidianTypeGuardAdapter();
         this.persistence = new ObsidianPersistenceAdapter(core);
+        this.pendingEventStore = new ObsidianPendingStorageEventStore(() => {
+            const database = core.services.keyValueDB.kvDB;
+            if (!(database instanceof IDBKeyValueDatabase)) {
+                throw new Error("Obsidian storage events require an IndexedDB key-value database");
+            }
+            return database;
+        });
         this.watch = new ObsidianWatchAdapter(plugin);
         this.status = new ObsidianStatusAdapter(fileProcessing);
         this.converter = new ObsidianConverterAdapter();
