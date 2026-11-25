@@ -173,15 +173,54 @@ describe("Obsidian pending storage event buffers", () => {
         await expect(store.load()).resolves.toEqual([{ key, events }]);
     });
 
-    it("retains earlier saved buffers when a new buffer cannot be cloned", async () => {
+    it("omits function contexts from copied events and preserves mixed buffer order across reopen", async () => {
+        const { name, database, store } = setup();
+        const first = [changed("first.md")];
+        const key = await store.append(first);
+
+        const before = changed("before.md");
+        const withFunctionContext = changed("function-context.md");
+        const liveContext = () => undefined;
+        withFunctionContext.args.ctx = liveContext;
+        withFunctionContext.skipBatchWait = true;
+        const sentinel = { type: "SENTINEL_FLUSH" } as const;
+        const withCloneableContext = changed("cloneable-context.md");
+        withCloneableContext.args.ctx = { source: "event" };
+        const after = changed("after.md");
+        const events = [before, withFunctionContext, sentinel, withCloneableContext, after] as const;
+
+        const mixedKey = await store.append(events);
+        expect(withFunctionContext.args.ctx).toBe(liveContext);
+        const persistedFunctionEvent = { ...withFunctionContext, args: { ...withFunctionContext.args } };
+        delete persistedFunctionEvent.args.ctx;
+
+        await database.close();
+        const reopened = new IDBKeyValueDatabase(name);
+        databases.push(reopened);
+        const reader = new ObsidianPendingStorageEventStore(() => reopened);
+        await expect(reader.load()).resolves.toEqual([
+            { key, events: first },
+            {
+                key: mixedKey,
+                events: [before, persistedFunctionEvent, sentinel, withCloneableContext, after],
+            },
+        ]);
+    });
+
+    it("retains earlier saved buffers when a nested function context cannot be cloned", async () => {
         const { store } = setup();
         const first = [changed("first.md")];
         const key = await store.append(first);
         const uncloneable = changed("bad.md");
-        uncloneable.args.ctx = () => undefined;
+        uncloneable.args.ctx = { callback: () => undefined };
         await expect(store.append([uncloneable])).rejects.toMatchObject({ name: "DataCloneError" });
         await expect(store.load()).resolves.toEqual([{ key, events: first }]);
-        await expect(store.append([changed("next.md")])).resolves.not.toBe(key);
+        const next = [changed("next.md")];
+        await expect(store.append(next)).resolves.not.toBe(key);
+        await expect(store.load()).resolves.toEqual([
+            { key, events: first },
+            expect.objectContaining({ events: next }),
+        ]);
     });
 
     it("keeps a reset queue safe from a late acknowledgement for the previous buffer", async () => {
