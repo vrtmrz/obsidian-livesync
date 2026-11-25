@@ -227,6 +227,9 @@ async function main(): Promise<void> {
                     await isPending(${JSON.stringify(paths.renamed)}),
                     'The final-path read failure and rename event were not retained.');
                 const renameFailureReads=hook.failures[${JSON.stringify(paths.renamed)}];
+                require((await pendingEvents()).some(event=>event.type==='RENAME'&&
+                    event.args.oldPath===${JSON.stringify(paths.temporary)}&&event.args.file.path===${JSON.stringify(paths.renamed)}),
+                    'The pending rename did not retain both the temporary and final paths.');
                 const finalFile=app.vault.getAbstractFileByPath(${JSON.stringify(paths.renamed)});
                 require(!!finalFile,'The real Vault rename did not create the final path.');
                 hook.restore();

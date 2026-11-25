@@ -28,20 +28,6 @@ function readBuffer(key: string, value: unknown): PendingStorageEventBuffer {
     return { key, events: value };
 }
 
-function omitFunctionContexts(events: readonly (FileEventItem | FileEventItemSentinel)[]) {
-    if (!events.some((event) => "args" in event && typeof event.args.ctx === "function")) {
-        return events;
-    }
-    return events.map((event) => {
-        if (!("args" in event) || typeof event.args.ctx !== "function") {
-            return event;
-        }
-        const args = { ...event.args };
-        delete args.ctx;
-        return { ...event, args };
-    });
-}
-
 export class ObsidianPendingStorageEventStore implements PendingStorageEventStore {
     private reportedInvalidLegacySnapshot = false;
     // Keep these instance-scoped so database resets cannot reuse pending buffer keys.
@@ -145,7 +131,7 @@ export class ObsidianPendingStorageEventStore implements PendingStorageEventStor
             const sequence = this.sequence + 1;
             this.sequence = sequence;
             const key = `${timestampBufferPrefix}${String(timestamp).padStart(keyPartWidth, "0")}.${String(sequence).padStart(keyPartWidth, "0")}`;
-            await store.add(omitFunctionContexts(events), key);
+            await store.add(events, key);
             return key;
         });
     }
