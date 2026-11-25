@@ -1,10 +1,17 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Logger, LOG_LEVEL_NOTICE } from "octagonal-wheels/common/logger";
 import { IDBKeyValueDatabase } from "@/common/KeyValueDBv2";
 import { ObsidianPendingStorageEventStore } from "./ObsidianPendingStorageEventStore";
 import type { FileEventItem, FilePath } from "@vrtmrz/livesync-commonlib/compat/common/types";
 
+vi.mock(import("octagonal-wheels/common/logger"), async (importOriginal) => ({
+    ...(await importOriginal()),
+    Logger: vi.fn(),
+}));
+
 const legacyKey = "storage-event-manager-snapshot";
+const ignoredItemNotice = "LiveSync ignored an unexpected item while restoring pending file changes.";
 let nextDatabase = 0;
 const databases: IDBKeyValueDatabase[] = [];
 
@@ -56,6 +63,70 @@ describe("Obsidian pending storage event buffers", () => {
         } finally {
             await reopened.close();
         }
+    });
+
+    it.each([null, undefined, { events: [] }])(
+        "discards invalid legacy value %j and restores the new queue",
+        async (invalid) => {
+            const { database, store } = setup();
+            const events = [changed("new.md")];
+            const key = await store.append(events);
+            await database.set(legacyKey, invalid);
+            vi.mocked(Logger).mockClear();
+
+            await expect(store.load()).resolves.toEqual([{ key, events }]);
+            expect(await database.keys(legacyKey)).toEqual([]);
+            await expect(store.load()).resolves.toEqual([{ key, events }]);
+            expect(vi.mocked(Logger).mock.calls.filter(([, level]) => level === LOG_LEVEL_NOTICE)).toEqual([
+                [ignoredItemNotice, LOG_LEVEL_NOTICE],
+            ]);
+        }
+    );
+
+    it("continues restoration and only reports once if cleaning up the invalid legacy record fails", async () => {
+        const { database, store } = setup();
+        const events = [changed("new.md")];
+        const key = await store.append(events);
+        await database.set(legacyKey, "invalid");
+        vi.mocked(Logger).mockClear();
+        const deleteRecord = IDBObjectStore.prototype.delete;
+        const abortDelete = vi.spyOn(IDBObjectStore.prototype, "delete").mockImplementation(function (
+            this: IDBObjectStore,
+            query
+        ) {
+            const request = deleteRecord.call(this, query);
+            request.addEventListener("success", () => this.transaction.abort(), { once: true });
+            return request;
+        });
+        try {
+            await expect(store.load()).resolves.toEqual([{ key, events }]);
+            await expect(store.load()).resolves.toEqual([{ key, events }]);
+        } finally {
+            abortDelete.mockRestore();
+        }
+        expect(await database.get(legacyKey)).toBe("invalid");
+        expect(vi.mocked(Logger).mock.calls.filter(([, level]) => level === LOG_LEVEL_NOTICE)).toEqual([
+            [ignoredItemNotice, LOG_LEVEL_NOTICE],
+        ]);
+    });
+
+    it("preserves the legacy record if it becomes a valid array before cleanup", async () => {
+        const { database, store } = setup();
+        const legacy = [changed("old.md")];
+        await database.set(legacyKey, "invalid");
+        const withStore = database.withStore.bind(database);
+        const replaceBeforeCleanup = vi.spyOn(database, "withStore").mockImplementation(async (mode, work) => {
+            if (mode === "readwrite") {
+                await database.set(legacyKey, legacy);
+            }
+            return withStore(mode, work);
+        });
+        try {
+            await expect(store.load()).resolves.toEqual([]);
+        } finally {
+            replaceBeforeCleanup.mockRestore();
+        }
+        await expect(store.load()).resolves.toEqual([{ key: legacyKey, events: legacy }]);
     });
 
     it("resolves the current database for each operation", async () => {
