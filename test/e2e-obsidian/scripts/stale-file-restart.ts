@@ -185,6 +185,27 @@ async function main(): Promise<void> {
         assertEqual(legacy.contentHash, oldHash, "Legacy provenance was not upgraded after exact verification.");
         assertEqual(legacy.contentSize, Buffer.byteLength(oldContent), "Legacy provenance has the wrong byte length.");
 
+        const legacySnapshotTimeoutMs = Number(process.env.E2E_OBSIDIAN_LOCAL_DB_TIMEOUT_MS ?? 15000);
+        const legacySnapshotConsumed = await evalObsidianJson<boolean>(
+            cliBinary,
+            `(async()=>{
+                const core=app.plugins.plugins['obsidian-livesync'].core;
+                const key='storage-event-manager-snapshot';
+                const deadline=Date.now()+${legacySnapshotTimeoutMs};
+                while(Date.now()<deadline){
+                    if((await core.kvDB.get(key))===undefined) return JSON.stringify(true);
+                    await new Promise(resolve=>setTimeout(resolve,25));
+                }
+                return JSON.stringify(false);
+            })()`,
+            session.cliEnv
+        );
+        assertEqual(
+            legacySnapshotConsumed,
+            true,
+            "The legacy storage-event snapshot was not consumed after restart recovery."
+        );
+
         const receivedRevision = await evalObsidianJson<string>(
             cliBinary,
             `(async()=>{
