@@ -11,6 +11,7 @@ vi.mock(import("octagonal-wheels/common/logger"), async (importOriginal) => ({
 }));
 
 const legacyKey = "storage-event-manager-snapshot";
+const bufferPrefix = "storageEventBuffer/";
 const ignoredItemNotice = "LiveSync ignored an unexpected item while restoring pending file changes.";
 let nextDatabase = 0;
 const databases: IDBKeyValueDatabase[] = [];
@@ -32,6 +33,10 @@ function changed(path: string): FileEventItem {
         key: path,
         args: { file: { path: path as FilePath, name: path, stat: { size: 1, mtime: 1, ctime: 1, type: "file" } } },
     };
+}
+
+function timestampKey(timestamp: number, sequence: number): string {
+    return `${bufferPrefix}t${String(timestamp).padStart(16, "0")}.${String(sequence).padStart(16, "0")}`;
 }
 
 describe("Obsidian pending storage event buffers", () => {
@@ -177,5 +182,127 @@ describe("Obsidian pending storage event buffers", () => {
         await expect(store.append([uncloneable])).rejects.toMatchObject({ name: "DataCloneError" });
         await expect(store.load()).resolves.toEqual([{ key, events: first }]);
         await expect(store.append([changed("next.md")])).resolves.not.toBe(key);
+    });
+
+    it("keeps a reset queue safe from a late acknowledgement for the previous buffer", async () => {
+        const first = setup();
+        const replacement = setup();
+        let current = first.database;
+        const store = new ObsidianPendingStorageEventStore(() => current);
+        const now = vi.spyOn(Date, "now").mockReturnValue(1000);
+        try {
+            const oldKey = await store.append([changed("old.md")]);
+            current = replacement.database;
+            const events = [changed("after-reset.md")];
+            const newKey = await store.append(events);
+
+            expect(newKey).not.toBe(oldKey);
+            await store.remove(oldKey);
+            await expect(store.load()).resolves.toEqual([{ key: newKey, events }]);
+        } finally {
+            now.mockRestore();
+        }
+    });
+
+    it("replays legacy and decimal buffers before timestamp buffers after reopening with a reversed clock", async () => {
+        const { name, database } = setup();
+        const legacy = [changed("legacy.md")];
+        const decimal = [changed("decimal.md")];
+        const persisted = [changed("persisted.md")];
+        await database.set(legacyKey, legacy);
+        await database.set(`${bufferPrefix}0000000000000008`, decimal);
+        await database.set(timestampKey(100000, 7), persisted);
+        await database.close();
+
+        const reopened = new IDBKeyValueDatabase(name);
+        databases.push(reopened);
+        const store = new ObsidianPendingStorageEventStore(() => reopened);
+        const now = vi.spyOn(Date, "now").mockReturnValue(500);
+        try {
+            await expect(store.load()).resolves.toEqual([
+                { key: legacyKey, events: legacy },
+                { key: `${bufferPrefix}0000000000000008`, events: decimal },
+                { key: timestampKey(100000, 7), events: persisted },
+            ]);
+
+            const next = [changed("next.md")];
+            const nextKey = await store.append(next);
+            expect(nextKey).toBe(timestampKey(100001, 1));
+            await expect(store.load()).resolves.toEqual([
+                { key: legacyKey, events: legacy },
+                { key: `${bufferPrefix}0000000000000008`, events: decimal },
+                { key: timestampKey(100000, 7), events: persisted },
+                { key: nextKey, events: next },
+            ]);
+        } finally {
+            now.mockRestore();
+        }
+    });
+
+    it("keeps fixed-width same-session ordering across repeated loads and clock rollback", async () => {
+        const { store } = setup();
+        const now = vi.spyOn(Date, "now").mockReturnValue(700);
+        try {
+            const firstEvents = [changed("first.md")];
+            const secondEvents = [changed("second.md")];
+            const firstKey = await store.append(firstEvents);
+            const secondKey = await store.append(secondEvents);
+            expect(firstKey).toBe(timestampKey(700, 1));
+            expect(secondKey).toBe(timestampKey(700, 2));
+
+            await store.load();
+            await store.load();
+            now.mockReturnValue(600);
+            const thirdEvents = [changed("third.md")];
+            const thirdKey = await store.append(thirdEvents);
+
+            expect(thirdKey).toBe(timestampKey(700, 3));
+            await expect(store.load()).resolves.toEqual([
+                { key: firstKey, events: firstEvents },
+                { key: secondKey, events: secondEvents },
+                { key: thirdKey, events: thirdEvents },
+            ]);
+        } finally {
+            now.mockRestore();
+        }
+    });
+
+    it("seeds a direct append from persisted keys without reading their values", async () => {
+        const { database, store } = setup();
+        const legacy = [changed("legacy.md")];
+        const decimal = [changed("decimal.md")];
+        const persisted = [changed("persisted.md")];
+        await database.set(legacyKey, legacy);
+        await database.set(`${bufferPrefix}0000000000000008`, decimal);
+        await database.set(timestampKey(2000, 3), persisted);
+
+        const get = vi.spyOn(IDBObjectStore.prototype, "get");
+        const getAll = vi.spyOn(IDBObjectStore.prototype, "getAll");
+        const getAllKeys = vi.spyOn(IDBObjectStore.prototype, "getAllKeys");
+        const openKeyCursor = vi.spyOn(IDBObjectStore.prototype, "openKeyCursor");
+        const now = vi.spyOn(Date, "now").mockReturnValue(1000);
+        let nextKey = "";
+        try {
+            nextKey = await store.append([changed("next.md")]);
+            expect(nextKey).toBe(timestampKey(2001, 1));
+            expect(openKeyCursor).toHaveBeenCalledTimes(1);
+            expect(openKeyCursor.mock.calls[0]?.[1]).toBe("prev");
+            expect(get).not.toHaveBeenCalled();
+            expect(getAll).not.toHaveBeenCalled();
+            expect(getAllKeys).not.toHaveBeenCalled();
+        } finally {
+            get.mockRestore();
+            getAll.mockRestore();
+            getAllKeys.mockRestore();
+            openKeyCursor.mockRestore();
+            now.mockRestore();
+        }
+
+        await expect(store.load()).resolves.toEqual([
+            { key: legacyKey, events: legacy },
+            { key: `${bufferPrefix}0000000000000008`, events: decimal },
+            { key: timestampKey(2000, 3), events: persisted },
+            { key: nextKey, events: [changed("next.md")] },
+        ]);
     });
 });

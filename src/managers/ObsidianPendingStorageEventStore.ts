@@ -9,7 +9,17 @@ import type {
 
 const legacyKey = "storage-event-manager-snapshot";
 const bufferPrefix = "storageEventBuffer/";
-const sequenceKey = "storageEventBufferSequence";
+const timestampBufferPrefix = `${bufferPrefix}t`;
+const keyPartWidth = 16;
+
+function getBufferTimestamp(key: string): number | undefined {
+    const match = /^storageEventBuffer\/t(\d{16})\.\d{16}$/.exec(key);
+    if (!match) {
+        return undefined;
+    }
+    const timestamp = Number(match[1]);
+    return Number.isSafeInteger(timestamp) ? timestamp : undefined;
+}
 
 function readBuffer(key: string, value: unknown): PendingStorageEventBuffer {
     if (!Array.isArray(value)) {
@@ -20,12 +30,29 @@ function readBuffer(key: string, value: unknown): PendingStorageEventBuffer {
 
 export class ObsidianPendingStorageEventStore implements PendingStorageEventStore {
     private reportedInvalidLegacySnapshot = false;
+    // Keep these instance-scoped so database resets cannot reuse pending buffer keys.
+    private baseNow: number | undefined;
+    private sequence = 0;
 
     constructor(private readonly database: () => Pick<IDBKeyValueDatabase, "withStore" | "del">) {}
 
+    private initializeBaseNow(maxPendingTimestamp: number | undefined): number {
+        if (this.baseNow !== undefined) {
+            return this.baseNow;
+        }
+        const now = Date.now();
+        const nextPendingTimestamp = maxPendingTimestamp === undefined ? now : maxPendingTimestamp + 1;
+        const baseNow = Math.max(now, nextPendingTimestamp);
+        if (!Number.isSafeInteger(baseNow) || baseNow < 0) {
+            throw new Error("Invalid pending storage event buffer timestamp");
+        }
+        this.baseNow = baseNow;
+        return baseNow;
+    }
+
     async load(): Promise<readonly PendingStorageEventBuffer[]> {
         const database = this.database();
-        const { buffers, invalidLegacy } = await database.withStore("readonly", async (store) => {
+        const { buffers, invalidLegacy, maxPendingTimestamp } = await database.withStore("readonly", async (store) => {
             const range = IDBKeyRange.bound(bufferPrefix, bufferPrefix + "\uffff", false, true);
             // An exact-key getAll distinguishes a missing record from a stored undefined.
             const [legacyRecords, keys, arrays]: [unknown[], IDBValidKey[], unknown[]] = await Promise.all([
@@ -38,14 +65,25 @@ export class ObsidianPendingStorageEventStore implements PendingStorageEventStor
             const result: PendingStorageEventBuffer[] = Array.isArray(legacy)
                 ? [{ key: legacyKey, events: legacy }]
                 : [];
+            let maxPendingTimestamp: number | undefined;
             for (const [index, key] of keys.entries()) {
                 if (typeof key !== "string") {
                     throw new Error("Invalid pending storage event buffer key");
                 }
+                const timestamp = getBufferTimestamp(key);
+                if (timestamp !== undefined) {
+                    maxPendingTimestamp = timestamp;
+                }
                 result.push(readBuffer(key, arrays[index]));
             }
-            return { buffers: result, invalidLegacy: legacyRecords.length > 0 && !Array.isArray(legacy) };
+            return {
+                buffers: result,
+                invalidLegacy: legacyRecords.length > 0 && !Array.isArray(legacy),
+                maxPendingTimestamp,
+            };
         });
+
+        this.initializeBaseNow(maxPendingTimestamp);
 
         if (invalidLegacy) {
             try {
@@ -69,19 +107,31 @@ export class ObsidianPendingStorageEventStore implements PendingStorageEventStor
 
     append(events: readonly (FileEventItem | FileEventItemSentinel)[]): Promise<string> {
         return this.database().withStore("readwrite", async (store) => {
-            const previous: unknown = (await store.get(sequenceKey)) ?? 0;
-            if (
-                typeof previous !== "number" ||
-                !Number.isSafeInteger(previous) ||
-                previous < 0 ||
-                previous === Number.MAX_SAFE_INTEGER
-            ) {
+            let baseNow = this.baseNow;
+            if (baseNow === undefined) {
+                const range = IDBKeyRange.bound(timestampBufferPrefix, timestampBufferPrefix + "\uffff", false, true);
+                let cursor = await store.openKeyCursor(range, "prev");
+                let maxPendingTimestamp: number | undefined;
+                while (cursor) {
+                    if (typeof cursor.key === "string") {
+                        maxPendingTimestamp = getBufferTimestamp(cursor.key);
+                        if (maxPendingTimestamp !== undefined) {
+                            break;
+                        }
+                    }
+                    cursor = await cursor.continue();
+                }
+                baseNow = this.initializeBaseNow(maxPendingTimestamp);
+            }
+
+            if (this.sequence >= Number.MAX_SAFE_INTEGER) {
                 throw new Error("Invalid pending storage event buffer sequence");
             }
-            const sequence = previous + 1;
-            const key = bufferPrefix + String(sequence).padStart(16, "0");
+            const timestamp = baseNow;
+            const sequence = this.sequence + 1;
+            this.sequence = sequence;
+            const key = `${timestampBufferPrefix}${String(timestamp).padStart(keyPartWidth, "0")}.${String(sequence).padStart(keyPartWidth, "0")}`;
             await store.add(events, key);
-            await store.put(sequence, sequenceKey);
             return key;
         });
     }
