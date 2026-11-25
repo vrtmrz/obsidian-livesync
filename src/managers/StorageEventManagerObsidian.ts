@@ -11,6 +11,7 @@ import {
     pathWithinConfigDirectory,
 } from "@/features/HiddenFileCommon/optionalFileSyncSelection";
 import { ObsidianStorageEventManagerAdapter } from "./ObsidianStorageEventManagerAdapter";
+import type { PendingStorageEventStore } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 
 export class StorageEventManagerObsidian extends StorageEventManagerBase<ObsidianStorageEventManagerAdapter> {
     core: LiveSyncCore;
@@ -18,8 +19,22 @@ export class StorageEventManagerObsidian extends StorageEventManagerBase<Obsidia
     // Necessary evil.
     // cmdHiddenFileSync: HiddenFileSync;
 
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, dependencies: StorageEventManagerBaseDependencies) {
-        const adapter = new ObsidianStorageEventManagerAdapter(plugin, core, dependencies.fileProcessing);
+    constructor(
+        plugin: ObsidianLiveSyncPlugin,
+        core: LiveSyncCore,
+        {
+            pendingEventStore,
+            ...dependencies
+        }: StorageEventManagerBaseDependencies & {
+            pendingEventStore: PendingStorageEventStore;
+        }
+    ) {
+        const adapter = new ObsidianStorageEventManagerAdapter(
+            plugin,
+            core,
+            dependencies.fileProcessing,
+            pendingEventStore
+        );
         super(adapter, {
             ...dependencies,
             // Pass `internalFileEvent: true` so ordinary `syncOnlyRegEx` allow-lists and the dot-file gate

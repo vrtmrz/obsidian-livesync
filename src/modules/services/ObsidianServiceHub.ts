@@ -29,10 +29,14 @@ import { OpenKeyValueDatabase } from "@/common/KeyValueDB";
 import { ObsidianNoticeGroupManager } from "./ObsidianNoticeGroups";
 import { KeyedNoticeManager } from "@vrtmrz/obsidian-plugin-kit/notice";
 import { setLang } from "@/common/translation";
+import { ObsidianPendingStorageEventStore } from "@/managers/ObsidianPendingStorageEventStore";
+import type { PendingStorageEventStore } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 
 // InjectableServiceHub
 
 export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceContext> {
+    readonly pendingEventStore: PendingStorageEventStore;
+
     constructor(plugin: ObsidianLiveSyncPlugin) {
         const notices = new KeyedNoticeManager();
         const noticeGroups = new ObsidianNoticeGroupManager();
@@ -142,5 +146,6 @@ export class ObsidianServiceHub extends InjectableServiceHub<ObsidianServiceCont
         } satisfies Required<ServiceInstances<ObsidianServiceContext>>;
 
         super(context, serviceInstancesToInit);
+        this.pendingEventStore = new ObsidianPendingStorageEventStore(() => keyValueDB.kvDB);
     }
 }

@@ -5,7 +5,7 @@ import { withLock } from "octagonal-wheels/concurrency/lock";
 
 const databaseCache = new Map<string, IDBKeyValueDatabase>();
 
-export async function OpenKeyValueDatabase(dbKey: string): Promise<KeyValueDatabase> {
+export async function OpenKeyValueDatabase(dbKey: string): Promise<IDBKeyValueDatabase> {
     return await withLock(`OpenKeyValueDatabase-${dbKey}`, async () => {
         const cachedDB = databaseCache.get(dbKey);
         if (cachedDB) {

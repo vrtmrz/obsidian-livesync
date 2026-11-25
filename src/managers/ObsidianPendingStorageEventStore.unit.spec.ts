@@ -58,6 +58,24 @@ describe("Obsidian pending storage event buffers", () => {
         }
     });
 
+    it("resolves the current database for each operation", async () => {
+        const first = setup();
+        const replacement = setup();
+        let current = first.database;
+        const store = new ObsidianPendingStorageEventStore(() => current);
+        const oldEvents = [changed("old.md")];
+        const oldKey = await store.append(oldEvents);
+
+        current = replacement.database;
+        await expect(store.load()).resolves.toEqual([]);
+        const newEvents = [changed("new.md")];
+        const newKey = await store.append(newEvents);
+        await expect(store.load()).resolves.toEqual([{ key: newKey, events: newEvents }]);
+        await store.remove(newKey);
+        await expect(store.load()).resolves.toEqual([]);
+        await expect(first.store.load()).resolves.toEqual([{ key: oldKey, events: oldEvents }]);
+    });
+
     it("keeps the buffer when deletion succeeds at request level but the transaction aborts", async () => {
         const { store } = setup();
         const events = [changed("pending.md")];

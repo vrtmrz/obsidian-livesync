@@ -18,7 +18,7 @@ function readBuffer(key: string, value: unknown): PendingStorageEventBuffer {
 }
 
 export class ObsidianPendingStorageEventStore implements PendingStorageEventStore {
-    constructor(private readonly database: () => IDBKeyValueDatabase) {}
+    constructor(private readonly database: () => Pick<IDBKeyValueDatabase, "withStore" | "del">) {}
 
     load(): Promise<readonly PendingStorageEventBuffer[]> {
         return this.database().withStore("readonly", async (store) => {
