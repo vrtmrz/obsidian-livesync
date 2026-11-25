@@ -210,7 +210,7 @@ When enabled on this device, the workspace temporarily blocks interaction after 
 
 Both SyncGuard preferences are stored locally for this device, Vault, and [Database suffix](#database-suffix), separately from the main plug-in settings. They are not transferred through Setup URIs. Existing values saved by earlier test builds are migrated to device-local storage when the plug-in starts.
 
-After changing the Database suffix, restart Obsidian, then check both SyncGuard preferences before relying on the overlay. Until Obsidian restarts, the settings screen can still show the previous suffix's values.
+Applying a Database suffix change restarts Obsidian. After restart, check both SyncGuard preferences for the selected suffix before relying on the overlay.
 
 The threshold avoids interruption for ordinary small transfers. However, the number of changes cannot be known before they arrive: some notes may be updated before the guard activates. The guard is a user-interface aid, not an atomic Vault snapshot or a restriction on other plug-ins and external tools. It does not apply to other remote types or to ordinary live changes after the initial catch-up.
 
@@ -1224,9 +1224,8 @@ Do not use internal API
 #### Database suffix
 
 Setting key: additionalSuffixOfDatabaseName
-LiveSync could not handle multiple vaults which have same name without different prefix, This should be automatically configured.
 
-After changing this value, restart Obsidian and check the [SyncGuard preferences](#protect-the-workspace-during-a-large-catch-up-opt-in) for the selected suffix.
+LiveSync normally chooses the suffix automatically so that Vaults with the same name can use separate local databases. To change it manually, select **Configure**, enter the new suffix, and select **Apply and restart**. After restart, check the [SyncGuard preferences](#protect-the-workspace-during-a-large-catch-up-opt-in) for the selected suffix.
 
 #### The Hash algorithm for chunk IDs (compatibility)
 
