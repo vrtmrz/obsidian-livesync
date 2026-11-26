@@ -1011,31 +1011,54 @@ async function runCaseOnlyRename(
     vaultB: TemporaryVault
 ): Promise<void> {
     const fileContent = "# Case-only rename\n\nThe document ID should remain live.\n";
+    const cases = [
+        { from: caseRenameFromPath, to: caseRenameToPath, original: fileContent, updated: fileContent },
+        {
+            from: "E2E/two-vault/example note.md",
+            to: "E2E/two-vault/Example note.md",
+            original: '---\ntitle: "[[example note]]"\n---\n',
+            updated: '---\ntitle: "[[Example note]]"\n---\n',
+        },
+    ];
 
     let session = await startConfiguredSession(context, vaultA);
-    await writeNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, fileContent);
-    await uploadNote(context, session, caseRenameFromPath);
+    for (const { from, original } of cases) {
+        await writeNoteViaObsidian(context.cliBinary, session.cliEnv, from, original);
+        await uploadNote(context, session, from);
+    }
     await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
-    await waitForPathContent(vaultB.path, caseRenameFromPath, (content) => content === fileContent);
+    for (const { from, original } of cases) {
+        await waitForPathContent(vaultB.path, from, (content) => content === original);
+    }
     await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultA);
-    await renameNoteViaObsidian(context.cliBinary, session.cliEnv, caseRenameFromPath, caseRenameToPath);
-    await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, caseRenameToPath);
+    for (const { from, to, original, updated } of cases) {
+        await renameNoteViaObsidian(context.cliBinary, session.cliEnv, from, to);
+        if (updated !== original) {
+            await writeNoteViaObsidian(context.cliBinary, session.cliEnv, to, updated);
+        }
+        await waitForLocalDatabaseEntry(context.cliBinary, session.cliEnv, to);
+    }
     await pushLocalChanges(context.cliBinary, session.cliEnv);
     await stopTrackedSession(context, session);
 
     session = await startConfiguredSession(context, vaultB);
     await syncAndApply(context, session);
-    const renamedOnB = await waitForPathContent(vaultB.path, caseRenameToPath, (content) => content === fileContent);
-    await waitForExactCaseOnlyRename(vaultB.path, caseRenameFromPath, caseRenameToPath);
+    for (const { from, to, updated } of cases) {
+        await waitForPathContent(vaultB.path, to, (content) => content === updated);
+        await waitForExactCaseOnlyRename(vaultB.path, from, to);
+        const { branches } = await readFileConflictState(context.cliBinary, session.cliEnv, to);
+        assertEqual(branches.length, 1, `Case-only rename created a conflict for ${to}.`);
+        assertEqual(branches[0].path, to, `Case-only rename left the old database path for ${to}.`);
+        assertEqual(branches[0].deleted, false, `Case-only rename deleted the database entry for ${to}.`);
+    }
     await stopTrackedSession(context, session);
 
-    assertEqual(renamedOnB, fileContent, "Case-only note rename did not round-trip to the second vault.");
-    console.log("Two-vault case-only note rename round-tripped without a tombstone.");
+    console.log("Two-vault case-only renames with and without content changes round-tripped without conflicts.");
 }
 
 async function runParentCaseDeletionProtection(
