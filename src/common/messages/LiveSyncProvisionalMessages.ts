@@ -56,6 +56,9 @@ export const liveSyncProvisionalEnglishMessages = {
     "Enable SyncGuard": "Enable SyncGuard",
     "Enable device-local SyncGuard protection during synchronisation.":
         "Enable device-local SyncGuard protection during synchronisation.",
+    "Apply and restart": "Apply and restart",
+    "Could not save the Database suffix. Check the log for details, then try again.":
+        "Could not save the Database suffix. Check the log for details, then try again.",
     "SyncGuard minimum files": "SyncGuard minimum files",
     "Minimum number of Vault files required for SyncGuard protection to apply.":
         "Minimum number of Vault files required for SyncGuard protection to apply.",

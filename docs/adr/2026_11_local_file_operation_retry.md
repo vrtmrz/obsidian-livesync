@@ -74,6 +74,13 @@ Retain a failed ordinary file operation, report the failed attempt, and allow a
 later existing trigger to re-evaluate it against current storage, database state,
 and provenance. Apply this to `CREATE`, `CHANGED`, `DELETE`, and `RENAME`.
 
+The unreleased ordered-buffer store for [#1380](https://github.com/vrtmrz/obsidian-livesync/issues/1380)
+applies these retries after an event has been saved. If the initial buffer
+write fails, LiveSync reports the failure and discards that unsaved group.
+The next Vault scan checks the selected paths. Without a saved rename, it can
+recover the destination file but may restore the old name if the database still
+holds a live revision and the scan lacks evidence of its deletion.
+
 Keep Hidden File Sync, Customisation Sync, and other optional or internal
 providers under their existing owning contracts. This decision does not add a
 new provider retry policy, snapshot format, persistent journal, cross-store
@@ -221,8 +228,8 @@ to ignore errors:
 | Rename target was saved but source deletion is not represented | Continue only when ownership and branch conditions permit it; target existence or equal bytes alone are insufficient. | A |
 | Rename target was saved but the conflicted source branch cannot be established | Preserve source branches through the existing fallback; the old path may remain. | D |
 | Rename, including case-only rename, is already complete | Preserve the represented move without another revision; protect and reconcile any newer target edit. | B, with A for a later edit |
-| Snapshot persistence fails | Retain the operation and retry the remaining effect or acknowledgement without losing newer ownership. | A |
-| Permission or I/O failure continues | Finish the bounded attempt as failed and retain the work. | A |
+| Snapshot persistence fails for an already saved operation | Retain the operation and retry the remaining effect or acknowledgement without losing newer ownership. | A |
+| A file handler continues to encounter a permission or I/O failure | Finish the bounded attempt as failed and retain the work. | A |
 
 D describes retained content with an unmet deletion, not successful fulfilment
 of the requested operation. It is limited to the existing conservative branch

@@ -19,7 +19,10 @@ describe("Obsidian internal file event admission", () => {
             appLifecycle: {},
             context: {},
         } as unknown as StorageEventManagerBaseDependencies;
-        const manager = new StorageEventManagerObsidian({} as any, {} as any, dependencies);
+        const manager = new StorageEventManagerObsidian({} as any, {} as any, {
+            ...dependencies,
+            pendingEventStore: { load: vi.fn(), append: vi.fn(), remove: vi.fn() },
+        });
         const internalChecker = (manager as any).admission.isTargetInternal as (path: FilePath) => Promise<boolean>;
 
         await expect(internalChecker(".obsidian/snippets/a.css" as FilePath)).resolves.toBe(true);

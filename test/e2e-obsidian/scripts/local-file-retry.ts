@@ -24,6 +24,7 @@ const content = {
     latestEdit: "Latest later edit\n",
     restart: "Restart recovery content\n",
 };
+const requireOrderedEventStore = process.env.E2E_OBSIDIAN_REQUIRE_ORDERED_EVENT_STORE === "true";
 
 /** Shared in-app probes and controlled read-failure injection; each evaluation resolves the current plug-in instance. */
 const evaluationHelpers = `
@@ -36,7 +37,16 @@ const evaluationHelpers = `
         while(Date.now()<until){if(await predicate())return;await sleep(25);}
         throw new Error(message);
     };
-    const pendingEvents=async()=>await manager.adapter.persistence.loadSnapshot()??[];
+    const orderedEventStore=()=>manager.adapter.pendingEventStore;
+    const pendingEvents=async()=>{
+        const store=orderedEventStore();
+        if(store&&typeof store.load==='function'){
+            const buffers=await store.load();
+            return buffers.flatMap(buffer=>buffer.events);
+        }
+        // Older comparison artefacts expose only the legacy snapshot adapter.
+        return await manager.adapter.persistence.loadSnapshot()??[];
+    };
     const eventPaths=event=>{
         const args=event.args??{};
         return [args.file?.path,args.oldFile?.path,args.oldPath,args.renameTarget,args.targetPath,args.path]
@@ -45,6 +55,18 @@ const evaluationHelpers = `
     const isPending=async(...paths)=>{
         const snapshot=await pendingEvents();
         return snapshot.some(event=>eventPaths(event).some(path=>paths.includes(path)));
+    };
+    const persistedBufferKeyFor=async path=>{
+        const range=IDBKeyRange.bound('storageEventBuffer/','storageEventBuffer/\uffff',false,true);
+        const keys=await core.kvDB.keys(range);
+        for(const key of keys){
+            require(typeof key==='string','A storage event buffer has a non-string IndexedDB key.');
+            const events=await core.kvDB.get(key);
+            if(events===undefined)continue;
+            require(Array.isArray(events),'A storage event buffer does not contain an event array.');
+            if(events.some(event=>eventPaths(event).includes(path)))return key;
+        }
+        return null;
     };
     const databaseState=async path=>{
         let meta;
@@ -205,6 +227,9 @@ async function main(): Promise<void> {
                     await isPending(${JSON.stringify(paths.renamed)}),
                     'The final-path read failure and rename event were not retained.');
                 const renameFailureReads=hook.failures[${JSON.stringify(paths.renamed)}];
+                require((await pendingEvents()).some(event=>event.type==='RENAME'&&
+                    event.args.oldPath===${JSON.stringify(paths.temporary)}&&event.args.file.path===${JSON.stringify(paths.renamed)}),
+                    'The pending rename did not retain both the temporary and final paths.');
                 const finalFile=app.vault.getAbstractFileByPath(${JSON.stringify(paths.renamed)});
                 require(!!finalFile,'The real Vault rename did not create the final path.');
                 hook.restore();
@@ -316,6 +341,8 @@ async function main(): Promise<void> {
             failureReadsBeforeShutdown: number;
             pendingBeforeShutdown: boolean;
             databaseAbsentBeforeShutdown: boolean;
+            orderedStoreAvailable: boolean;
+            persistedBatchKey: string | null;
         }>(
             cliBinary,
             session!,
@@ -325,13 +352,28 @@ async function main(): Promise<void> {
             await waitFor(async()=>hook.failures[${JSON.stringify(paths.restarted)}]>0&&
                 await isPending(${JSON.stringify(paths.restarted)}),
                 'The restart fixture read failure was not retained.');
+            const orderedStoreAvailable=!!orderedEventStore()&&typeof orderedEventStore().load==='function';
+            const persistedBatchKey=orderedStoreAvailable?await persistedBufferKeyFor(${JSON.stringify(paths.restarted)}):null;
+            require(!orderedStoreAvailable||typeof persistedBatchKey==='string',
+                'The failed restart event was not present in a durable storageEventBuffer value.');
             const state=await databaseState(${JSON.stringify(paths.restarted)});
             require(!state||!state.present,
                 'The restart fixture unexpectedly saved before shutdown.');
             return JSON.stringify({failureReadsBeforeShutdown:hook.failures[${JSON.stringify(paths.restarted)}],
-                pendingBeforeShutdown:await isPending(${JSON.stringify(paths.restarted)}),databaseAbsentBeforeShutdown:!state||state.deleted});
+                pendingBeforeShutdown:await isPending(${JSON.stringify(paths.restarted)}),databaseAbsentBeforeShutdown:!state||state.deleted,
+                orderedStoreAvailable,persistedBatchKey});
             `
         );
+        if (requireOrderedEventStore) {
+            assertEqual(
+                restartFailureObservation.orderedStoreAvailable,
+                true,
+                "The candidate run was expected to exercise the ordered pending-event store."
+            );
+            if (typeof restartFailureObservation.persistedBatchKey !== "string") {
+                throw new Error("The candidate run did not capture the persisted restart-event batch key.");
+            }
+        }
 
         await session!.app.stop();
         session = undefined;
@@ -355,6 +397,11 @@ async function main(): Promise<void> {
             const file=app.vault.getAbstractFileByPath(${JSON.stringify(paths.restarted)});
             require(!!file&&await app.vault.read(file)===${JSON.stringify(content.restart)},
                 'The restart fixture Vault file changed during startup recovery.');
+            if(${JSON.stringify(restartFailureObservation.orderedStoreAvailable)}){
+                const range=IDBKeyRange.only(${JSON.stringify(restartFailureObservation.persistedBatchKey)});
+                require((await core.kvDB.keys(range)).length===0,
+                    'The saved storage event batch remained after the recovered file settled.');
+            }
             require(state.branches.length===1&&state.branches[0].history.length===1,
                 'Startup recovery created an unexpected branch or revision.');
             return JSON.stringify({currentBody:state.currentBody,revision:state.rev,

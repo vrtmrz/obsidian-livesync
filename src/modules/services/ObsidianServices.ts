@@ -8,6 +8,7 @@ import { InjectableTestService } from "@vrtmrz/livesync-commonlib/compat/service
 import { InjectableTweakValueService } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableTweakValueService";
 import type { ObsidianServiceContext } from "@/modules/services/ObsidianServiceContext";
 import { KeyValueDBService } from "@vrtmrz/livesync-commonlib/compat/services/base/KeyValueDBService";
+import type { IDBKeyValueDatabase } from "@/common/KeyValueDBv2";
 import { ControlService } from "@vrtmrz/livesync-commonlib/compat/services/base/ControlService";
 import { reactiveSource } from "octagonal-wheels/dataobject/reactive";
 import type { ReplicatorServiceDependencies } from "@vrtmrz/livesync-commonlib/compat/services/base/ReplicatorService";
@@ -81,6 +82,6 @@ export class ObsidianTweakValueService extends InjectableTweakValueService<Obsid
 // InjectableTestService
 export class ObsidianTestService extends InjectableTestService<ObsidianServiceContext> {}
 
-export class ObsidianKeyValueDBService extends KeyValueDBService<ObsidianServiceContext> {}
+export class ObsidianKeyValueDBService extends KeyValueDBService<ObsidianServiceContext, IDBKeyValueDatabase> {}
 
 export class ObsidianControlService extends ControlService<ObsidianServiceContext> {}

@@ -12,6 +12,12 @@ Earlier releases remain available in the 1.0 release history, the 1.0 preview hi
 
 ## Unreleased
 
+### Improved
+
+- Fewer repeated writes while many local file changes are waiting to synchronise in Obsidian. If a group of changes cannot be queued, LiveSync reports it and later changes can still synchronise. ([#1380](https://github.com/vrtmrz/obsidian-livesync/issues/1380))
+    - Once file activity settles, restart Obsidian for its usual Vault scan, or run **Scan storage and database again** with advanced features enabled. If a rename was missed, check both names after scanning. The old name may reappear if its deletion could not be established.
+- Applying a new Database suffix restarts Obsidian before LiveSync opens the selected local database.
+
 ## 1.0.52
 
 22nd November, 2026

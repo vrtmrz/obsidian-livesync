@@ -17,7 +17,6 @@ import { ModuleObsidianSettingDialogue } from "./modules/features/ModuleObsidian
 import { ModuleObsidianDocumentHistory } from "./modules/features/ModuleObsidianDocumentHistory.ts";
 import { ModuleObsidianGlobalHistory } from "./modules/features/ModuleGlobalHistory.ts";
 import { LocalDatabaseMaintenance } from "./features/LocalDatabaseMainte/CmdLocalDatabaseMainte.ts";
-import type { InjectableServiceHub } from "@vrtmrz/livesync-commonlib/compat/services/implements/injectable/InjectableServiceHub";
 import { ObsidianServiceHub } from "./modules/services/ObsidianServiceHub.ts";
 import { ObsidianRebuilder } from "@/serviceModules/ObsidianRebuilder.ts";
 import { ServiceDatabaseFileAccess } from "@/serviceModules/DatabaseFileAccess.ts";
@@ -75,7 +74,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
      */
     private initialiseServiceModules(
         core: LiveSyncBaseCore<ObsidianServiceContext, LiveSyncCommands>,
-        services: InjectableServiceHub<ObsidianServiceContext>
+        services: ObsidianServiceHub
     ): ServiceModules {
         const storageAccessManager = new StorageAccessManager();
         // If we want to implement to the other platform, implement ObsidianXXXXXService.
@@ -91,6 +90,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
             return Promise.resolve(true);
         });
         const storageEventManager = new StorageEventManagerObsidian(this, core, {
+            pendingEventStore: services.pendingEventStore,
             fileProcessing: services.fileProcessing,
             setting: services.setting,
             vaultService: services.vault,
@@ -174,9 +174,7 @@ export default class ObsidianLiveSyncPlugin extends Plugin {
 
         this.core = new LiveSyncBaseCore(
             serviceHub,
-            (core, serviceHub) => {
-                return this.initialiseServiceModules(core, serviceHub);
-            },
+            (core) => this.initialiseServiceModules(core, serviceHub),
             (core) => {
                 const extraModules = [
                     new ModuleObsidianEvents(this, core),

@@ -9,6 +9,7 @@ import type {
     IStorageEventStatusAdapter,
     IStorageEventConverterAdapter,
     IStorageEventWatchHandlers,
+    PendingStorageEventStore,
 } from "@vrtmrz/livesync-commonlib/compat/managers/adapters";
 import type { FileEventItemSentinel } from "@vrtmrz/livesync-commonlib/compat/managers/StorageEventManager";
 import type ObsidianLiveSyncPlugin from "@/main";
@@ -127,7 +128,12 @@ export class ObsidianStorageEventManagerAdapter implements IStorageEventManagerA
     readonly status: ObsidianStatusAdapter;
     readonly converter: ObsidianConverterAdapter;
 
-    constructor(plugin: ObsidianLiveSyncPlugin, core: LiveSyncCore, fileProcessing: FileProcessingService) {
+    constructor(
+        plugin: ObsidianLiveSyncPlugin,
+        core: LiveSyncCore,
+        fileProcessing: FileProcessingService,
+        readonly pendingEventStore: PendingStorageEventStore
+    ) {
         this.typeGuard = new ObsidianTypeGuardAdapter();
         this.persistence = new ObsidianPersistenceAdapter(core);
         this.watch = new ObsidianWatchAdapter(plugin);

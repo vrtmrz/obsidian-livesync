@@ -3,6 +3,7 @@ import {
     E2EEAlgorithms,
     type HashAlgorithm,
     LOG_LEVEL_NOTICE,
+    LOG_LEVEL_VERBOSE,
     SuffixDatabaseName,
 } from "@vrtmrz/livesync-commonlib/compat/common/types";
 import { Logger } from "@vrtmrz/livesync-commonlib/compat/common/logger";
@@ -16,6 +17,10 @@ import { ExtraSuffixIndexedDB } from "@vrtmrz/livesync-commonlib/compat/common/t
 import { migrateDatabases } from "./settingUtils.ts";
 import { usesLegacyIndexedDBAdapter } from "@/common/core/settings/compatibilitySettings.ts";
 import { $msg } from "@/common/translation";
+import { EVENT_PLUGIN_UNLOADED } from "@/common/events";
+import { promptText } from "@vrtmrz/obsidian-plugin-kit";
+
+const activeSuffixChanges = new WeakSet<ObsidianLiveSyncSettingTab>();
 
 export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElement, { addPanel }: PageFunctions): void {
     void addPanel(paneEl, $msg("Compatibility (Metadata)")).then((paneEl) => {
@@ -141,15 +146,70 @@ export function panePatches(this: ObsidianLiveSyncSettingTab, paneEl: HTMLElemen
     });
 
     void addPanel(paneEl, $msg("Edge case addressing (Database)")).then((paneEl) => {
-        new Setting(paneEl)
-            .autoWireText("additionalSuffixOfDatabaseName", { holdValue: true })
-            .addApplyButton(["additionalSuffixOfDatabaseName"]);
+        const suffixSetting = new Setting(paneEl).setAuto("additionalSuffixOfDatabaseName");
+        const suffixValue = suffixSetting.controlEl.createSpan({
+            text: this.core.settings.additionalSuffixOfDatabaseName || '""',
+        });
+        let retrySuffix: string | undefined;
+        suffixSetting.addButton((button) => {
+            button.setButtonText($msg("Configure")).onClick(async () => {
+                if (activeSuffixChanges.has(this)) return;
+                activeSuffixChanges.add(this);
+                button.setDisabled(true);
 
-        this.addOnSaved("additionalSuffixOfDatabaseName", async (key) => {
-            Logger("Suffix has been changed. Reopening database...", LOG_LEVEL_NOTICE);
-            if (!(await this.services.databaseEvents.initialiseDatabase())) {
-                Logger($msg("Ui.Common.LocalDatabaseInitialisationFailed"), LOG_LEVEL_NOTICE);
-            }
+                const controller = new AbortController();
+                const removeUnloadHandler = this.services.context.events.onceEvent(EVENT_PLUGIN_UNLOADED, () =>
+                    controller.abort()
+                );
+                let restarting = false;
+                try {
+                    const suffix = await promptText(
+                        this.plugin.app,
+                        {
+                            title: $msg("Database suffix"),
+                            label: $msg("Database suffix"),
+                            initialValue: retrySuffix ?? this.core.settings.additionalSuffixOfDatabaseName ?? "",
+                            submitLabel: $msg("Apply and restart"),
+                            cancelLabel: $msg("Cancel"),
+                        },
+                        { signal: controller.signal }
+                    );
+                    if (controller.signal.aborted || suffix === null) return;
+
+                    const settings = this.core.settings;
+                    const previousSuffix = settings.additionalSuffixOfDatabaseName;
+                    if (suffix === (previousSuffix ?? "")) return;
+
+                    settings.additionalSuffixOfDatabaseName = suffix;
+                    try {
+                        await this.services.setting.saveSettingData();
+                    } catch (error) {
+                        const currentSettings = this.core.settings;
+                        if (currentSettings.additionalSuffixOfDatabaseName === suffix) {
+                            currentSettings.additionalSuffixOfDatabaseName = previousSuffix;
+                        }
+                        retrySuffix = suffix;
+                        Logger(
+                            $msg("Could not save the Database suffix. Check the log for details, then try again."),
+                            LOG_LEVEL_NOTICE
+                        );
+                        Logger(error, LOG_LEVEL_VERBOSE);
+                        return;
+                    }
+
+                    suffixValue.textContent = suffix || '""';
+                    if (!controller.signal.aborted) {
+                        this.services.appLifecycle.performRestart();
+                        restarting = true;
+                    }
+                } finally {
+                    removeUnloadHandler();
+                    if (!restarting) {
+                        activeSuffixChanges.delete(this);
+                        button.setDisabled(false);
+                    }
+                }
+            });
         });
 
         new Setting(paneEl).autoWireDropDown("hashAlg", {
